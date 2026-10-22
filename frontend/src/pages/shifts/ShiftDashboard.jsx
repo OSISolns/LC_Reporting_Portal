@@ -307,10 +307,13 @@ export default function ShiftDashboard() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [editingShift, setEditingShift] = useState(null);
   const [filters, setFilters] = useState({
-    role: '', status: '', date_from: '', date_to: '', employee_name: '', flagged: ''
+    role: '', period: '', status: '', date_from: '', date_to: '', employee_name: '', flagged: ''
   });
   const [loading, setLoading]     = useState(true);
   const [exporting, setExporting]   = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportPeriod, setExportPeriod] = useState('day');
+  const [exportRole, setExportRole] = useState('');
   const [reviewing, setReviewing]   = useState(null);
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -370,37 +373,50 @@ export default function ShiftDashboard() {
     fetchShifts(1);
   };
 
-  const handleExportLogs = async () => {
+  const handleExportLogs = () => {
+    setExportPeriod(filters.period || 'day');
+    setExportRole(filters.role || '');
+    setExportModalOpen(true);
+  };
+
+  const executeExport = async (targetPeriod, targetRole) => {
     setExporting(true);
-    const toastId = toast.loading('Generating Shift Logs Excel Extract...');
+    const pPeriod = targetPeriod || exportPeriod;
+    const pRole = targetRole !== undefined ? targetRole : exportRole;
+    const periodLabel = pPeriod === 'day' ? 'Today (Day)' : (pPeriod === 'week' ? 'This Week' : (pPeriod === 'month' ? 'This Month' : (pPeriod === 'all' ? 'All Time' : 'Active Filters')));
+    const toastId = toast.loading(`Generating Shift Revenue & Income Statement (${periodLabel})...`);
+
     try {
-      const params = { ...filters };
+      const params = {};
+      if (pPeriod === 'active') {
+        Object.assign(params, filters);
+      } else {
+        params.period = pPeriod;
+        if (pRole) params.role = pRole;
+        if (filters.status) params.status = filters.status;
+        if (filters.flagged) params.flagged = filters.flagged;
+      }
       Object.keys(params).forEach(k => !params[k] && delete params[k]);
-      
+
       const res = await exportShiftsExcel(params);
-      
       const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      
-      let filename = 'Shift_Logs';
-      if (filters.date_from || filters.date_to) {
-        filename += `_Extract_${filters.date_from || 'Start'}_to_${filters.date_to || 'End'}`;
-      } else {
-        filename += `_${new Date().toISOString().split('T')[0]}`;
-      }
-      
-      link.setAttribute('download', `${filename}.xlsx`);
+
+      const dateStamp = new Date().toISOString().split('T')[0];
+      const filename = `Lumina_Shift_Income_Statement_${pPeriod}_${dateStamp}.xlsx`;
+      link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
-      toast.success('Shift logs successfully extracted!', { id: toastId });
+
+      toast.success('Executive Shift Report & Income Statement downloaded!', { id: toastId });
+      setExportModalOpen(false);
     } catch (err) {
       console.error(err);
-      toast.error('Failed to extract shift logs. Please try again.', { id: toastId });
+      toast.error('Failed to export shift logs. Please try again.', { id: toastId });
     } finally {
       setExporting(false);
     }
@@ -696,6 +712,41 @@ export default function ShiftDashboard() {
             >
               <Kanban size={13} /> Kanban
             </button>
+          </div>
+
+          {/* ─── Period quick filters ─── */}
+          <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl border border-slate-200">
+            {[
+              { id: '', label: 'All' },
+              { id: 'day', label: 'Day' },
+              { id: 'week', label: 'Week' },
+              { id: 'month', label: 'Month' },
+            ].map((p) => {
+              const active = (filters.period || '') === p.id;
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    const nextPeriod = active ? '' : p.id;
+                    setFilters(prev => ({ ...prev, period: nextPeriod, date_from: '', date_to: '' }));
+                    setLoading(true);
+                    const params = { ...filters, period: nextPeriod, date_from: '', date_to: '', page: 1, limit: 50 };
+                    Object.keys(params).forEach(k => !params[k] && delete params[k]);
+                    getAllShifts(params)
+                      .then(res => { setShifts(res.data.data); setMeta(res.data.meta); })
+                      .catch(() => toast.error('Failed to filter shifts by period'))
+                      .finally(() => setLoading(false));
+                  }}
+                  className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
+                    active
+                      ? 'bg-[#1b669d] text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
           </div>
 
           {/* ─── Flagged quick-filter chip ───────────────────── */}
@@ -1790,6 +1841,133 @@ export default function ShiftDashboard() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Extract Shift Logs & Income Statement Dialog ───────────────────── */}
+      <Dialog open={exportModalOpen} onOpenChange={setExportModalOpen}>
+        <DialogContent className="bg-white rounded-3xl shadow-2xl overflow-hidden border-2 border-slate-100 max-w-xl p-0">
+          <div className="bg-gradient-to-r from-[#1b669d] to-[#12466d] p-6 text-white text-left">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-inner">
+                <FileSpreadsheet size={24} className="text-emerald-300" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-black text-white">
+                  Export Shift Registry &amp; Income Statement
+                </DialogTitle>
+                <DialogDescription className="text-xs text-blue-100/90 mt-0.5">
+                  Executive, shareable Excel workbook (.xlsx) with multi-sheet revenue &amp; operational audit
+                </DialogDescription>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 space-y-5 text-left">
+            {/* Period Selection */}
+            <div>
+              <Label className="text-xs font-black uppercase tracking-wider text-slate-500 mb-2.5 block">
+                Select Reporting Period
+              </Label>
+              <div className="grid grid-cols-2 gap-2.5">
+                {[
+                  { id: 'day', label: 'Day (Today)', desc: 'Today’s shifts & revenue ledger', icon: '☀️' },
+                  { id: 'week', label: 'This Week', desc: 'Monday to Sunday Kigali time', icon: '📅' },
+                  { id: 'month', label: 'This Month', desc: 'Current calendar month ledger', icon: '📊' },
+                  { id: 'active', label: 'Current Filters', desc: 'Use active table filter settings', icon: '⚙️' },
+                ].map((p) => {
+                  const isSelected = exportPeriod === p.id;
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => setExportPeriod(p.id)}
+                      className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
+                        isSelected
+                          ? 'border-[#1b669d] bg-blue-50/50 shadow-sm ring-1 ring-[#1b669d]'
+                          : 'border-slate-200 hover:border-slate-300 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">{p.icon}</span>
+                        <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${
+                          isSelected ? 'border-[#1b669d] bg-[#1b669d]' : 'border-slate-300'
+                        }`}>
+                          {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                        </div>
+                      </div>
+                      <p className="text-xs font-black text-slate-900 mt-2">{p.label}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{p.desc}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Department / Role Filter */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-black uppercase tracking-wider text-slate-500">
+                Counter / Station Filter (Optional)
+              </Label>
+              <Select
+                value={exportRole}
+                onChange={(e) => setExportRole(e.target.value)}
+                className="w-full"
+              >
+                <option value="">All Counter Stations &amp; Departments</option>
+                <option value="cashier">Cashier Counter</option>
+                <option value="customer_care">Customer Care Station</option>
+                <option value="helpdesk">Helpdesk Station</option>
+                <option value="rama_rssb">RAMA / RSSB Billing Station</option>
+                <option value="nurse">Nursing Wards</option>
+                <option value="rn_midwife">RN Midwife Station</option>
+                <option value="call_center">Call Center Desk</option>
+              </Select>
+            </div>
+
+            {/* What is included card */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+              <p className="text-[11px] font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                <CheckCircle2 size={13} className="text-emerald-600" />
+                Workbook Content Structure (Ready to Share)
+              </p>
+              <div className="space-y-1.5 text-[11px] text-slate-600 pl-4 border-l-2 border-emerald-500/30">
+                <p><strong>Sheet 1:</strong> Income Statement &amp; Revenue (Gross collections RWF, MoMo/POS/Cash, USD/EUR, Float discrepancies, Insurances, SUM totals)</p>
+                <p><strong>Sheet 2:</strong> All Shift Sessions &amp; Operational Logs (Timing, duration, handover notes, supervisor review status)</p>
+                <p><strong>Sheet 3:</strong> Payment Channels &amp; Terminals (MoMo Pay Codes, POS Bank Terminals breakdown)</p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1 rounded-2xl py-6"
+                onClick={() => setExportModalOpen(false)}
+                disabled={exporting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                disabled={exporting}
+                onClick={() => executeExport(exportPeriod, exportRole)}
+                className="flex-1 rounded-2xl py-6 bg-[#1b669d] hover:bg-[#12466d] text-white font-bold shadow-lg shadow-[#1b669d]/20"
+              >
+                {exporting ? (
+                  <>
+                    <RefreshCcw size={16} className="animate-spin mr-2" />
+                    Generating Excel...
+                  </>
+                ) : (
+                  <>
+                    <Download size={16} className="mr-2" />
+                    Download Excel Report (.xlsx)
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

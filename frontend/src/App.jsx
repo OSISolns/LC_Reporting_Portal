@@ -130,7 +130,7 @@ function App() {
             <Route path="/providers" element={<ProtectedRoute allowedRoles={['admin', 'coo', 'deputy_coo', 'medical_director']}><Providers /></ProtectedRoute>} />
             <Route path="/permissions" element={<ProtectedRoute allowedRoles={['admin']}><Permissions /></ProtectedRoute>} />
             <Route path="/audit-logs" element={<ProtectedRoute allowedRoles={['admin', 'it_officer', 'quality_accreditation_officer']}><AuditLogs /></ProtectedRoute>} />
-            <Route path="/admin/patient-lookup" element={<ProtectedRoute allowedRoles={['admin', 'it_officer', 'coo', 'deputy_coo', 'chairman', 'customer_care', 'principal_cashier', 'sales_manager']}><PatientSukraaLookup /></ProtectedRoute>} />
+            <Route path="/admin/patient-lookup" element={<ProtectedRoute allowedRoles={['admin', 'it_officer']}><PatientSukraaLookup /></ProtectedRoute>} />
             <Route path="/safety-management" element={<ProtectedRoute allowedRoles={['hsfp', 'admin', 'deputy_coo', 'medical_director', 'quality_manager', 'qm', 'quality_accreditation_officer', 'chairman']}><SafetyManagement /></ProtectedRoute>} />
             <Route path="/risk-register" element={<ProtectedRoute allowedRoles={['hsfp', 'admin', 'deputy_coo', 'medical_director', 'quality_manager', 'qm', 'quality_accreditation_officer', 'chairman']}><RiskRegister /></ProtectedRoute>} />
             <Route path="/infection-control" element={<ProtectedRoute allowedRoles={['hsfp', 'admin', 'deputy_coo', 'medical_director', 'quality_manager', 'qm', 'quality_accreditation_officer', 'chairman']}><InfectionControlTracker /></ProtectedRoute>} />

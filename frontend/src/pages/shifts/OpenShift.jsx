@@ -23,7 +23,8 @@ import {
   Pill,
   CreditCard,
   Crown,
-  FileSpreadsheet
+  FileSpreadsheet,
+  PhoneCall
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { openShift, getMyActiveShift } from '../../api/shifts';
@@ -31,9 +32,32 @@ import Modal from '../../components/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { SHIFT_ROLES, EQUIPMENT_BY_ROLE, EQUIPMENT_STATUS_OPTIONS, NURSING_WARDS, CASHIER_STATIONS, HELPDESK_STATIONS, getItemStatusOptions, getDefaultItemStatus } from './shiftConfig';
 
+// ─── Kigali Facility Time Helpers ───────────────────────────────────────────
+const getFacilityKigaliMinutes = () => {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Africa/Kigali',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).formatToParts(new Date());
+  const map = {};
+  for (const p of parts) map[p.type] = p.value;
+  return parseInt(map.hour, 10) * 60 + parseInt(map.minute, 10);
+};
+
+const getFacilityKigaliTimeStr = () => {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Africa/Kigali',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).format(new Date());
+};
+
 // ─── Constants ──────────────────────────────────────────────────────────────
 const ROLE_ICONS = {
   cashier: <CreditCard size={36} className="text-[#1b669d]" />,
+  customer_care: <PhoneCall size={36} className="text-[#1b669d]" />,
   rama_rssb: <FileSpreadsheet size={36} className="text-[#1b669d]" />,
   helpdesk: <Monitor size={36} className="text-[#1b669d]" />,
   call_center: <Phone size={36} className="text-[#1b669d]" />,
@@ -168,13 +192,13 @@ export default function OpenShift() {
   const [loading, setLoading] = useState(true);
   const [startHour, setStartHour] = useState('');
 
-  const isCustomerCare = ['helpdesk', 'call_center'].includes(selectedRole);
+  const isCustomerCare = ['helpdesk', 'customer_care', 'call_center'].includes(selectedRole);
 
   const visibleRoles = SHIFT_ROLES.filter(role => {
     if (['admin', 'it_officer', 'operations_staff', 'coo', 'deputy_coo'].includes(user?.role)) return true;
     if (user?.role === 'nurse' || user?.role === 'rn_midwife' || user?.role === 'chef-nurse') return role.value === 'nurse' || role.value === 'rn_midwife';
     if (user?.role === 'vip_lounge') return role.value === 'vip_lounge';
-    if (user?.role === 'customer_care' || user?.role === 'cashier') return ['vip_lounge', 'helpdesk', 'call_center', 'cashier', 'rama_rssb'].includes(role.value);
+    if (user?.role === 'customer_care' || user?.role === 'cashier') return ['vip_lounge', 'helpdesk', 'customer_care', 'call_center', 'cashier', 'rama_rssb'].includes(role.value);
     return role.value !== 'nurse' && role.value !== 'rn_midwife' && role.value !== 'vip_lounge';
   });
   const [password, setPassword] = useState('');
@@ -206,7 +230,7 @@ export default function OpenShift() {
     } else if (role === 'cashier') {
       const stObj = CASHIER_STATIONS.find(s => s.name === selectedCashierStation) || CASHIER_STATIONS[0];
       setEquipment(stObj.equipment.map(name => ({ name, status: getDefaultItemStatus(name), remarks: '' })));
-    } else if (role === 'helpdesk') {
+    } else if (role === 'helpdesk' || role === 'customer_care') {
       const hdObj = HELPDESK_STATIONS.find(s => s.name === selectedHelpdeskStation) || HELPDESK_STATIONS[0];
       setEquipment(hdObj.equipment.map(name => ({ name, status: getDefaultItemStatus(name), remarks: '' })));
     } else {
@@ -251,13 +275,23 @@ export default function OpenShift() {
       return;
     }
 
-    if (selectedRole === 'helpdesk' && !selectedHelpdeskStation) {
-      toast.error('Please select your Helpdesk Station (Ground-Floor or First-Floor).');
+    if ((selectedRole === 'helpdesk' || selectedRole === 'customer_care') && !selectedHelpdeskStation) {
+      toast.error('Please select your Station (Ground-Floor or First-Floor).');
       return;
     }
 
     if (!startHour) {
       toast.error('Please specify your starting hour for wave allocation.');
+      return;
+    }
+
+    // Shift cannot be opened before the wave starting time
+    const [startH, startM] = startHour.split(':').map(Number);
+    const waveStartMinutes = startH * 60 + (startM || 0);
+    const facilityMinutes = getFacilityKigaliMinutes();
+    const isSupervisor = ['admin', 'coo', 'deputy_coo', 'it_officer'].includes(user?.role);
+    if (facilityMinutes < waveStartMinutes && !isSupervisor) {
+      toast.error(`Shift cannot be opened before the wave starting time (${startHour}). Current facility time is ${getFacilityKigaliTimeStr()}.`);
       return;
     }
 
@@ -284,7 +318,13 @@ export default function OpenShift() {
     try {
       const payload = {
         shift_role: selectedRole,
-        nursing_ward: (selectedRole === 'nurse' || selectedRole === 'rn_midwife') ? selectedWard : selectedRole === 'cashier' ? selectedCashierStation : selectedRole === 'helpdesk' ? selectedHelpdeskStation : null,
+        nursing_ward: (selectedRole === 'nurse' || selectedRole === 'rn_midwife')
+          ? selectedWard
+          : selectedRole === 'cashier'
+          ? selectedCashierStation
+          : (selectedRole === 'helpdesk' || selectedRole === 'customer_care')
+          ? selectedHelpdeskStation
+          : null,
         equipment: equipment.map(e => ({ name: e.name, status: e.status, remarks: e.remarks || null })),
         password,
         start_hour: startHour,
@@ -517,16 +557,16 @@ export default function OpenShift() {
                   </div>
                 </div>
               )}
-              {selectedRole === 'helpdesk' && (
+              {(selectedRole === 'helpdesk' || selectedRole === 'customer_care') && (
                 <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
                         <Monitor size={16} className="text-[#007B8A]" />
-                        Select Helpdesk Station / Floor <span className="text-rose-500">*</span>
+                        Select Station / Counter Floor <span className="text-rose-500">*</span>
                       </h3>
                       <p className="text-slate-500 text-xs mt-0.5">
-                        Choose your assigned helpdesk location (Ground-Floor or First-Floor)
+                        Choose your assigned counter location (Ground-Floor or First-Floor)
                       </p>
                     </div>
                   </div>
@@ -583,33 +623,55 @@ export default function OpenShift() {
                     <Clock size={16} className="text-[#1b669d]" />
                     <div>
                       <h3 className="text-sm font-bold text-slate-800">Starting Hour & Wave</h3>
-                      <p className="text-slate-500 text-xs">Select start time to allocate shift wave</p>
+                      <p className="text-slate-500 text-xs">
+                        Select start time to allocate shift wave (Shifts cannot be opened before wave starting time)
+                      </p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {WAVE_OPTIONS.map((opt) => {
                       const isSelected = startHour === opt.hour;
+                      const [startH, startM] = opt.hour.split(':').map(Number);
+                      const optStartMinutes = startH * 60 + (startM || 0);
+                      const isSupervisor = ['admin', 'coo', 'deputy_coo', 'it_officer'].includes(user?.role);
+                      const isTooEarly = getFacilityKigaliMinutes() < optStartMinutes && !isSupervisor;
+
                       return (
                         <button
                           key={opt.hour}
                           type="button"
-                          onClick={() => setStartHour(opt.hour)}
+                          onClick={() => {
+                            if (isTooEarly) {
+                              toast.error(`Shift cannot be opened before the wave starting time (${opt.schedule}). Current facility time is ${getFacilityKigaliTimeStr()}.`);
+                              return;
+                            }
+                            setStartHour(opt.hour);
+                          }}
                           className={`p-3.5 rounded-xl border text-left transition-all ${
-                            isSelected
+                            isTooEarly
+                              ? 'bg-slate-50 border-slate-200 opacity-60 cursor-not-allowed text-slate-400'
+                              : isSelected
                               ? 'bg-[#1b669d]/10 border-[#1b669d] text-[#1b669d] font-bold shadow-xs'
                               : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
                           }`}
                         >
                           <div className="flex justify-between items-center mb-1">
                             <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
-                              isSelected ? 'bg-[#1b669d] text-white' : 'bg-slate-100 text-slate-600'
+                              isTooEarly
+                                ? 'bg-amber-100 text-amber-800'
+                                : isSelected
+                                ? 'bg-[#1b669d] text-white'
+                                : 'bg-slate-100 text-slate-600'
                             }`}>
-                              {opt.wave}
+                              {isTooEarly ? '🔒 Early' : opt.wave}
                             </span>
                           </div>
                           <p className="text-base font-bold text-slate-800">{opt.label}</p>
                           <p className="text-[11px] text-slate-500">{opt.schedule}</p>
+                          {isTooEarly && (
+                            <p className="text-[10px] text-amber-600 font-semibold mt-1">Starts at {opt.label}</p>
+                          )}
                         </button>
                       );
                     })}

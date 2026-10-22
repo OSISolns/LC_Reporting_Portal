@@ -5034,6 +5034,8 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         "ALTER TABLE cancellation_requests ADD COLUMN supporting_document_uploaded_at DATETIME",
         "ALTER TABLE cancellation_requests ADD COLUMN supporting_document_uploader_id INTEGER",
         "ALTER TABLE cancellation_requests ADD COLUMN supporting_document_uploaded_by INTEGER",
+        "ALTER TABLE cancellation_requests ADD COLUMN sales_verified_by INTEGER REFERENCES users(id)",
+        "ALTER TABLE cancellation_requests ADD COLUMN sales_verified_at DATETIME",
         "ALTER TABLE refund_requests ADD COLUMN supporting_document_base64 TEXT",
         "ALTER TABLE refund_requests ADD COLUMN supporting_document_name TEXT",
         "ALTER TABLE refund_requests ADD COLUMN supporting_document_uploaded_at DATETIME",

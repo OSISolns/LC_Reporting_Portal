@@ -175,6 +175,10 @@ router.get('/search', async (req, res, next) => {
 // Batch lookups of patient records and phone numbers by PID list
 router.post('/bulk-lookup', async (req, res, next) => {
   try {
+    if (!['admin', 'it_officer'].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Access denied. Administrator privileges required.' });
+    }
+
     let rawPids = req.body.pids;
     if (typeof rawPids === 'string') {
       rawPids = rawPids.split(/[\r\n,;\t]+/).map(s => s.trim()).filter(Boolean);

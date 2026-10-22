@@ -32,16 +32,16 @@ const MAX_SHIFT_HOURS = 8;
 
 // ─── Wave Configurations ──────────────────────────────────────────────────────
 function getWaveConfig(shift) {
-  if (!shift) return { schedule: "07:00 AM - 03:00 PM", duration: 8, startHourStr: "07:00" };
+  if (!shift) return { schedule: "07:00 AM - 03:00 PM", duration: 8, startHourStr: "07:00", endHourStr: "15:00" };
   
   if (shift.wave === 'Wave 1' || shift.start_hour === '07:00') {
-    return { schedule: "07:00 AM - 03:00 PM", duration: 8, startHourStr: "07:00" };
+    return { schedule: "07:00 AM - 03:00 PM", duration: 8, startHourStr: "07:00", endHourStr: "15:00" };
   } else if (shift.wave === 'Wave 2' || shift.start_hour === '08:00') {
-    return { schedule: "08:00 AM - 04:00 PM", duration: 8, startHourStr: "08:00" };
+    return { schedule: "08:00 AM - 04:00 PM", duration: 8, startHourStr: "08:00", endHourStr: "16:00" };
   } else if (shift.wave === 'Wave 4' || shift.start_hour === '09:00') {
-    return { schedule: "09:00 AM - 05:00 PM", duration: 8, startHourStr: "09:00" };
+    return { schedule: "09:00 AM - 05:00 PM", duration: 8, startHourStr: "09:00", endHourStr: "17:00" };
   } else if (shift.wave === 'Wave 3' || shift.start_hour === '15:00') {
-    return { schedule: "03:00 PM - 09:00 PM", duration: 6, startHourStr: "15:00" };
+    return { schedule: "03:00 PM - 09:00 PM", duration: 6, startHourStr: "15:00", endHourStr: "21:00" };
   } else {
     const openedDate = new Date(shift.opened_at);
     const hour = openedDate.getHours();
@@ -49,7 +49,8 @@ function getWaveConfig(shift) {
     return {
       schedule: isMorning ? "07:00 AM - 03:00 PM" : "03:00 PM - 09:00 PM",
       duration: isMorning ? 8 : 6,
-      startHourStr: isMorning ? "07:00" : "15:00"
+      startHourStr: isMorning ? "07:00" : "15:00",
+      endHourStr: isMorning ? "15:00" : "21:00"
     };
   }
 }
@@ -63,6 +64,34 @@ function getWaveStartTime(shift) {
   const startTime = new Date(openedDate);
   startTime.setHours(parseInt(hStr, 10), parseInt(mStr, 10), 0, 0);
   return startTime;
+}
+
+function getWaveEndDateTime(shift) {
+  if (!shift?.opened_at) return null;
+  const waveCfg = getWaveConfig(shift);
+  const [startH] = (waveCfg.startHourStr || '07:00').split(':').map(Number);
+  const [endH, endM] = (waveCfg.endHourStr || '15:00').split(':').map(Number);
+
+  const kigaliParts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Africa/Kigali',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour12: false
+  }).formatToParts(new Date(shift.opened_at));
+  const kmap = {};
+  for (const p of kigaliParts) kmap[p.type] = p.value;
+
+  const year = parseInt(kmap.year, 10);
+  const month = parseInt(kmap.month, 10) - 1;
+  let endDay = parseInt(kmap.day, 10);
+  if (endH < startH) {
+    endDay += 1;
+  }
+
+  // Kigali is UTC+2
+  const endUtc = Date.UTC(year, month, endDay, endH - 2, endM, 0, 0);
+  return new Date(endUtc);
 }
 
 // ─── Greeting helper ─────────────────────────────────────────────────────────
@@ -79,6 +108,11 @@ const ROLE_CONFIG = {
     color: 'emerald', label: 'Billing Agent',
     mission: 'Process patient billing accurately, reconcile digital payments, and ensure every transaction is verified before shift closure.',
     tips: ['Record all MoMo & card transactions as they happen', 'Flag any cash discrepancies immediately', 'Verify insurance codes match patient records'],
+  },
+  customer_care: {
+    color: 'blue', label: 'Customer Care Officer',
+    mission: 'Deliver exceptional customer care, guide walk-in patients, manage triage desk interactions, and ensure accurate handover of desk operations.',
+    tips: ['Log all patient guidance and counter interactions', 'Reconcile any desk payments if billing occurred', 'Document unresolved inquiries for next shift'],
   },
   helpdesk: {
     color: 'blue', label: 'Helpdesk Officer',
@@ -104,6 +138,7 @@ const ROLE_CONFIG = {
 
 const ROLE_ICONS = {
   cashier: <CreditCard size={28} className="inline-block" />,
+  customer_care: <PhoneCall size={28} className="inline-block" />,
   helpdesk: <Monitor size={28} className="inline-block" />,
   call_center: <Phone size={28} className="inline-block" />,
   nurse: <Stethoscope size={28} className="inline-block" />,
@@ -246,7 +281,7 @@ function ShiftClosingSummary({ shift, closedData, onExit }) {
       { label: 'MoMo Payments', val: `${(c.total_momo_transactions||0).toLocaleString()} RWF`, icon: <Smartphone size={18} />, color: 'emerald' },
       { label: 'Card Payments', val: `${(c.total_card_transactions||0).toLocaleString()} RWF`, icon: <CreditCard size={18} />, color: 'violet' },
     );
-  } else if (shift.shift_role === 'helpdesk' && closedData?.helpdesk) {
+  } else if ((shift.shift_role === 'helpdesk' || shift.shift_role === 'customer_care') && closedData?.helpdesk) {
     const h = closedData.helpdesk;
     stats.push(
       { label: 'Walk-in Queries', val: h.patient_walkin_queries || 0, icon: <Users size={18} />, color: 'blue' },
@@ -1854,6 +1889,9 @@ export default function CloseShift() {
   const [handoverNotes, setHandoverNotes] = useState('');
   const [equipment, setEquipment] = useState([]);
   const [password, setPassword] = useState('');
+  const [supervisorUsername, setSupervisorUsername] = useState('');
+  const [supervisorPassword, setSupervisorPassword] = useState('');
+  const [requiresSupervisor, setRequiresSupervisor] = useState(false);
   const [closingError, setClosingError] = useState('');
   const [billingClose, setBillingClose] = useState({ payments_all_successful: true, insurances_used: [], total_momo_transactions: 0, total_card_transactions: 0 });
   const [helpdeskClose, setHelpdeskClose] = useState({
@@ -1957,7 +1995,7 @@ export default function CloseShift() {
         if ((s.shift_role === 'cashier' || s.shift_role === 'rama_rssb') && s.role_data?.closing) {
           setBillingClose({ ...billingClose, ...s.role_data.closing, payments_all_successful: !!s.role_data.closing.payments_all_successful });
         }
-        if (s.shift_role === 'helpdesk' && s.role_data?.closing) {
+        if ((s.shift_role === 'helpdesk' || s.shift_role === 'customer_care') && s.role_data?.closing) {
           const c = s.role_data.closing;
           let mb = c.momo_breakdown || {};
           if (typeof mb === 'string') { try { mb = JSON.parse(mb); } catch(e) { mb = {}; } }
@@ -2027,13 +2065,15 @@ export default function CloseShift() {
   const buildPayload = useCallback(() => ({
     handover_notes: handoverNotes,
     password: password,
+    ...(supervisorUsername && { supervisor_username: supervisorUsername }),
+    ...(supervisorPassword && { supervisor_password: supervisorPassword }),
     equipment: equipment.map(({ name, status, remarks }) => ({ name, status, remarks: remarks || null })),
     ...((shift?.shift_role === 'cashier' || shift?.shift_role === 'rama_rssb') && { cashier_close: { ...billingClose, opening_float: 0, closing_float: 0, cash_payments_total: 0 } }),
-    ...(shift?.shift_role === 'helpdesk' && { helpdesk_close: helpdeskClose }),
+    ...((shift?.shift_role === 'helpdesk' || shift?.shift_role === 'customer_care') && { helpdesk_close: helpdeskClose }),
     ...(shift?.shift_role === 'call_center' && { callcenter_close: callcenterClose }),
     ...(shift?.shift_role === 'nurse' && { nurse_close: nursingClose }),
     ...(shift?.shift_role === 'vip_lounge' && { vip_lounge_close: viploungeClose }),
-  }), [handoverNotes, equipment, billingClose, helpdeskClose, callcenterClose, nursingClose, viploungeClose, shift, password]);
+  }), [handoverNotes, equipment, billingClose, helpdeskClose, callcenterClose, nursingClose, viploungeClose, shift, password, supervisorUsername, supervisorPassword]);
 
   // Draft payload strips the password — it is not required for saving and
   // should never appear in server request logs.
@@ -2088,8 +2128,15 @@ export default function CloseShift() {
   const handleClose = async (e) => {
     e.preventDefault();
     setError('');
-    
 
+    // Check if shift closing is passing end of shift by more than 1 hour
+    const waveEnd = getWaveEndDateTime(shift);
+    if (waveEnd) {
+      const oneHourPastEnd = waveEnd.getTime() + 60 * 60 * 1000;
+      if (Date.now() > oneHourPastEnd) {
+        setRequiresSupervisor(true);
+      }
+    }
 
     const isOkStatus = (st) => st === 'Working' || st === 'Available';
 
@@ -2130,6 +2177,11 @@ export default function CloseShift() {
       return;
     }
 
+    if (requiresSupervisor && (!supervisorUsername.trim() || !supervisorPassword.trim())) {
+      setClosingError('Supervisor username and password are required because shift closure grace period (> 1 hour after shift end) has expired.');
+      return;
+    }
+
     setSubmitting(true);
     const tid = toast.loading('Processing official shift closure...');
     try {
@@ -2145,6 +2197,10 @@ export default function CloseShift() {
         vip_lounge: viploungeClose,
       });
     } catch (err) {
+      const errCode = err.response?.data?.code;
+      if (errCode === 'EXCEEDED_CLOSING_LIMIT' || errCode === 'SUPERVISOR_AUTH_FAILED' || errCode === 'NOT_SUPERVISOR') {
+        setRequiresSupervisor(true);
+      }
       const msg = err.response?.data?.message || 'Shift closure protocol failure';
       setClosingError(msg);
       toast.error(msg, { id: tid });
@@ -2162,7 +2218,15 @@ export default function CloseShift() {
 
   if (!shift) return null;
 
-  const roleLabel = { cashier: 'Billing Agent', rama_rssb: 'RAMA/RSSB Billing Station', helpdesk: 'Helpdesk', call_center: 'Call Center Agent', nurse: 'Registered Nurse', vip_lounge: 'VIP Lounge' }[shift.shift_role];
+  const roleLabel = {
+    cashier: 'Billing Agent',
+    rama_rssb: 'RAMA/RSSB Billing Station',
+    helpdesk: 'Helpdesk',
+    customer_care: 'Customer Care Officer',
+    call_center: 'Call Center Agent',
+    nurse: 'Registered Nurse',
+    vip_lounge: 'VIP Lounge'
+  }[shift.shift_role] || shift.shift_role;
 
   return (
     <>
@@ -2378,7 +2442,7 @@ export default function CloseShift() {
               onChange={(k, v) => setBillingClose((p) => ({ ...p, [k]: v }))}
             />
           )}
-          {shift.shift_role === 'helpdesk' && (
+          {(shift.shift_role === 'helpdesk' || shift.shift_role === 'customer_care') && (
             <HelpdeskCloseForm data={helpdeskClose} onChange={(k, v) => setHelpdeskClose((p) => ({ ...p, [k]: v }))} />
           )}
           {shift.shift_role === 'call_center' && (
@@ -2477,7 +2541,7 @@ export default function CloseShift() {
         title="Final Identity Authorization"
       >
         <div className="p-6">
-          <div className="mb-8 flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-200/80">
+          <div className="mb-6 flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-200/80">
             <div className="w-12 h-12 rounded-xl bg-[#1b669d]/10 flex items-center justify-center text-[#1b669d]">
               <Lock size={24} />
             </div>
@@ -2487,9 +2551,21 @@ export default function CloseShift() {
             </div>
           </div>
 
-          <form onSubmit={handleFinalClose} className="space-y-6">
+          {requiresSupervisor && (
+            <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 space-y-2">
+              <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-amber-800">
+                <ShieldAlert size={18} className="text-amber-600" />
+                Supervisor Authorization Required
+              </div>
+              <p className="text-xs font-medium leading-relaxed">
+                This shift is past the 1-hour closing window after shift end. An authorized supervisor must provide their credentials below to override and seal this session.
+              </p>
+            </div>
+          )}
+
+          <form onSubmit={handleFinalClose} className="space-y-5">
             <div>
-              <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3 ml-1">Account Password</label>
+              <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 ml-1">Your Account Password</label>
               <input
                 type="password"
                 autoFocus
@@ -2499,16 +2575,54 @@ export default function CloseShift() {
                   if (closingError) setClosingError('');
                 }}
                 placeholder="••••••••••••"
-                className={`w-full bg-slate-50 border-2 rounded-2xl p-6 text-xl font-black outline-none transition-all placeholder:text-slate-200 ${
+                className={`w-full bg-slate-50 border-2 rounded-2xl p-4 text-lg font-black outline-none transition-all placeholder:text-slate-200 ${
                   closingError ? 'border-rose-500 focus:border-rose-600' : 'border-slate-100 focus:border-[#1b669d]'
                 }`}
               />
-              {closingError && (
-                <p className="text-rose-500 text-[11px] font-bold tracking-wide mt-2 ml-1">
-                  {closingError}
-                </p>
-              )}
             </div>
+
+            {requiresSupervisor && (
+              <div className="space-y-4 pt-2 border-t border-slate-200">
+                <div>
+                  <label className="block text-[10px] font-black text-amber-800 uppercase tracking-[0.2em] mb-2 ml-1">
+                    Supervisor Username
+                  </label>
+                  <input
+                    type="text"
+                    value={supervisorUsername}
+                    onChange={(e) => {
+                      setSupervisorUsername(e.target.value);
+                      if (closingError) setClosingError('');
+                    }}
+                    placeholder="e.g. admin or supervisor_user"
+                    className="w-full bg-slate-50 border-2 border-slate-100 focus:border-amber-500 rounded-2xl p-4 text-sm font-bold outline-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-amber-800 uppercase tracking-[0.2em] mb-2 ml-1">
+                    Supervisor Password
+                  </label>
+                  <input
+                    type="password"
+                    value={supervisorPassword}
+                    onChange={(e) => {
+                      setSupervisorPassword(e.target.value);
+                      if (closingError) setClosingError('');
+                    }}
+                    placeholder="••••••••••••"
+                    className="w-full bg-slate-50 border-2 border-slate-100 focus:border-amber-500 rounded-2xl p-4 text-sm font-bold outline-none"
+                    required
+                  />
+                </div>
+              </div>
+            )}
+
+            {closingError && (
+              <p className="text-rose-500 text-[11px] font-bold tracking-wide mt-2 ml-1">
+                {closingError}
+              </p>
+            )}
 
             <div className="flex gap-4 pt-4">
               <button

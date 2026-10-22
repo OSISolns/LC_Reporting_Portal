@@ -4,6 +4,7 @@ const User         = require('../models/user');
 const Notification = require('../models/notification');
 const bcrypt       = require('bcryptjs');
 const { exportToExcel } = require('../utils/excel');
+const ExcelJS      = require('exceljs');
 
 // ─── SHIFT POLICY ─────────────────────────────────────────────────────────────
 const MAX_SHIFT_HOURS  = 8;   // Auto-close threshold
@@ -43,26 +44,55 @@ const normalizeEquipmentStatus = (status) => {
 };
 
 function getWaveConfig(shift) {
-  if (!shift) return { schedule: "07:00 AM - 03:00 PM", duration: 8, startHourStr: "07:00" };
+  if (!shift) return { schedule: "07:00 AM - 03:00 PM", duration: 8, startHourStr: "07:00", endHourStr: "15:00" };
   
   if (shift.wave === 'Wave 1' || shift.start_hour === '07:00') {
-    return { schedule: "07:00 AM - 03:00 PM", duration: 8, startHourStr: "07:00" };
+    return { schedule: "07:00 AM - 03:00 PM", duration: 8, startHourStr: "07:00", endHourStr: "15:00" };
   } else if (shift.wave === 'Wave 2' || shift.start_hour === '08:00') {
-    return { schedule: "08:00 AM - 04:00 PM", duration: 8, startHourStr: "08:00" };
+    return { schedule: "08:00 AM - 04:00 PM", duration: 8, startHourStr: "08:00", endHourStr: "16:00" };
   } else if (shift.wave === 'Wave 4' || shift.start_hour === '09:00') {
-    return { schedule: "09:00 AM - 05:00 PM", duration: 8, startHourStr: "09:00" };
+    return { schedule: "09:00 AM - 05:00 PM", duration: 8, startHourStr: "09:00", endHourStr: "17:00" };
   } else if (shift.wave === 'Wave 3' || shift.start_hour === '15:00') {
-    return { schedule: "03:00 PM - 09:00 PM", duration: 6, startHourStr: "15:00" };
+    return { schedule: "03:00 PM - 09:00 PM", duration: 6, startHourStr: "15:00", endHourStr: "21:00" };
   } else {
-    const openedDate = new Date(shift.opened_at);
+    const openedDate = new Date(shift.opened_at || Date.now());
     const hour = openedDate.getHours();
     const isMorning = hour < 14;
     return {
       schedule: isMorning ? "07:00 AM - 03:00 PM" : "03:00 PM - 09:00 PM",
       duration: isMorning ? 8 : 6,
-      startHourStr: isMorning ? "07:00" : "15:00"
+      startHourStr: isMorning ? "07:00" : "15:00",
+      endHourStr: isMorning ? "15:00" : "21:00"
     };
   }
+}
+
+function getKigaliNow() {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Africa/Kigali',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).formatToParts(new Date());
+
+  const map = {};
+  for (const p of parts) map[p.type] = p.value;
+  const hour = parseInt(map.hour, 10);
+  const minute = parseInt(map.minute, 10);
+  return {
+    year: parseInt(map.year, 10),
+    month: parseInt(map.month, 10),
+    day: parseInt(map.day, 10),
+    hour,
+    minute,
+    second: parseInt(map.second, 10),
+    totalMinutes: hour * 60 + minute,
+    timeStr: `${map.hour}:${map.minute}`
+  };
 }
 
 function getWaveStartTime(shift) {
@@ -74,6 +104,107 @@ function getWaveStartTime(shift) {
   const startTime = new Date(openedDate);
   startTime.setHours(parseInt(hStr, 10), parseInt(mStr, 10), 0, 0);
   return startTime;
+}
+
+function getWaveEndDateTime(shift) {
+  if (!shift || !shift.opened_at) return null;
+  const waveCfg = getWaveConfig(shift);
+  const [startH, startM] = (waveCfg.startHourStr || '07:00').split(':').map(Number);
+  const [endH, endM] = (waveCfg.endHourStr || '15:00').split(':').map(Number);
+
+  // Calendar date of opened_at in Kigali timezone (UTC+2)
+  const kigaliParts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Africa/Kigali',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour12: false
+  }).formatToParts(new Date(shift.opened_at));
+  const kmap = {};
+  for (const p of kigaliParts) kmap[p.type] = p.value;
+
+  const year = parseInt(kmap.year, 10);
+  const month = parseInt(kmap.month, 10) - 1;
+  let endDay = parseInt(kmap.day, 10);
+  if (endH < startH) {
+    endDay += 1;
+  }
+
+  // Kigali is UTC+2 (no DST). UTC hour = Kigali hour - 2
+  const endUtc = Date.UTC(year, month, endDay, endH - 2, endM, 0, 0);
+  return new Date(endUtc);
+}
+
+/**
+ * Resolve standard reporting period in Kigali timezone (UTC+2).
+ * Supports: 'day' / 'today', 'week' / 'this_week', 'month' / 'this_month', 'all', or custom date_from/date_to.
+ */
+function getKigaliPeriodDates(period, date_from, date_to) {
+  if (date_from || date_to) {
+    const fromStr = date_from ? (date_from.includes('T') ? date_from : `${date_from}T00:00:00+02:00`) : null;
+    const toStr = date_to ? (date_to.includes('T') ? date_to : `${date_to}T23:59:59.999+02:00`) : null;
+    return {
+      dateFrom: fromStr ? new Date(fromStr).toISOString() : null,
+      dateTo: toStr ? new Date(toStr).toISOString() : null,
+      label: date_from && date_to ? `${date_from} to ${date_to}` : (date_from ? `From ${date_from}` : `Until ${date_to}`),
+      periodType: 'custom',
+      dateStamp: date_from && date_to ? `${date_from}_to_${date_to}` : (date_from || date_to || 'Custom')
+    };
+  }
+
+  const kn = getKigaliNow();
+  const pad = (n) => String(n).padStart(2, '0');
+  const todayStr = `${kn.year}-${pad(kn.month)}-${pad(kn.day)}`;
+
+  if (period === 'day' || period === 'today') {
+    return {
+      dateFrom: new Date(`${todayStr}T00:00:00+02:00`).toISOString(),
+      dateTo: new Date(`${todayStr}T23:59:59.999+02:00`).toISOString(),
+      label: `Day (${todayStr})`,
+      periodType: 'day',
+      dateStamp: todayStr
+    };
+  }
+
+  if (period === 'week' || period === 'this_week') {
+    const kigaliDate = new Date(kn.year, kn.month - 1, kn.day);
+    const dayOfWeek = kigaliDate.getDay();
+    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(kn.year, kn.month - 1, kn.day + diffToMonday);
+    const sunday = new Date(kn.year, kn.month - 1, kn.day + diffToMonday + 6);
+    const monStr = `${monday.getFullYear()}-${pad(monday.getMonth() + 1)}-${pad(monday.getDate())}`;
+    const sunStr = `${sunday.getFullYear()}-${pad(sunday.getMonth() + 1)}-${pad(sunday.getDate())}`;
+    return {
+      dateFrom: new Date(`${monStr}T00:00:00+02:00`).toISOString(),
+      dateTo: new Date(`${sunStr}T23:59:59.999+02:00`).toISOString(),
+      label: `Week (${monStr} to ${sunStr})`,
+      periodType: 'week',
+      dateStamp: `${monStr}_to_${sunStr}`
+    };
+  }
+
+  if (period === 'month' || period === 'this_month') {
+    const firstDayStr = `${kn.year}-${pad(kn.month)}-01`;
+    const lastDay = new Date(kn.year, kn.month, 0).getDate();
+    const lastDayStr = `${kn.year}-${pad(kn.month)}-${pad(lastDay)}`;
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const monthName = monthNames[kn.month - 1];
+    return {
+      dateFrom: new Date(`${firstDayStr}T00:00:00+02:00`).toISOString(),
+      dateTo: new Date(`${lastDayStr}T23:59:59.999+02:00`).toISOString(),
+      label: `Month (${monthName} ${kn.year})`,
+      periodType: 'month',
+      dateStamp: `${kn.year}-${pad(kn.month)}`
+    };
+  }
+
+  return {
+    dateFrom: null,
+    dateTo: null,
+    label: 'All Time / Full Registry',
+    periodType: 'all',
+    dateStamp: todayStr
+  };
 }
 
 
@@ -261,7 +392,7 @@ exports.openShift = async (req, res, next) => {
     }
 
     // Validate shift role
-    if (!['cashier', 'helpdesk', 'call_center', 'nurse', 'rn_midwife', 'vip_lounge', 'imaging', 'rama_rssb'].includes(shift_role)) {
+    if (!['cashier', 'helpdesk', 'customer_care', 'call_center', 'nurse', 'rn_midwife', 'vip_lounge', 'imaging', 'rama_rssb'].includes(shift_role)) {
       return res.status(400).json({ success: false, message: 'Invalid shift role.' });
     }
 
@@ -274,13 +405,26 @@ exports.openShift = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Please select a Cashier Station (Ground-Floor, First-Floor, or Paediatrics) before opening shift.' });
     }
 
-    if (shift_role === 'helpdesk' && !nursing_ward) {
-      return res.status(400).json({ success: false, message: 'Please select a Helpdesk Station (Ground-Floor or First-Floor) before opening shift.' });
+    if ((shift_role === 'helpdesk' || shift_role === 'customer_care') && !nursing_ward) {
+      return res.status(400).json({ success: false, message: 'Please select a Station (Ground-Floor or First-Floor) before opening shift.' });
     }
 
     // Wave Allocation Validation for all roles
     if (!start_hour) {
       return res.status(400).json({ success: false, message: 'Starting hour is required for wave allocation.' });
+    }
+
+    // A shift cannot be opened before the wave starting time
+    const kigaliNow = getKigaliNow();
+    const [startH, startM] = start_hour.split(':').map(Number);
+    const waveStartMinutes = startH * 60 + (startM || 0);
+
+    if (kigaliNow.totalMinutes < waveStartMinutes && !isOverride) {
+      return res.status(400).json({
+        success: false,
+        code: 'TOO_EARLY_TO_OPEN',
+        message: `Shift cannot be opened before the wave starting time (${start_hour}). Current facility time is ${kigaliNow.timeStr}.`,
+      });
     }
 
     let wave = null;
@@ -432,31 +576,59 @@ exports.closeShift = async (req, res, next) => {
       return res.status(authResult.status).json({ success: false, message: authResult.message });
     }
 
-    // Minimum shift duration check (skipped for supervisors with override)
-    if (!isOverride) {
-      const waveStartTime = getWaveStartTime(shift) || new Date(shift.opened_at);
+    // Closing time check:
+    // No minimum duration restrictions. The shift can be closed anytime before or up to
+    // 1 hour after the shift end time.
+    // If closing passes the end of shift for more than 1 hour, supervisor authorization/override is required.
+    let supervisorOverridden = isOverride;
+    if (!supervisorOverridden) {
       const waveCfg = getWaveConfig(shift);
-      
-      const now = Date.now();
-      let elapsedHours = 0;
-      if (now >= waveStartTime.getTime()) {
-        elapsedHours = Math.min(waveCfg.duration, (now - waveStartTime.getTime()) / 3600000);
-      }
-
-      const effectiveMinHours = (waveCfg.startHourStr === '15:00') ? EVENING_MIN_HOURS : MIN_SHIFT_HOURS;
-
-      if (elapsedHours < effectiveMinHours) {
-        const remainingMins = Math.ceil((effectiveMinHours - elapsedHours) * 60);
-        return res.status(403).json({
-          success: false,
-          code:    'TOO_EARLY',
-          message: `Shift cannot be closed yet. The minimum duration is ${effectiveMinHours} hours. Please wait ${remainingMins} more minute${remainingMins !== 1 ? 's' : ''}, or ask your supervisor to authorise an early closure.`,
-          remainingMinutes: remainingMins,
-          minShiftHours:    effectiveMinHours,
-        });
+      const waveEnd = getWaveEndDateTime(shift);
+      if (waveEnd) {
+        const oneHourPastEnd = new Date(waveEnd.getTime() + 60 * 60 * 1000);
+        if (Date.now() > oneHourPastEnd.getTime()) {
+          // Check if supervisor credentials were provided in the request
+          const { supervisor_username, supervisor_password } = req.body;
+          if (supervisor_username && supervisor_password) {
+            const supUser = await User.findByUsername(supervisor_username);
+            if (supUser && SUPERVISOR_ROLES.includes(supUser.role)) {
+              const supMatch = await bcrypt.compare(supervisor_password, supUser.password_hash);
+              if (supMatch) {
+                supervisorOverridden = true;
+              } else {
+                return res.status(403).json({
+                  success: false,
+                  code: 'SUPERVISOR_AUTH_FAILED',
+                  message: 'Invalid supervisor password for shift closure authorization.',
+                });
+              }
+            } else {
+              return res.status(403).json({
+                success: false,
+                code: 'NOT_SUPERVISOR',
+                message: 'The authorizing user is not an authorized supervisor.',
+              });
+            }
+          } else {
+            const endStr = waveCfg.endHourStr || 'end of shift';
+            const cutoffStr = new Intl.DateTimeFormat('en-GB', {
+              timeZone: 'Africa/Kigali',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false
+            }).format(oneHourPastEnd);
+            return res.status(403).json({
+              success: false,
+              code: 'EXCEEDED_CLOSING_LIMIT',
+              message: `Shift closure window expired. Shifts must be closed within 1 hour after shift end (${endStr}). The 1-hour closure cutoff was ${cutoffStr}. Please ask your supervisor to authorise closure.`,
+              waveSchedule: waveCfg.schedule,
+              endHourStr: waveCfg.endHourStr,
+              cutoffStr,
+            });
+          }
+        }
       }
     }
-
 
     // Replace close-snapshot equipment
     if (equipment && Array.isArray(equipment)) {
@@ -481,7 +653,7 @@ exports.closeShift = async (req, res, next) => {
     if (shift.shift_role === 'cashier' || shift.shift_role === 'rama_rssb') {
       const closeTable = shift.shift_role === 'rama_rssb' ? 'shift_rama_rssb_close' : 'shift_cashier_close';
       cashierCloseRow = await q1(`SELECT * FROM ${closeTable} WHERE shift_id = ?`, [id]);
-    } else if (shift.shift_role === 'helpdesk') {
+    } else if (shift.shift_role === 'helpdesk' || shift.shift_role === 'customer_care') {
       const helpdeskCloseRow = await q1(`SELECT * FROM shift_helpdesk_close WHERE shift_id = ?`, [id]);
       if (helpdeskCloseRow && helpdeskCloseRow.has_billed) {
         cashierCloseRow = helpdeskCloseRow;
@@ -742,7 +914,7 @@ exports.getMyHistory = async (req, res, next) => {
 // ─── GET ALL SHIFTS (reviewer dashboard) ─────────────────────────────────────
 exports.getAllShifts = async (req, res, next) => {
   try {
-    const { role, date_from, date_to, employee_name, status, flagged, page = 1, limit = 25 } = req.query;
+    const { role, period, date_from, date_to, employee_name, status, flagged, page = 1, limit = 25 } = req.query;
 
     let where = "1=1";
     if (isChefNurseRole(req.user.role)) {
@@ -755,8 +927,10 @@ exports.getAllShifts = async (req, res, next) => {
     if (role) { where += ' AND s.shift_role = ?'; args.push(role); }
     if (status) { where += ' AND s.status = ?'; args.push(status); }
     if (flagged === '1') { where += ' AND s.is_flagged = 1'; }
-    if (date_from) { where += ' AND s.opened_at >= ?'; args.push(date_from); }
-    if (date_to) { where += ' AND s.opened_at <= ?'; args.push(date_to + 'T23:59:59Z'); }
+
+    const periodDates = getKigaliPeriodDates(period, date_from, date_to);
+    if (periodDates.dateFrom) { where += ' AND s.opened_at >= ?'; args.push(periodDates.dateFrom); }
+    if (periodDates.dateTo) { where += ' AND s.opened_at <= ?'; args.push(periodDates.dateTo); }
     if (employee_name) { where += ' AND u.full_name LIKE ?'; args.push(`%${employee_name}%`); }
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -900,7 +1074,7 @@ async function enrichShiftDetail(shift) {
         }
         : null,
     };
-  } else if (shift.shift_role === 'helpdesk') {
+  } else if (shift.shift_role === 'helpdesk' || shift.shift_role === 'customer_care') {
     const row = await q1(`SELECT * FROM shift_helpdesk_close WHERE shift_id = ?`, [shift.id]);
     let momoBreakdown = null;
     let cardBreakdown = null;
@@ -981,7 +1155,7 @@ async function enrichShiftDetail(shift) {
         const openData = await q1(`SELECT * FROM ${openTable} WHERE shift_id = ?`, [prevShift.id]);
         const closeData = await q1(`SELECT * FROM ${closeTable} WHERE shift_id = ?`, [prevShift.id]);
         prevRoleData = { opening: openData, closing: closeData };
-      } else if (prevShift.shift_role === 'helpdesk') {
+      } else if (prevShift.shift_role === 'helpdesk' || prevShift.shift_role === 'customer_care') {
         const row = await q1(`SELECT * FROM shift_helpdesk_close WHERE shift_id = ?`, [prevShift.id]);
         prevRoleData = {
           closing: row
@@ -1086,7 +1260,7 @@ async function upsertRoleCloseData(shift_role, shiftId, cashier_close, helpdesk_
     }
   }
 
-  if (shift_role === 'helpdesk' && helpdesk_close) {
+  if ((shift_role === 'helpdesk' || shift_role === 'customer_care') && helpdesk_close) {
     const h = helpdesk_close;
     const existing = await q1(`SELECT id FROM shift_helpdesk_close WHERE shift_id = ?`, [shiftId]);
     if (existing) {
@@ -1298,42 +1472,39 @@ async function upsertRoleCloseData(shift_role, shiftId, cashier_close, helpdesk_
 
 // ─── AUTO-CLOSE EXPIRED SHIFTS ────────────────────────────────────────────────
 /**
- * Runs periodically. Finds any shift open longer than MAX_SHIFT_HOURS and:
+ * Runs periodically. Finds any shift that has passed the 1-hour grace period after shift end:
  *  1. Force-closes it with an OVERTIME flag
  *  2. Sends an in-app notification to the agent
  *  3. Sends an in-app notification to every admin + deputy_coo
  */
 exports.autoCloseExpiredShifts = async () => {
   try {
-    const cutoff = new Date(Date.now() - MAX_SHIFT_HOURS * 60 * 60 * 1000).toISOString();
+    const activeShifts = await q(
+      `SELECT s.id, s.user_id, s.shift_role, s.opened_at, s.start_hour, s.wave, u.full_name AS user_name
+       FROM shift_sessions s
+       JOIN users u ON s.user_id = u.id
+       WHERE s.status IN ('open','draft')`
+    );
 
-    // Use UTC hours so the 10 PM boundary is consistent regardless of the
-    // server's local timezone. The facility operates in UTC+2 (Kigali),
-    // so 22:00 local = 20:00 UTC. Adjust FACILITY_UTC_OFFSET as needed.
-    const FACILITY_UTC_OFFSET = 2; // hours ahead of UTC
-    const utcHour = new Date().getUTCHours();
-    const facilityHour = (utcHour + FACILITY_UTC_OFFSET) % 24;
-    const isPast10PM = facilityHour >= 22 || facilityHour < 6;
+    if (activeShifts.length === 0) return 0;
 
-    let expired;
-    if (isPast10PM) {
-      // If it's past 10 PM, close shifts that have been open for at least 1 hour, to prevent instantly closing brand new shifts during testing.
-      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-      expired = await q(
-        `SELECT s.id, s.user_id, s.shift_role, s.opened_at, u.full_name AS user_name
-         FROM shift_sessions s
-         JOIN users u ON s.user_id = u.id
-         WHERE s.status IN ('open','draft') AND s.opened_at <= ?`,
-         [oneHourAgo]
-      );
-    } else {
-      expired = await q(
-        `SELECT s.id, s.user_id, s.shift_role, s.opened_at, u.full_name AS user_name
-         FROM shift_sessions s
-         JOIN users u ON s.user_id = u.id
-         WHERE s.status IN ('open','draft') AND s.opened_at <= ?`,
-        [cutoff]
-      );
+    const now = Date.now();
+    const expired = [];
+
+    for (const shift of activeShifts) {
+      const waveCfg = getWaveConfig(shift);
+      const waveEnd = getWaveEndDateTime(shift);
+      // Cutoff is exactly 1 hour after the shift end time
+      const cutoffTime = waveEnd
+        ? waveEnd.getTime() + 60 * 60 * 1000
+        : new Date(shift.opened_at).getTime() + MAX_SHIFT_HOURS * 60 * 60 * 1000;
+
+      if (now > cutoffTime) {
+        expired.push({
+          ...shift,
+          reasonText: `Shift exceeded 1-hour closing grace period after shift end (${waveCfg.schedule}).`,
+        });
+      }
     }
 
     if (expired.length === 0) return 0;
@@ -1346,11 +1517,7 @@ exports.autoCloseExpiredShifts = async () => {
     const supervisors = [...admins, ...deputyCoos];
 
     for (const shift of expired) {
-      const isOvertime = new Date(shift.opened_at) <= new Date(Date.now() - MAX_SHIFT_HOURS * 60 * 60 * 1000);
-      const reasonText = isOvertime
-        ? `Shift exceeded ${MAX_SHIFT_HOURS}-hour limit.`
-        : `Shift remained open past the 22:00 operating limit.`;
-
+      const reasonText = shift.reasonText;
       const overtimeReason = `Shift auto-closed by system: ${reasonText}`;
       const flagReasons    = [overtimeReason];
 
@@ -1551,7 +1718,7 @@ exports.deleteShift = async (req, res, next) => {
 
 exports.exportExcel = async (req, res, next) => {
   try {
-    const { role, date_from, date_to, employee_name, status, flagged } = req.query;
+    const { role, period, date_from, date_to, employee_name, status, flagged } = req.query;
 
     let where = "1=1";
     if (isChefNurseRole(req.user.role)) {
@@ -1564,65 +1731,844 @@ exports.exportExcel = async (req, res, next) => {
     if (role) { where += ' AND s.shift_role = ?'; args.push(role); }
     if (status) { where += ' AND s.status = ?'; args.push(status); }
     if (flagged === '1') { where += ' AND s.is_flagged = 1'; }
-    if (date_from) { where += ' AND s.opened_at >= ?'; args.push(date_from); }
-    if (date_to) { where += ' AND s.opened_at <= ?'; args.push(date_to + 'T23:59:59Z'); }
+
+    const periodDates = getKigaliPeriodDates(period, date_from, date_to);
+    if (periodDates.dateFrom) { where += ' AND s.opened_at >= ?'; args.push(periodDates.dateFrom); }
+    if (periodDates.dateTo) { where += ' AND s.opened_at <= ?'; args.push(periodDates.dateTo); }
     if (employee_name) { where += ' AND u.full_name LIKE ?'; args.push(`%${employee_name}%`); }
 
     const rows = await q(
       `SELECT s.id, s.shift_role, s.status, s.opened_at, s.closed_at,
-              s.is_flagged, s.flag_reasons, s.handover_notes,
-              u.full_name AS user_name, u.id AS user_id,
-              rv.full_name AS reviewed_by_name, s.reviewed_at
+              s.start_hour, s.wave, s.is_flagged, s.flag_reasons, s.handover_notes,
+              u.full_name AS user_name, u.email AS user_email, u.id AS user_id,
+              rv.full_name AS reviewed_by_name, s.reviewed_at,
+              -- Cashier close
+              cc.total_patients AS cc_total_patients,
+              cc.total_insured AS cc_total_insured,
+              cc.total_private AS cc_total_private,
+              cc.insurances_used AS cc_insurances_used,
+              cc.opening_float AS cc_opening_float,
+              cc.closing_float AS cc_closing_float,
+              cc.cash_payments_total AS cc_cash_payments_total,
+              cc.cash_discrepancy AS cc_cash_discrepancy,
+              cc.total_momo_transactions AS cc_total_momo,
+              cc.momo_pay_code AS cc_momo_pay_code,
+              cc.momo_pay_code_other AS cc_momo_pay_code_other,
+              cc.total_card_transactions AS cc_total_card,
+              cc.card_bank_terminal AS cc_card_bank_terminal,
+              cc.total_cash_usd AS cc_cash_usd,
+              cc.total_cash_eur AS cc_cash_eur,
+              cc.payments_all_successful AS cc_payments_all_successful,
+              cc.failed_payment_status AS cc_failed_payment_status,
+              cc.failed_payment_amount AS cc_failed_payment_amount,
+              cc.failed_payment_action_taken AS cc_failed_payment_action_taken,
+              -- RAMA/RSSB close
+              rc.total_patients AS rc_total_patients,
+              rc.total_insured AS rc_total_insured,
+              rc.total_private AS rc_total_private,
+              rc.insurances_used AS rc_insurances_used,
+              rc.opening_float AS rc_opening_float,
+              rc.closing_float AS rc_closing_float,
+              rc.cash_payments_total AS rc_cash_payments_total,
+              rc.cash_discrepancy AS rc_cash_discrepancy,
+              rc.total_momo_transactions AS rc_total_momo,
+              rc.momo_pay_code AS rc_momo_pay_code,
+              rc.momo_pay_code_other AS rc_momo_pay_code_other,
+              rc.total_card_transactions AS rc_total_card,
+              rc.card_bank_terminal AS rc_card_bank_terminal,
+              rc.total_cash_usd AS rc_cash_usd,
+              rc.total_cash_eur AS rc_cash_eur,
+              rc.payments_all_successful AS rc_payments_all_successful,
+              rc.failed_payment_status AS rc_failed_payment_status,
+              rc.failed_payment_amount AS rc_failed_payment_amount,
+              rc.failed_payment_action_taken AS rc_failed_payment_action_taken,
+              -- Helpdesk / Customer Care close
+              hc.has_billed AS hc_has_billed,
+              hc.total_patients AS hc_total_patients,
+              hc.total_insured AS hc_total_insured,
+              hc.total_private AS hc_total_private,
+              hc.insurances_used AS hc_insurances_used,
+              hc.total_momo_transactions AS hc_total_momo,
+              hc.momo_pay_code AS hc_momo_pay_code,
+              hc.momo_pay_code_other AS hc_momo_pay_code_other,
+              hc.total_card_transactions AS hc_total_card,
+              hc.card_bank_terminal AS hc_card_bank_terminal,
+              hc.total_cash_usd AS hc_cash_usd,
+              hc.total_cash_eur AS hc_cash_eur,
+              hc.payments_all_successful AS hc_payments_all_successful,
+              hc.failed_payment_status AS hc_failed_payment_status,
+              hc.failed_payment_amount AS hc_failed_payment_amount,
+              hc.failed_payment_action_taken AS hc_failed_payment_action_taken,
+              hc.patient_walkin_queries,
+              hc.internal_staff_queries,
+              -- Nurse close
+              nc.total_assessments,
+              nc.total_incidents,
+              nc.handover_sbar_sb,
+              nc.handover_sbar_ar,
+              -- Call center close
+              cl.inbound_total,
+              cl.inbound_assisted,
+              cl.inbound_dropped,
+              cl.outbound_total,
+              cl.outbound_reached,
+              cl.outbound_unreached
        FROM shift_sessions s
        JOIN users u ON s.user_id = u.id
        LEFT JOIN users rv ON s.reviewed_by = rv.id
+       LEFT JOIN shift_cashier_close cc ON cc.shift_id = s.id
+       LEFT JOIN shift_rama_rssb_close rc ON rc.shift_id = s.id
+       LEFT JOIN shift_helpdesk_close hc ON hc.shift_id = s.id
+       LEFT JOIN shift_nurse_close nc ON nc.shift_id = s.id
+       LEFT JOIN shift_callcenter_close cl ON cl.shift_id = s.id
        WHERE ${where}
        ORDER BY s.opened_at DESC`,
       args
     );
 
-    const formattedData = rows.map(r => {
+    // Process and aggregate data
+    const revenueRows = [];
+    const allSessionRows = [];
+    const paymentChannelLogs = [];
+
+    let totalGrossRWF = 0;
+    let totalCashRWF = 0;
+    let totalMoMoRWF = 0;
+    let totalCardRWF = 0;
+    let totalUsd = 0;
+    let totalEur = 0;
+    let totalNetDiscrepancy = 0;
+    let totalPatientsAll = 0;
+    let totalInsuredAll = 0;
+    let totalPrivateAll = 0;
+    let billingSessionsCount = 0;
+
+    for (const r of rows) {
+      const openedDate = r.opened_at ? new Date(r.opened_at) : null;
+      const closedDate = r.closed_at ? new Date(r.closed_at) : null;
+
+      const dateKigali = openedDate
+        ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Kigali', year: 'numeric', month: '2-digit', day: '2-digit' }).format(openedDate)
+        : '';
+      const timeOpened = openedDate
+        ? new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Kigali', hour: '2-digit', minute: '2-digit' }).format(openedDate)
+        : '';
+      const timeClosed = closedDate
+        ? new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Kigali', hour: '2-digit', minute: '2-digit' }).format(closedDate)
+        : (r.status === 'open' ? 'Active' : '');
+
+      let durationHrs = '';
+      if (openedDate && closedDate) {
+        durationHrs = ((closedDate - openedDate) / (1000 * 60 * 60)).toFixed(1);
+      }
+
+      const isCashier = r.shift_role === 'cashier';
+      const isRama = r.shift_role === 'rama_rssb';
+      const isHelpdeskOrCC = r.shift_role === 'helpdesk' || r.shift_role === 'customer_care';
+      const hasHelpdeskBilled = isHelpdeskOrCC && (r.hc_has_billed || (r.hc_total_momo > 0) || (r.hc_total_card > 0) || (r.hc_cash_usd > 0));
+
+      const hasFinancialData = isCashier || isRama || hasHelpdeskBilled;
+
+      if (hasFinancialData) {
+        const openingFloat = Number(isCashier ? (r.cc_opening_float || 0) : (isRama ? (r.rc_opening_float || 0) : 0));
+        const cashCollected = Number(isCashier ? (r.cc_cash_payments_total || 0) : (isRama ? (r.rc_cash_payments_total || 0) : 0));
+        const momoCollected = Number(isCashier ? (r.cc_total_momo || 0) : (isRama ? (r.rc_total_momo || 0) : (r.hc_total_momo || 0)));
+        const cardCollected = Number(isCashier ? (r.cc_total_card || 0) : (isRama ? (r.rc_total_card || 0) : (r.hc_total_card || 0)));
+        const grossRevenue = cashCollected + momoCollected + cardCollected;
+        const usdCollected = Number(isCashier ? (r.cc_cash_usd || 0) : (isRama ? (r.rc_cash_usd || 0) : (r.hc_cash_usd || 0)));
+        const eurCollected = Number(isCashier ? (r.cc_cash_eur || 0) : (isRama ? (r.rc_cash_eur || 0) : (r.hc_cash_eur || 0)));
+        const closingFloat = Number(isCashier ? (r.cc_closing_float || 0) : (isRama ? (r.rc_closing_float || 0) : 0));
+        const expectedCash = openingFloat + cashCollected;
+        const discrepancy = Number(isCashier ? (r.cc_cash_discrepancy || 0) : (isRama ? (r.rc_cash_discrepancy || 0) : 0));
+
+        const totalPatients = Number(isCashier ? (r.cc_total_patients || 0) : (isRama ? (r.rc_total_patients || 0) : (r.hc_total_patients || 0)));
+        const totalInsured = Number(isCashier ? (r.cc_total_insured || 0) : (isRama ? (r.rc_total_insured || 0) : (r.hc_total_insured || 0)));
+        const totalPrivate = Number(isCashier ? (r.cc_total_private || 0) : (isRama ? (r.rc_total_private || 0) : (r.hc_total_private || 0)));
+
+        let insurancesList = '';
+        const rawInsurances = isCashier ? r.cc_insurances_used : (isRama ? r.rc_insurances_used : r.hc_insurances_used);
+        if (rawInsurances) {
+          try {
+            const arr = JSON.parse(rawInsurances);
+            insurancesList = Array.isArray(arr) ? arr.join(', ') : rawInsurances;
+          } catch (e) {
+            insurancesList = rawInsurances;
+          }
+        }
+
+        const paymentsSuccessful = isCashier ? r.cc_payments_all_successful : (isRama ? r.rc_payments_all_successful : r.hc_payments_all_successful);
+        const failedStatus = isCashier ? r.cc_failed_payment_status : (isRama ? r.rc_failed_payment_status : r.hc_failed_payment_status);
+        const failedAmount = isCashier ? r.cc_failed_payment_amount : (isRama ? r.rc_failed_payment_amount : r.hc_failed_payment_amount);
+        const failedAction = isCashier ? r.cc_failed_payment_action_taken : (isRama ? r.rc_failed_payment_action_taken : r.hc_failed_payment_action_taken);
+
+        let reconciliationStatus = 'Reconciled / OK';
+        if (paymentsSuccessful === 0 || failedAmount) {
+          reconciliationStatus = `ISSUE: ${failedStatus || 'Payment Issue'} (${failedAmount ? Number(failedAmount).toLocaleString() + ' RWF' : ''})`;
+          if (failedAction) reconciliationStatus += ` [Action: ${failedAction}]`;
+        }
+
+        let stationName = 'Cashier Counter';
+        if (isRama) stationName = 'RAMA / RSSB Billing';
+        if (isHelpdeskOrCC) stationName = r.shift_role === 'customer_care' ? 'Customer Care Billing' : 'Helpdesk Billing';
+
+        totalGrossRWF += grossRevenue;
+        totalCashRWF += cashCollected;
+        totalMoMoRWF += momoCollected;
+        totalCardRWF += cardCollected;
+        totalUsd += usdCollected;
+        totalEur += eurCollected;
+        totalNetDiscrepancy += discrepancy;
+        totalPatientsAll += totalPatients;
+        totalInsuredAll += totalInsured;
+        totalPrivateAll += totalPrivate;
+        billingSessionsCount++;
+
+        revenueRows.push({
+          session_id: r.id,
+          date: dateKigali,
+          timing: `${r.wave || 'Wave'} (${r.start_hour || ''})`,
+          station: stationName,
+          personnel: r.user_name,
+          total_patients: totalPatients,
+          insured_patients: totalInsured,
+          private_patients: totalPrivate,
+          insurances: insurancesList || 'None',
+          opening_float: openingFloat,
+          cash_collected: cashCollected,
+          momo_collected: momoCollected,
+          card_collected: cardCollected,
+          gross_revenue: grossRevenue,
+          usd_cash: usdCollected,
+          eur_cash: eurCollected,
+          closing_float: closingFloat,
+          expected_cash: expectedCash,
+          cash_discrepancy: discrepancy,
+          reconciliation: reconciliationStatus,
+          sign_off: r.reviewed_by_name ? `Verified: ${r.reviewed_by_name}` : 'Pending Review'
+        });
+
+        // Payment Channel breakdowns (MoMo Pay Codes)
+        const rawMomoJson = isCashier ? r.cc_momo_pay_code : (isRama ? r.rc_momo_pay_code : r.hc_momo_pay_code);
+        if (rawMomoJson) {
+          try {
+            const parsed = JSON.parse(rawMomoJson);
+            if (typeof parsed === 'object' && parsed !== null) {
+              Object.entries(parsed).forEach(([code, amt]) => {
+                paymentChannelLogs.push({
+                  shift_id: r.id,
+                  date: dateKigali,
+                  station: stationName,
+                  personnel: r.user_name,
+                  channel_type: 'Mobile Money (MoMo)',
+                  pay_code_or_terminal: `Code ${code}`,
+                  amount: Number(amt) || 0,
+                  currency: 'RWF',
+                  status: paymentsSuccessful ? 'Settled' : 'Requires Audit'
+                });
+              });
+            }
+          } catch (e) {
+            if (momoCollected > 0) {
+              paymentChannelLogs.push({
+                shift_id: r.id,
+                date: dateKigali,
+                station: stationName,
+                personnel: r.user_name,
+                channel_type: 'Mobile Money (MoMo)',
+                pay_code_or_terminal: String(rawMomoJson),
+                amount: momoCollected,
+                currency: 'RWF',
+                status: paymentsSuccessful ? 'Settled' : 'Requires Audit'
+              });
+            }
+          }
+        } else if (momoCollected > 0) {
+          paymentChannelLogs.push({
+            shift_id: r.id,
+            date: dateKigali,
+            station: stationName,
+            personnel: r.user_name,
+            channel_type: 'Mobile Money (MoMo)',
+            pay_code_or_terminal: 'General MoMo',
+            amount: momoCollected,
+            currency: 'RWF',
+            status: paymentsSuccessful ? 'Settled' : 'Requires Audit'
+          });
+        }
+
+        // Bank Card POS Terminals
+        const rawCardJson = isCashier ? r.cc_card_bank_terminal : (isRama ? r.rc_card_bank_terminal : r.hc_card_bank_terminal);
+        if (rawCardJson) {
+          try {
+            const parsed = JSON.parse(rawCardJson);
+            if (typeof parsed === 'object' && parsed !== null) {
+              Object.entries(parsed).forEach(([terminal, amt]) => {
+                paymentChannelLogs.push({
+                  shift_id: r.id,
+                  date: dateKigali,
+                  station: stationName,
+                  personnel: r.user_name,
+                  channel_type: 'POS Bank Card Terminal',
+                  pay_code_or_terminal: terminal,
+                  amount: Number(amt) || 0,
+                  currency: 'RWF',
+                  status: paymentsSuccessful ? 'Settled' : 'Requires Audit'
+                });
+              });
+            }
+          } catch (e) {
+            if (cardCollected > 0) {
+              paymentChannelLogs.push({
+                shift_id: r.id,
+                date: dateKigali,
+                station: stationName,
+                personnel: r.user_name,
+                channel_type: 'POS Bank Card Terminal',
+                pay_code_or_terminal: String(rawCardJson),
+                amount: cardCollected,
+                currency: 'RWF',
+                status: paymentsSuccessful ? 'Settled' : 'Requires Audit'
+              });
+            }
+          }
+        } else if (cardCollected > 0) {
+          paymentChannelLogs.push({
+            shift_id: r.id,
+            date: dateKigali,
+            station: stationName,
+            personnel: r.user_name,
+            channel_type: 'POS Bank Card Terminal',
+            pay_code_or_terminal: 'General POS Terminal',
+            amount: cardCollected,
+            currency: 'RWF',
+            status: paymentsSuccessful ? 'Settled' : 'Requires Audit'
+          });
+        }
+      }
+
+      // Departmental output metric summary for Sheet 2
+      let operationalMetric = '-';
+      if (r.shift_role === 'nurse' || r.shift_role === 'rn_midwife') {
+        operationalMetric = `Assessments: ${r.total_assessments || 0} | Incidents: ${r.total_incidents || 0}`;
+      } else if (r.shift_role === 'call_center') {
+        operationalMetric = `Inbound: ${r.inbound_total || 0} (Assisted: ${r.inbound_assisted || 0}, Dropped: ${r.inbound_dropped || 0}) | Outbound: ${r.outbound_total || 0}`;
+      } else if (r.shift_role === 'helpdesk' || r.shift_role === 'customer_care') {
+        operationalMetric = `Walk-in Queries: ${r.patient_walkin_queries || 0} | Staff Queries: ${r.internal_staff_queries || 0}${r.hc_has_billed ? ' | Billed Patients: ' + (r.hc_total_patients || 0) : ''}`;
+      } else if (isCashier || isRama) {
+        const pts = isCashier ? r.cc_total_patients : r.rc_total_patients;
+        const rev = (isCashier ? (r.cc_cash_payments_total + r.cc_total_momo + r.cc_total_card) : (r.rc_cash_payments_total + r.rc_total_momo + r.rc_total_card)) || 0;
+        operationalMetric = `Patients: ${pts || 0} | Revenue: ${Number(rev).toLocaleString()} RWF`;
+      }
+
       let reasons = '';
       if (r.flag_reasons) {
         try {
-          reasons = JSON.parse(r.flag_reasons).join(', ');
+          const parsed = JSON.parse(r.flag_reasons);
+          reasons = Array.isArray(parsed) ? parsed.join('; ') : r.flag_reasons;
         } catch (e) {
           reasons = r.flag_reasons;
         }
       }
-      return {
+
+      allSessionRows.push({
         id: r.id,
-        user_name: r.user_name,
-        shift_role: r.shift_role ? r.shift_role.replace(/_/g, ' ').toUpperCase() : '',
+        date_opened: dateKigali,
+        time_opened: timeOpened,
+        date_closed: closedDate ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Kigali', year: 'numeric', month: '2-digit', day: '2-digit' }).format(closedDate) : '',
+        time_closed: timeClosed,
+        duration: durationHrs ? `${durationHrs} hrs` : '-',
+        role: r.shift_role ? r.shift_role.replace(/_/g, ' ').toUpperCase() : '',
+        schedule: `${r.wave || 'Wave'} (${r.start_hour || ''})`,
+        personnel: r.user_name,
         status: r.status ? r.status.toUpperCase() : '',
-        opened_at: r.opened_at ? new Date(r.opened_at).toLocaleString() : '',
-        closed_at: r.closed_at ? new Date(r.closed_at).toLocaleString() : '',
         is_flagged: r.is_flagged ? 'YES' : 'NO',
         flag_reasons: reasons,
+        metrics: operationalMetric,
         handover_notes: r.handover_notes || '',
-        reviewed_by_name: r.reviewed_by_name || 'PENDING',
-        reviewed_at: r.reviewed_at ? new Date(r.reviewed_at).toLocaleString() : ''
-      };
+        reviewed_by: r.reviewed_by_name || 'PENDING',
+        reviewed_at: r.reviewed_at ? new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Kigali', dateStyle: 'short', timeStyle: 'short' }).format(new Date(r.reviewed_at)) : ''
+      });
+    }
+
+    // Construct ExcelJS Workbook
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Lumina Clinical Laboratory & Diagnostics';
+    workbook.lastModifiedBy = req.user ? req.user.full_name : 'Lumina System';
+    workbook.created = new Date();
+    workbook.modified = new Date();
+
+    const NAVY_HEADER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1B669D' } };
+    const KPI_LABEL_FILL  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+    const KPI_VAL_FILL    = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
+    const TOTALS_FILL     = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEBF4FA' } };
+    const ZEBRA_FILL      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+    const ALERT_FILL      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE4E6' } };
+
+    const THIN_BORDER = {
+      top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+      bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+      left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+      right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+    };
+
+    const DOUBLE_BOTTOM_BORDER = {
+      top: { style: 'thin', color: { argb: 'FF94A3B8' } },
+      bottom: { style: 'double', color: { argb: 'FF0F172A' } },
+      left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+      right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+    };
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // SHEET 1: INCOME STATEMENT & REVENUE
+    // ─────────────────────────────────────────────────────────────────────────────
+    const ws1 = workbook.addWorksheet('Income Statement & Revenue', {
+      properties: { tabColor: { argb: 'FF1B669D' } }
     });
 
-    const columns = [
-      { header: 'ID', key: 'id', width: 10 },
-      { header: 'Personnel', key: 'user_name', width: 25 },
-      { header: 'Role', key: 'shift_role', width: 20 },
-      { header: 'Status', key: 'status', width: 15 },
-      { header: 'Opened At', key: 'opened_at', width: 25 },
-      { header: 'Closed At', key: 'closed_at', width: 25 },
-      { header: 'Flagged', key: 'is_flagged', width: 12 },
-      { header: 'Flag Reasons', key: 'flag_reasons', width: 40 },
-      { header: 'Handover Notes', key: 'handover_notes', width: 40 },
-      { header: 'Reviewed By', key: 'reviewed_by_name', width: 25 },
-      { header: 'Reviewed At', key: 'reviewed_at', width: 25 }
+    // Column widths
+    ws1.columns = [
+      { key: 'session_id', width: 12 },
+      { key: 'date', width: 13 },
+      { key: 'timing', width: 16 },
+      { key: 'station', width: 22 },
+      { key: 'personnel', width: 24 },
+      { key: 'total_patients', width: 14 },
+      { key: 'insured_patients', width: 15 },
+      { key: 'private_patients', width: 14 },
+      { key: 'insurances', width: 28 },
+      { key: 'opening_float', width: 18 },
+      { key: 'cash_collected', width: 18 },
+      { key: 'momo_collected', width: 18 },
+      { key: 'card_collected', width: 18 },
+      { key: 'gross_revenue', width: 20 },
+      { key: 'usd_cash', width: 14 },
+      { key: 'eur_cash', width: 14 },
+      { key: 'closing_float', width: 18 },
+      { key: 'expected_cash', width: 18 },
+      { key: 'cash_discrepancy', width: 18 },
+      { key: 'reconciliation', width: 26 },
+      { key: 'sign_off', width: 22 }
     ];
 
-    const workbook = await exportToExcel('Shift Logs', columns, formattedData);
+    // Banner 1: Hospital Name & Title
+    ws1.mergeCells('A1:U1');
+    const titleCell = ws1.getCell('A1');
+    titleCell.value = 'LUMINA CLINICAL LABORATORY & DIAGNOSTICS — EXECUTIVE SHIFT REVENUE & INCOME STATEMENT';
+    titleCell.font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+    titleCell.fill = NAVY_HEADER_FILL;
+    titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+    ws1.getRow(1).height = 34;
 
+    // Banner 2: Period & Scope
+    ws1.mergeCells('A2:U2');
+    const subCell = ws1.getCell('A2');
+    subCell.value = `AUDIT PERIOD: ${periodDates.label.toUpperCase()} | FACILITY TIMEZONE: AFRICA/KIGALI (UTC+2)`;
+    subCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFDCEBF7' } };
+    subCell.fill = NAVY_HEADER_FILL;
+    subCell.alignment = { vertical: 'middle', horizontal: 'center' };
+    ws1.getRow(2).height = 20;
+
+    // Banner 3: Metadata
+    ws1.mergeCells('A3:U3');
+    const metaCell = ws1.getCell('A3');
+    const nowKigali = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Africa/Kigali',
+      dateStyle: 'full',
+      timeStyle: 'medium'
+    }).format(new Date());
+    metaCell.value = `Export Generated On: ${nowKigali} | Generated By: ${req.user ? req.user.full_name : 'Staff'} (${req.user ? req.user.role : 'System'}) | Lumina Hospital Financial & Operations Registry`;
+    metaCell.font = { name: 'Calibri', size: 9, italic: true, color: { argb: 'FF64748B' } };
+    metaCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+    metaCell.alignment = { vertical: 'middle', horizontal: 'center' };
+    ws1.getRow(3).height = 18;
+
+    // Row 4: Spacer
+    ws1.getRow(4).height = 8;
+
+    // KPI Summary Cards Block (Rows 5-7)
+    const kpiDefinitions = [
+      { colStart: 'B', colEnd: 'D', label: 'GROSS REVENUE (RWF)', val: `${totalGrossRWF.toLocaleString()} RWF`, color: 'FF1B669D' },
+      { colStart: 'E', colEnd: 'G', label: 'CASH COLLECTED (RWF)', val: `${totalCashRWF.toLocaleString()} RWF`, color: 'FF0D9488' },
+      { colStart: 'H', colEnd: 'J', label: 'MOMO MOBILE MONEY (RWF)', val: `${totalMoMoRWF.toLocaleString()} RWF`, color: 'FF10B981' },
+      { colStart: 'K', colEnd: 'M', label: 'POS CARD TERMINALS (RWF)', val: `${totalCardRWF.toLocaleString()} RWF`, color: 'FF6366F1' },
+      { colStart: 'N', colEnd: 'P', label: 'FOREIGN CASH (USD / EUR)', val: `$${totalUsd.toLocaleString()} / €${totalEur.toLocaleString()}`, color: 'FF8B5CF6' },
+      { colStart: 'Q', colEnd: 'S', label: 'NET CASH DISCREPANCY', val: `${totalNetDiscrepancy.toLocaleString()} RWF`, color: totalNetDiscrepancy === 0 ? 'FF059669' : 'FFE11D48' },
+      { colStart: 'T', colEnd: 'U', label: 'PATIENTS BILLED', val: `${totalPatientsAll} (${totalInsuredAll} Ins / ${totalPrivateAll} Priv)`, color: 'FF0F172A' },
+    ];
+
+    ws1.getRow(5).height = 18;
+    ws1.getRow(6).height = 24;
+
+    kpiDefinitions.forEach(kpi => {
+      const labelRange = `${kpi.colStart}5:${kpi.colEnd}5`;
+      const valRange = `${kpi.colStart}6:${kpi.colEnd}6`;
+      ws1.mergeCells(labelRange);
+      ws1.mergeCells(valRange);
+
+      const lCell = ws1.getCell(`${kpi.colStart}5`);
+      lCell.value = kpi.label;
+      lCell.font = { name: 'Calibri', size: 8, bold: true, color: { argb: 'FF64748B' } };
+      lCell.fill = KPI_LABEL_FILL;
+      lCell.alignment = { vertical: 'middle', horizontal: 'center' };
+      lCell.border = THIN_BORDER;
+
+      const vCell = ws1.getCell(`${kpi.colStart}6`);
+      vCell.value = kpi.val;
+      vCell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: kpi.color } };
+      vCell.fill = KPI_VAL_FILL;
+      vCell.alignment = { vertical: 'middle', horizontal: 'center' };
+      vCell.border = THIN_BORDER;
+    });
+
+    // Row 7: Spacer
+    ws1.getRow(7).height = 10;
+
+    // Row 8: Table Header
+    const headers1 = [
+      'Session ID', 'Date', 'Shift Timing', 'Station / Counter', 'Personnel Name',
+      'Total Patients', 'Insured Patients', 'Private Patients', 'Insurance Providers',
+      'Opening Float (RWF)', 'Cash Collected (RWF)', 'MoMo Collected (RWF)', 'Card/POS Collected (RWF)',
+      'Gross Revenue (RWF)', 'USD Cash ($)', 'EUR Cash (€)', 'Closing Float (RWF)',
+      'Expected Cash (RWF)', 'Cash Discrepancy (RWF)', 'Reconciliation Status', 'Supervisor Review'
+    ];
+
+    const hRow1 = ws1.getRow(8);
+    hRow1.height = 26;
+    headers1.forEach((h, idx) => {
+      const cell = hRow1.getCell(idx + 1);
+      cell.value = h;
+      cell.font = { name: 'Calibri', size: 9, bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = NAVY_HEADER_FILL;
+      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      cell.border = THIN_BORDER;
+    });
+
+    // Populate Data Rows starting at Row 9
+    let currentRowIdx = 9;
+    if (revenueRows.length === 0) {
+      ws1.mergeCells(`A${currentRowIdx}:U${currentRowIdx}`);
+      const emptyCell = ws1.getCell(`A${currentRowIdx}`);
+      emptyCell.value = 'No cashier or billing shift sessions recorded for the selected period.';
+      emptyCell.font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF94A3B8' } };
+      emptyCell.alignment = { vertical: 'middle', horizontal: 'center' };
+      ws1.getRow(currentRowIdx).height = 24;
+      currentRowIdx++;
+    } else {
+      revenueRows.forEach((r, idx) => {
+        const dRow = ws1.getRow(currentRowIdx);
+        dRow.height = 20;
+
+        dRow.getCell(1).value = r.session_id;
+        dRow.getCell(2).value = r.date;
+        dRow.getCell(3).value = r.timing;
+        dRow.getCell(4).value = r.station;
+        dRow.getCell(5).value = r.personnel;
+        dRow.getCell(6).value = r.total_patients;
+        dRow.getCell(7).value = r.insured_patients;
+        dRow.getCell(8).value = r.private_patients;
+        dRow.getCell(9).value = r.insurances;
+        dRow.getCell(10).value = r.opening_float;
+        dRow.getCell(11).value = r.cash_collected;
+        dRow.getCell(12).value = r.momo_collected;
+        dRow.getCell(13).value = r.card_collected;
+        dRow.getCell(14).value = r.gross_revenue;
+        dRow.getCell(15).value = r.usd_cash;
+        dRow.getCell(16).value = r.eur_cash;
+        dRow.getCell(17).value = r.closing_float;
+        dRow.getCell(18).value = r.expected_cash;
+        dRow.getCell(19).value = r.cash_discrepancy;
+        dRow.getCell(20).value = r.reconciliation;
+        dRow.getCell(21).value = r.sign_off;
+
+        // Alignment & formats
+        [1, 2, 3].forEach(c => { dRow.getCell(c).alignment = { vertical: 'middle', horizontal: 'center' }; });
+        [4, 5, 9, 20, 21].forEach(c => { dRow.getCell(c).alignment = { vertical: 'middle', horizontal: 'left' }; });
+        [6, 7, 8].forEach(c => {
+          dRow.getCell(c).alignment = { vertical: 'middle', horizontal: 'right' };
+          dRow.getCell(c).numFmt = '#,##0';
+        });
+        [10, 11, 12, 13, 14, 17, 18, 19].forEach(c => {
+          dRow.getCell(c).alignment = { vertical: 'middle', horizontal: 'right' };
+          dRow.getCell(c).numFmt = '#,##0 "RWF"';
+        });
+        dRow.getCell(15).alignment = { vertical: 'middle', horizontal: 'right' };
+        dRow.getCell(15).numFmt = '"$"#,##0.00';
+        dRow.getCell(16).alignment = { vertical: 'middle', horizontal: 'right' };
+        dRow.getCell(16).numFmt = '"€"#,##0.00';
+
+        const isZebra = idx % 2 === 1;
+        for (let c = 1; c <= 21; c++) {
+          const cell = dRow.getCell(c);
+          cell.font = { name: 'Calibri', size: 9 };
+          cell.border = THIN_BORDER;
+          if (isZebra) cell.fill = ZEBRA_FILL;
+        }
+
+        // Highlight non-zero discrepancy
+        if (r.cash_discrepancy !== 0) {
+          const discCell = dRow.getCell(19);
+          discCell.fill = ALERT_FILL;
+          discCell.font = { name: 'Calibri', size: 9, bold: true, color: { argb: 'FFB91C1C' } };
+        }
+
+        currentRowIdx++;
+      });
+
+      // Totals Row
+      const tRow = ws1.getRow(currentRowIdx);
+      tRow.height = 24;
+      tRow.getCell(5).value = `TOTALS (${periodDates.label})`;
+      tRow.getCell(5).font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF0F172A' } };
+      tRow.getCell(5).alignment = { vertical: 'middle', horizontal: 'right' };
+
+      const startDataRow = 9;
+      const endDataRow = currentRowIdx - 1;
+
+      // Patient sums
+      [6, 7, 8].forEach(c => {
+        const colLetter = String.fromCharCode(64 + c);
+        tRow.getCell(c).value = { formula: `=SUM(${colLetter}${startDataRow}:${colLetter}${endDataRow})` };
+        tRow.getCell(c).numFmt = '#,##0';
+        tRow.getCell(c).alignment = { vertical: 'middle', horizontal: 'right' };
+      });
+
+      // RWF Currency sums
+      [10, 11, 12, 13, 14, 17, 18, 19].forEach(c => {
+        let colLetter;
+        if (c <= 26) colLetter = String.fromCharCode(64 + c);
+        tRow.getCell(c).value = { formula: `=SUM(${colLetter}${startDataRow}:${colLetter}${endDataRow})` };
+        tRow.getCell(c).numFmt = '#,##0 "RWF"';
+        tRow.getCell(c).alignment = { vertical: 'middle', horizontal: 'right' };
+      });
+
+      // Foreign currency sums
+      tRow.getCell(15).value = { formula: `=SUM(O${startDataRow}:O${endDataRow})` };
+      tRow.getCell(15).numFmt = '"$"#,##0.00';
+      tRow.getCell(15).alignment = { vertical: 'middle', horizontal: 'right' };
+
+      tRow.getCell(16).value = { formula: `=SUM(P${startDataRow}:P${endDataRow})` };
+      tRow.getCell(16).numFmt = '"€"#,##0.00';
+      tRow.getCell(16).alignment = { vertical: 'middle', horizontal: 'right' };
+
+      for (let c = 1; c <= 21; c++) {
+        const cell = tRow.getCell(c);
+        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF0F172A' } };
+        cell.fill = TOTALS_FILL;
+        cell.border = DOUBLE_BOTTOM_BORDER;
+      }
+    }
+
+    // Freeze table header
+    ws1.views = [{ state: 'frozen', xSplit: 0, ySplit: 8, activeCell: 'A9' }];
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // SHEET 2: ALL SHIFT SESSIONS & OPERATIONAL LOGS
+    // ─────────────────────────────────────────────────────────────────────────────
+    const ws2 = workbook.addWorksheet('All Shift Sessions & Logs', {
+      properties: { tabColor: { argb: 'FF2563EB' } }
+    });
+
+    ws2.columns = [
+      { key: 'id', width: 10 },
+      { key: 'date_opened', width: 13 },
+      { key: 'time_opened', width: 12 },
+      { key: 'date_closed', width: 13 },
+      { key: 'time_closed', width: 12 },
+      { key: 'duration', width: 14 },
+      { key: 'role', width: 18 },
+      { key: 'schedule', width: 18 },
+      { key: 'personnel', width: 24 },
+      { key: 'status', width: 14 },
+      { key: 'is_flagged', width: 12 },
+      { key: 'flag_reasons', width: 36 },
+      { key: 'metrics', width: 32 },
+      { key: 'handover_notes', width: 36 },
+      { key: 'reviewed_by', width: 22 },
+      { key: 'reviewed_at', width: 18 }
+    ];
+
+    // Banner
+    ws2.mergeCells('A1:P1');
+    const ws2Title = ws2.getCell('A1');
+    ws2Title.value = `LUMINA HOSPITAL — COMPLETE SHIFT OPERATIONS REGISTRY (${periodDates.label.toUpperCase()})`;
+    ws2Title.font = { name: 'Calibri', size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
+    ws2Title.fill = NAVY_HEADER_FILL;
+    ws2Title.alignment = { vertical: 'middle', horizontal: 'center' };
+    ws2.getRow(1).height = 28;
+
+    const headers2 = [
+      'Shift ID', 'Date Opened', 'Time Opened', 'Date Closed', 'Time Closed',
+      'Duration', 'Department / Role', 'Schedule / Wave', 'Staff Personnel',
+      'Status', 'Flagged?', 'Flag Reasons', 'Departmental Outputs & Metrics',
+      'Handover Notes', 'Reviewed By', 'Reviewed At'
+    ];
+
+    const hRow2 = ws2.getRow(2);
+    hRow2.height = 24;
+    headers2.forEach((h, idx) => {
+      const cell = hRow2.getCell(idx + 1);
+      cell.value = h;
+      cell.font = { name: 'Calibri', size: 9, bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.border = THIN_BORDER;
+    });
+
+    let rowIdx2 = 3;
+    allSessionRows.forEach((s, idx) => {
+      const r = ws2.getRow(rowIdx2);
+      r.height = 20;
+      r.getCell(1).value = s.id;
+      r.getCell(2).value = s.date_opened;
+      r.getCell(3).value = s.time_opened;
+      r.getCell(4).value = s.date_closed;
+      r.getCell(5).value = s.time_closed;
+      r.getCell(6).value = s.duration;
+      r.getCell(7).value = s.role;
+      r.getCell(8).value = s.schedule;
+      r.getCell(9).value = s.personnel;
+      r.getCell(10).value = s.status;
+      r.getCell(11).value = s.is_flagged;
+      r.getCell(12).value = s.flag_reasons;
+      r.getCell(13).value = s.metrics;
+      r.getCell(14).value = s.handover_notes;
+      r.getCell(15).value = s.reviewed_by;
+      r.getCell(16).value = s.reviewed_at;
+
+      [1, 2, 3, 4, 5, 6, 8, 10, 11, 16].forEach(c => {
+        r.getCell(c).alignment = { vertical: 'middle', horizontal: 'center' };
+      });
+      [7, 9, 12, 13, 14, 15].forEach(c => {
+        r.getCell(c).alignment = { vertical: 'middle', horizontal: 'left' };
+      });
+
+      const isZebra = idx % 2 === 1;
+      for (let c = 1; c <= 16; c++) {
+        const cell = r.getCell(c);
+        cell.font = { name: 'Calibri', size: 9 };
+        cell.border = THIN_BORDER;
+        if (isZebra) cell.fill = ZEBRA_FILL;
+      }
+
+      if (s.is_flagged === 'YES') {
+        r.getCell(11).fill = ALERT_FILL;
+        r.getCell(11).font = { name: 'Calibri', size: 9, bold: true, color: { argb: 'FFB91C1C' } };
+      }
+
+      rowIdx2++;
+    });
+
+    ws2.views = [{ state: 'frozen', xSplit: 0, ySplit: 2, activeCell: 'A3' }];
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // SHEET 3: PAYMENT CHANNELS & TERMINALS BREAKDOWN
+    // ─────────────────────────────────────────────────────────────────────────────
+    const ws3 = workbook.addWorksheet('Payment Channels & Terminals', {
+      properties: { tabColor: { argb: 'FF059669' } }
+    });
+
+    ws3.columns = [
+      { key: 'shift_id', width: 12 },
+      { key: 'date', width: 14 },
+      { key: 'station', width: 22 },
+      { key: 'personnel', width: 24 },
+      { key: 'channel_type', width: 26 },
+      { key: 'pay_code_or_terminal', width: 26 },
+      { key: 'amount', width: 18 },
+      { key: 'currency', width: 12 },
+      { key: 'status', width: 18 }
+    ];
+
+    ws3.mergeCells('A1:I1');
+    const ws3Title = ws3.getCell('A1');
+    ws3Title.value = `LUMINA CLINIC — PAYMENT CHANNELS, MOMO PAY CODES & POS BANK TERMINALS (${periodDates.label.toUpperCase()})`;
+    ws3Title.font = { name: 'Calibri', size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
+    ws3Title.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF059669' } };
+    ws3Title.alignment = { vertical: 'middle', horizontal: 'center' };
+    ws3.getRow(1).height = 28;
+
+    const headers3 = [
+      'Shift ID', 'Date', 'Counter / Station', 'Personnel', 'Payment Channel Type',
+      'Pay Code / Bank POS Terminal', 'Amount Collected', 'Currency', 'Audit Status'
+    ];
+
+    const hRow3 = ws3.getRow(2);
+    hRow3.height = 24;
+    headers3.forEach((h, idx) => {
+      const cell = hRow3.getCell(idx + 1);
+      cell.value = h;
+      cell.font = { name: 'Calibri', size: 9, bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF059669' } };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.border = THIN_BORDER;
+    });
+
+    let rowIdx3 = 3;
+    if (paymentChannelLogs.length === 0) {
+      ws3.mergeCells(`A${rowIdx3}:I${rowIdx3}`);
+      const emptyCell3 = ws3.getCell(`A${rowIdx3}`);
+      emptyCell3.value = 'No mobile money or bank POS terminal transactions logged in this period.';
+      emptyCell3.font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF94A3B8' } };
+      emptyCell3.alignment = { vertical: 'middle', horizontal: 'center' };
+      ws3.getRow(rowIdx3).height = 22;
+      rowIdx3++;
+    } else {
+      paymentChannelLogs.forEach((p, idx) => {
+        const r = ws3.getRow(rowIdx3);
+        r.height = 20;
+        r.getCell(1).value = p.shift_id;
+        r.getCell(2).value = p.date;
+        r.getCell(3).value = p.station;
+        r.getCell(4).value = p.personnel;
+        r.getCell(5).value = p.channel_type;
+        r.getCell(6).value = p.pay_code_or_terminal;
+        r.getCell(7).value = p.amount;
+        r.getCell(8).value = p.currency;
+        r.getCell(9).value = p.status;
+
+        [1, 2, 8, 9].forEach(c => { r.getCell(c).alignment = { vertical: 'middle', horizontal: 'center' }; });
+        [3, 4, 5, 6].forEach(c => { r.getCell(c).alignment = { vertical: 'middle', horizontal: 'left' }; });
+        r.getCell(7).alignment = { vertical: 'middle', horizontal: 'right' };
+        r.getCell(7).numFmt = '#,##0 "RWF"';
+
+        const isZebra = idx % 2 === 1;
+        for (let c = 1; c <= 9; c++) {
+          const cell = r.getCell(c);
+          cell.font = { name: 'Calibri', size: 9 };
+          cell.border = THIN_BORDER;
+          if (isZebra) cell.fill = ZEBRA_FILL;
+        }
+
+        rowIdx3++;
+      });
+
+      // Sum of payment channels
+      const tRow3 = ws3.getRow(rowIdx3);
+      tRow3.height = 24;
+      tRow3.getCell(6).value = 'TOTAL PAYMENT CHANNELS SETTLED:';
+      tRow3.getCell(6).font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF0F172A' } };
+      tRow3.getCell(6).alignment = { vertical: 'middle', horizontal: 'right' };
+
+      tRow3.getCell(7).value = { formula: `=SUM(G3:G${rowIdx3 - 1})` };
+      tRow3.getCell(7).font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF0F172A' } };
+      tRow3.getCell(7).numFmt = '#,##0 "RWF"';
+      tRow3.getCell(7).alignment = { vertical: 'middle', horizontal: 'right' };
+
+      for (let c = 1; c <= 9; c++) {
+        const cell = tRow3.getCell(c);
+        cell.fill = TOTALS_FILL;
+        cell.border = DOUBLE_BOTTOM_BORDER;
+      }
+    }
+
+    ws3.views = [{ state: 'frozen', xSplit: 0, ySplit: 2, activeCell: 'A3' }];
+
+    // Set filename & Stream response
+    const exportFileName = `Lumina_Shift_Income_Statement_${periodDates.periodType}_${periodDates.dateStamp}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="Shift_Logs.xlsx"');
+    res.setHeader('Content-Disposition', `attachment; filename="${exportFileName}"`);
 
     await workbook.xlsx.write(res);
     res.end();

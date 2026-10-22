@@ -80,7 +80,8 @@ router.get(
   '/',
   checkPermission('shifts', 'view'),
   validate([
-    query('role').optional().isIn(['cashier', 'helpdesk', 'call_center', 'nurse', 'rn_midwife', 'vip_lounge', 'imaging', 'rama_rssb']),
+    query('role').optional().isIn(['cashier', 'helpdesk', 'customer_care', 'call_center', 'nurse', 'rn_midwife', 'vip_lounge', 'imaging', 'rama_rssb']),
+    query('period').optional().isIn(['day', 'today', 'week', 'this_week', 'month', 'this_month', 'all']),
     query('status').optional().isString(),
     query('flagged').optional().isIn(['0', '1']),
     query('date_from').optional().isString(),
@@ -100,7 +101,8 @@ router.get(
   '/export/excel',
   checkPermission('shifts', 'view'),
   validate([
-    query('role').optional().isIn(['cashier', 'helpdesk', 'call_center', 'nurse', 'rn_midwife', 'vip_lounge', 'imaging', 'rama_rssb']),
+    query('role').optional().isIn(['cashier', 'helpdesk', 'customer_care', 'call_center', 'nurse', 'rn_midwife', 'vip_lounge', 'imaging', 'rama_rssb']),
+    query('period').optional().isIn(['day', 'today', 'week', 'this_week', 'month', 'this_month', 'all']),
     query('status').optional().isIn(['open', 'draft', 'closed']),
     query('flagged').optional().isIn(['0', '1']),
     query('date_from').optional().isString(),

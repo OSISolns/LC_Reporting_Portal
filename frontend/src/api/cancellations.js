@@ -11,6 +11,7 @@ export const getCancellationById = (id) => api.get(`/cancellations/${id}`);
 export const createCancellation = (data) => api.post('/cancellations', data);
 export const updateCancellation = (id, data) => api.put(`/cancellations/${id}`, data);
 export const verifyCancellation = (id) => api.patch(`/cancellations/${id}/verify`);
+export const verifySalesCancellation = (id) => api.patch(`/cancellations/${id}/verify-sales`);
 export const approveCancellation = (id) => api.patch(`/cancellations/${id}/approve`);
 export const rejectCancellation = (id, comment) => api.patch(`/cancellations/${id}/reject`, { comment });
 export const deleteCancellation = (id) => api.delete(`/cancellations/${id}`);

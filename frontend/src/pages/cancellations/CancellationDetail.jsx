@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { 
   getCancellationById, 
   verifyCancellation, 
+  verifySalesCancellation,
   approveCancellation, 
   rejectCancellation,
   getCancellationPDF,
@@ -83,19 +84,27 @@ const CancellationDetail = () => {
   };
 
   const handleVerify = async () => {
-    if (!window.confirm('Mark this request as verified?')) return;
+    if (!window.confirm('Mark this request as verified (L1)?')) return;
     try {
       await verifyCancellation(id);
       fetchData();
-    } catch (err) { alert('Action failed'); }
+    } catch (err) { alert(err.response?.data?.message || 'L1 verification failed'); }
+  };
+
+  const handleVerifySales = async () => {
+    if (!window.confirm('Confirm 2nd verification by Sales Manager for this cancellation?')) return;
+    try {
+      await verifySalesCancellation(id);
+      fetchData();
+    } catch (err) { alert(err.response?.data?.message || 'Sales Manager verification failed'); }
   };
 
   const handleApprove = async () => {
-    if (!window.confirm('Approve this cancellation?')) return;
+    if (!window.confirm('Approve this cancellation (Final Authorization)?')) return;
     try {
       await approveCancellation(id);
       fetchData();
-    } catch (err) { alert('Action failed'); }
+    } catch (err) { alert(err.response?.data?.message || 'Approval failed'); }
   };
 
   const handleReject = async (e) => {
@@ -159,7 +168,15 @@ const CancellationDetail = () => {
 
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <CancellationDetailsView data={data} onExport={downloadPDF} />
+          <CancellationDetailsView 
+            data={data} 
+            onExport={downloadPDF} 
+            onVerify={handleVerify}
+            onVerifySales={handleVerifySales}
+            onApprove={handleApprove}
+            onReject={() => setRejectModal(true)}
+            onUploadDocument={handleDocumentUpload}
+          />
           
           <SupportingDocumentSection 
             data={data} 
@@ -190,21 +207,28 @@ const CancellationDetail = () => {
             </h3>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {data.status === 'pending' && hasPermission('cancellations', 'review') && (
+              {data.status === 'pending' && hasPermission('cancellations', 'review') && user.role !== 'sales_manager' && (
                 <button onClick={handleVerify} style={{ padding: '14px', backgroundColor: 'var(--info)', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(23, 162, 184, 0.2)' }}>
                   <CheckCircle size={18} />
-                  Verify Request
+                  Verify Request (L1)
                 </button>
               )}
 
-              {data.status === 'verified' && hasPermission('cancellations', 'approve') && (
+              {data.status === 'verified' && (user.role === 'sales_manager' || user.role === 'admin') && (
+                <button onClick={handleVerifySales} style={{ padding: '14px', backgroundColor: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.2)' }}>
+                  <CheckCircle size={18} />
+                  2nd Verification (Sales Manager)
+                </button>
+              )}
+
+              {data.status === 'sales_verified' && hasPermission('cancellations', 'approve') && (
                 <button onClick={handleApprove} style={{ padding: '14px', backgroundColor: 'var(--success)', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(40, 167, 69, 0.2)' }}>
                   <CheckCircle size={18} />
-                  Approve Request
+                  Final Approval (COO)
                 </button>
               )}
 
-              {((data.status === 'pending' || data.status === 'verified') && hasPermission('cancellations', 'reject') && !(user.role === 'coo' && data.status === 'pending')) && (
+              {(['pending', 'verified', 'sales_verified'].includes(data.status) && hasPermission('cancellations', 'reject') && !(user.role === 'coo' && data.status === 'pending')) && (
                 <button onClick={() => setRejectModal(true)} style={{ padding: '14px', backgroundColor: 'transparent', color: 'var(--danger)', border: '1.5px solid var(--danger)', borderRadius: '10px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', cursor: 'pointer' }}>
                   <XCircle size={18} />
                    Reject Request
@@ -243,7 +267,8 @@ const CancellationDetail = () => {
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <TimelineItem label="Submission" by={data.creator_name} date={data.created_at} active />
-              <TimelineItem label="Verification" by={data.verifier_name} date={data.verified_at} active={!!data.verified_at} />
+              <TimelineItem label="1st Verification (L1)" by={data.verifier_name} date={data.verified_at} active={!!data.verified_at} />
+              <TimelineItem label="2nd Verification (Sales Manager)" by={data.sales_verifier_name} date={data.sales_verified_at} active={!!data.sales_verified_at} />
               <TimelineItem label="Final Determination" by={data.approver_name || data.rejector_name} date={data.approved_at || data.rejected_at} active={!!(data.approved_at || data.rejected_at)} isLast />
             </div>
           </div>

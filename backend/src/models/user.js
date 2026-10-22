@@ -131,6 +131,7 @@ class User {
       'UPDATE incident_reports SET reviewed_by = NULL WHERE reviewed_by = ?',
       'UPDATE cancellation_requests SET created_by = NULL WHERE created_by = ?',
       'UPDATE cancellation_requests SET verified_by = NULL WHERE verified_by = ?',
+      'UPDATE cancellation_requests SET sales_verified_by = NULL WHERE sales_verified_by = ?',
       'UPDATE cancellation_requests SET approved_by = NULL WHERE approved_by = ?',
       'UPDATE cancellation_requests SET rejected_by = NULL WHERE rejected_by = ?',
       'UPDATE refund_requests SET created_by = NULL WHERE created_by = ?',
