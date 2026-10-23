@@ -498,7 +498,7 @@ const LabHub = () => {
   // Role separation calculations
   const userRole = (user?.role || '').toLowerCase();
   const isManager = ['admin', 'deputy_coo', 'coo', 'general_manager', 'chairman', 'lab_manager', 'quality_manager', 'qm', 'lab_hod', 'lab_stock_officer'].includes(userRole);
-  const isTeamLead = ['lab_team_lead', 'lab_lead', 'head_microbiology', 'head_hematology', 'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology', 'lab_safety_officer', 'lab_stock_officer'].includes(userRole);
+  const isTeamLead = ['lab_team_lead', 'lab_lead', 'head_biochemistry', 'head_microbiology', 'head_hematology', 'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology', 'lab_safety_officer', 'lab_stock_officer'].includes(userRole);
   const isLeadOrManager = isManager || isTeamLead;
   const [phaseFilter, setPhaseFilter] = useState('all');
   const [unitFilter, setUnitFilter] = useState('all'); // 'all' | 'Biochemistry' | 'Hematology' | 'Microbiology' | 'Phlebotomy' | 'Histopathology' | 'Molecular Biology'
@@ -914,6 +914,7 @@ const LabHub = () => {
         qm: 'Quality Manager',
         lab_safety_officer: 'Lab Safety Officer',
         lab_stock_officer: 'Lab stock Manager',
+        head_biochemistry: 'Head of Biochemistry',
         head_microbiology: 'Head of Microbiology',
         head_hematology: 'Head of Hematology',
         head_histopathology: 'Head of Histopathology/Archive',

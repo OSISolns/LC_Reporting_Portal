@@ -50,7 +50,7 @@ class Incident {
     const ALL_LAB_ROLES = [
       'lab_hod', 'lab_manager', 'quality_manager', 'qm',
       'lab_safety_officer', 'lab_stock_officer',
-      'head_microbiology', 'head_hematology', 'head_histopathology',
+      'head_biochemistry', 'head_microbiology', 'head_hematology', 'head_histopathology',
       'head_poct', 'head_phlebotomy', 'head_molecular_biology',
       'lab_micro_specialist', 'lab_scientist',
       'lab_team_lead', 'lab_lead', 'lab_tech', 'lab',

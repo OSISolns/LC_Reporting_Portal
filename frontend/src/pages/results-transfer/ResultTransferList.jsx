@@ -33,7 +33,7 @@ const ResultTransferList = () => {
     'lab_hod', 'lab_manager', 'quality_manager', 'qm',
     'lab_team_lead', 'lab_lead', 'lab_tech', 'lab',
     'lab_head', 'lab_supervisor', 'lab_safety_officer', 'lab_stock_officer',
-    'head_microbiology', 'head_hematology', 'head_histopathology',
+    'head_biochemistry', 'head_microbiology', 'head_hematology', 'head_histopathology',
     'head_poct', 'head_phlebotomy', 'head_molecular_biology',
     'lab_micro_specialist', 'lab_scientist'
   ].includes(user?.role);
@@ -203,7 +203,7 @@ const ResultTransferList = () => {
   const canCreate = !isImagingUser && ((typeof hasPermission === 'function' && hasPermission('results_transfer', 'create')) || [
     'cashier', 'customer_care', 'operations_staff', 'operations', 'operations_manager', 'ops_lead', 
     'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_hod', 'quality_manager', 'qm',
-    'head_microbiology', 'head_hematology', 'head_histopathology', 'head_poct',
+    'head_biochemistry', 'head_microbiology', 'head_hematology', 'head_histopathology', 'head_poct',
     'head_phlebotomy', 'head_molecular_biology', 'lab_micro_specialist', 'lab_scientist',
     'lab_safety_officer', 'lab_stock_officer', 'lab_tech', 'lab', 'admin'
   ].includes(user?.role?.toLowerCase()));

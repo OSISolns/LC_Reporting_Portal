@@ -43,7 +43,7 @@ const Dashboard = () => {
   if (role === 'lab_stock_officer') {
     return <LabStockOfficerDashboard />;
   }
-  if (['lab_team_lead', 'lab_lead', 'head_microbiology', 'head_hematology', 'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology', 'lab_safety_officer', 'lab_micro_specialist'].includes(role)) {
+  if (['lab_team_lead', 'lab_lead', 'head_biochemistry', 'head_microbiology', 'head_hematology', 'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology', 'lab_safety_officer', 'lab_micro_specialist'].includes(role)) {
     return <LabTeamLeadDashboard />;
   }
   if (['lab_manager', 'lab_hod', 'quality_manager', 'qm'].includes(role)) {

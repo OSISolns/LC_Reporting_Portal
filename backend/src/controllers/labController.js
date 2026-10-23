@@ -317,7 +317,7 @@ exports.updateStage = async (req, res, next) => {
         'admin', 'deputy_coo', 'coo', 'general_manager', 'chairman',
         'lab_hod', 'lab_manager', 'quality_manager', 'qm',
         'lab_team_lead', 'lab_lead', 'lab_safety_officer', 'lab_stock_officer',
-        'head_microbiology', 'head_hematology', 'head_histopathology',
+        'head_biochemistry', 'head_microbiology', 'head_hematology', 'head_histopathology',
         'head_poct', 'head_phlebotomy', 'head_molecular_biology',
         'lab_micro_specialist'
       ];
@@ -512,7 +512,7 @@ exports.verifyOrder = async (req, res, next) => {
       'admin', 'deputy_coo', 'coo', 'general_manager', 'chairman',
       'lab_hod', 'lab_manager', 'quality_manager', 'qm',
       'lab_team_lead', 'lab_lead', 'lab_safety_officer', 'lab_stock_officer',
-      'head_microbiology', 'head_hematology', 'head_histopathology',
+      'head_biochemistry', 'head_microbiology', 'head_hematology', 'head_histopathology',
       'head_poct', 'head_phlebotomy', 'head_molecular_biology',
       'lab_micro_specialist'
     ];
@@ -537,6 +537,7 @@ exports.verifyOrder = async (req, res, next) => {
     if (['lab_hod'].includes(userRole)) roleTitle = 'Head of Laboratory';
     else if (['lab_manager'].includes(userRole)) roleTitle = 'Lab Manager';
     else if (['quality_manager', 'qm'].includes(userRole)) roleTitle = 'Quality Manager';
+    else if (['head_biochemistry'].includes(userRole)) roleTitle = 'Head of Biochemistry';
     else if (['head_microbiology'].includes(userRole)) roleTitle = 'Head of Microbiology';
     else if (['head_hematology'].includes(userRole)) roleTitle = 'Head of Hematology';
     else if (['head_histopathology'].includes(userRole)) roleTitle = 'Head of Histo/Cytology/Archive';

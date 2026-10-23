@@ -21,7 +21,7 @@ const ResultTransferForm = () => {
   const isLabUser = [
     'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_tech', 'lab',
     'lab_head', 'lab_supervisor', 'lab_safety_officer', 'lab_stock_officer',
-    'head_microbiology', 'head_hematology'
+    'head_biochemistry', 'head_microbiology', 'head_hematology'
   ].includes(user?.role);
 
   const initialForm = {

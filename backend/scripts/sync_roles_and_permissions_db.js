@@ -26,6 +26,7 @@ const ROLE_DISPLAY_NAMES = {
   lab_hod: 'Head of Laboratory Department',
   lab_safety_officer: 'Laboratory Safety Officer',
   lab_stock_officer: 'Laboratory Stock Officer',
+  head_biochemistry: 'Head of Biochemistry',
   head_microbiology: 'Head of Microbiology',
   head_hematology: 'Head of Hematology',
   head_histopathology: 'Head of Histopathology / Cytology',

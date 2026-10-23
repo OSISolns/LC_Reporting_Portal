@@ -15,7 +15,7 @@ const LAB_LEAD_OR_MANAGER_ROLES = [
   ...LAB_EXECUTIVE_ROLES,
   'lab_team_lead', 'lab_lead',
   'lab_safety_officer', 'lab_stock_officer',
-  'head_microbiology', 'head_hematology', 'head_histopathology',
+  'head_biochemistry', 'head_microbiology', 'head_hematology', 'head_histopathology',
   'head_poct', 'head_phlebotomy', 'head_molecular_biology',
   'lab_micro_specialist'
 ];

@@ -12,7 +12,7 @@ const LAB_ROLES = [
   'lab_hod', 'lab_manager', 'quality_manager', 'qm',
   'lab_team_lead', 'lab_lead', 'lab_tech', 'lab',
   'lab_head', 'lab_supervisor', 'lab_safety_officer', 'lab_stock_officer',
-  'head_microbiology', 'head_hematology', 'head_histopathology',
+  'head_biochemistry', 'head_microbiology', 'head_hematology', 'head_histopathology',
   'head_poct', 'head_phlebotomy', 'head_molecular_biology',
   'lab_micro_specialist', 'lab_scientist'
 ];
@@ -103,7 +103,7 @@ exports.updateRequest = async (req, res, next) => {
     }
     const privilegedRoles = [
       'lab_hod', 'lab_manager', 'quality_manager', 'qm',
-      'lab_team_lead', 'lab_lead', 'head_microbiology', 'head_hematology',
+      'lab_team_lead', 'lab_lead', 'head_biochemistry', 'head_microbiology', 'head_hematology',
       'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology',
       'lab_micro_specialist', 'imaging_manager', 'sales_manager', 'coo', 'deputy_coo', 'admin'
     ];
@@ -132,7 +132,7 @@ exports.getAllRequests = async (req, res, next) => {
 
     const privilegedRoles = [
       'lab_hod', 'lab_manager', 'quality_manager', 'qm',
-      'lab_team_lead', 'lab_lead', 'head_microbiology', 'head_hematology',
+      'lab_team_lead', 'lab_lead', 'head_biochemistry', 'head_microbiology', 'head_hematology',
       'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology',
       'lab_micro_specialist', 'lab_scientist', 'lab_safety_officer', 'lab_tech', 'lab',
       'imaging_manager', 'imaging_tech', 'sono', 'radiologist',

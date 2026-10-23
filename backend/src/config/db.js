@@ -1841,6 +1841,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         { name: 'qm', display_name: 'Quality Manager (QM)' },
         { name: 'lab_safety_officer', display_name: 'Lab Safety Officer' },
         { name: 'lab_stock_officer', display_name: 'Lab stock Manager' },
+        { name: 'head_biochemistry', display_name: 'Head of Biochemistry' },
         { name: 'head_microbiology', display_name: 'Head of Microbiology' },
         { name: 'head_hematology', display_name: 'Head of Hematology' },
         { name: 'head_histopathology', display_name: 'Head of Histo/Cytology/Archive' },
