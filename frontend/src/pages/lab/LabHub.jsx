@@ -162,7 +162,7 @@ const TEST_ASSAYS = [
     focus: 'Long-term 90-day glycemic control and acute glycemic status.',
     pathologies: 'Type 1 and Type 2 Diabetes Mellitus, Gestational Diabetes, Impaired Fasting Glucose.',
     essayPoints: [
-      'HPLC & Immunoassay Standardization: NGSP certified and IFCC traceable HbA1c measurement reflecting non-enzymatic glycosylation of hemoglobin.',
+      'HPLC & Biochemestry Standardization: NGSP certified and IFCC traceable HbA1c measurement reflecting non-enzymatic glycosylation of hemoglobin.',
       'Glycolysis Inhibition: Sodium Fluoride/Potassium Oxalate tube prevents in vitro glucose consumption by erythrocytes prior to centrifugation.'
     ]
   },
@@ -1202,11 +1202,10 @@ const LabHub = () => {
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => setUnitFilter('all')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                unitFilter === 'all'
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${unitFilter === 'all'
                   ? 'bg-slate-900 text-white shadow-xs'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
+                }`}
             >
               All Disciplines ({unitCounts.all})
             </button>
@@ -1221,19 +1220,17 @@ const LabHub = () => {
               <button
                 key={unit.id}
                 onClick={() => setUnitFilter(isSelected ? 'all' : unit.id)}
-                className={`p-3 rounded-xl border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
-                  isSelected
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${isSelected
                     ? 'border-indigo-600 bg-indigo-50/70 shadow-xs ring-1 ring-indigo-500/30'
                     : 'border-slate-200/80 bg-white hover:bg-slate-50 hover:border-slate-300'
-                }`}
+                  }`}
               >
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-bold text-xs text-slate-900">{unit.name}</span>
                     <span
-                      className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${
-                        count > 0 ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'
-                      }`}
+                      className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${count > 0 ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'
+                        }`}
                     >
                       {count}
                     </span>
@@ -1395,8 +1392,8 @@ const LabHub = () => {
                               return (
                                 <div className="flex flex-col gap-0.5">
                                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold border inline-flex items-center gap-1 w-fit ${isFreezer
-                                      ? 'bg-sky-50 text-sky-800 border-sky-200'
-                                      : 'bg-indigo-50 text-indigo-800 border-indigo-200'
+                                    ? 'bg-sky-50 text-sky-800 border-sky-200'
+                                    : 'bg-indigo-50 text-indigo-800 border-indigo-200'
                                     }`}>
                                     <Thermometer size={11} className="text-slate-500 shrink-0" /> {unit?.label ? unit.label.split('(')[0].trim() : 'Fridge 1'}
                                   </span>
@@ -1504,12 +1501,12 @@ const LabHub = () => {
                             {/* Stage card */}
                             <div
                               className={`w-full rounded-lg border text-[11px] transition-all ${isCurrent
-                                  ? 'shadow-sm'
-                                  : isDone
-                                    ? 'opacity-60'
-                                    : isNext
-                                      ? 'border-dashed'
-                                      : 'opacity-30'
+                                ? 'shadow-sm'
+                                : isDone
+                                  ? 'opacity-60'
+                                  : isNext
+                                    ? 'border-dashed'
+                                    : 'opacity-30'
                                 }`}
                               style={{
                                 borderColor: isCurrent ? st.phaseColor : isNext ? st.phaseColor + '60' : '#e2e8f0',

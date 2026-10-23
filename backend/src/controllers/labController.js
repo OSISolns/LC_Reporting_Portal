@@ -1408,7 +1408,7 @@ exports.getTeamLeadSummary = async (req, res, next) => {
       'Hematology': { total: 0, pending: 0, in_testing: 0, verified: 0 },
       'Clinical Chemistry': { total: 0, pending: 0, in_testing: 0, verified: 0 },
       'Microbiology': { total: 0, pending: 0, in_testing: 0, verified: 0 },
-      'Immunoassay': { total: 0, pending: 0, in_testing: 0, verified: 0 },
+      'Biochemestry': { total: 0, pending: 0, in_testing: 0, verified: 0 },
       'Histopathology': { total: 0, pending: 0, in_testing: 0, verified: 0 },
       'POCT': { total: 0, pending: 0, in_testing: 0, verified: 0 },
       'Molecular Biology': { total: 0, pending: 0, in_testing: 0, verified: 0 }
@@ -1493,7 +1493,7 @@ exports.getTeamLeadSummary = async (req, res, next) => {
       if (testLower.includes('cbc') || testLower.includes('fbc') || testLower.includes('inr') || testLower.includes('pt') || testLower.includes('blood film') || testLower.includes('esr')) bench = 'Hematology';
       else if (testLower.includes('glucose') || testLower.includes('lipid') || testLower.includes('lft') || testLower.includes('rft') || testLower.includes('crp') || testLower.includes('urea') || testLower.includes('creatinine')) bench = 'Clinical Chemistry';
       else if (testLower.includes('culture') || testLower.includes('urine') || testLower.includes('gram') || testLower.includes('antimicrobial') || testLower.includes('stool')) bench = 'Microbiology';
-      else if (testLower.includes('hiv') || testLower.includes('hepatitis') || testLower.includes('tsh') || testLower.includes('troponin') || testLower.includes('bhcg')) bench = 'Immunoassay';
+      else if (testLower.includes('hiv') || testLower.includes('hepatitis') || testLower.includes('tsh') || testLower.includes('troponin') || testLower.includes('bhcg')) bench = 'Biochemestry';
       else if (testLower.includes('biopsy') || testLower.includes('cyto') || testLower.includes('pap')) bench = 'Histopathology';
       else if (testLower.includes('pcr') || testLower.includes('dna') || testLower.includes('rna') || testLower.includes('viral')) bench = 'Molecular Biology';
       else if (testLower.includes('rapid') || testLower.includes('poct') || testLower.includes('glucometer')) bench = 'POCT';

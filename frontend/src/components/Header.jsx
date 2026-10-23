@@ -47,7 +47,7 @@ const Header = ({ onMenuToggle }) => {
           <Menu size={22} />
         </button>
 
-        <img src="/logo.png" alt="Legacy Clinics" style={{ height: '30px', objectFit: 'contain' }} />
+        <img src="/logo.png" alt="Legacy Clinics" className="md:hidden" style={{ height: '30px', objectFit: 'contain' }} />
       </div>
 
       {/* ── Right: bell + user ── */}

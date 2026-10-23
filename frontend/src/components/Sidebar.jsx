@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   ChevronLeft, ChevronRight, LayoutDashboard, FileText, ReceiptText,
   AlertTriangle, Users, UserCheck, History, LogOut, Key, Brain, X, RefreshCw, Shield, Database, Award, Clock, PenTool, Stethoscope, MessageSquare, Activity, Building, Mail, ShieldAlert, TrendingDown, ShieldCheck, Server, ScanLine, ClipboardList, FlaskConical, Heart, Dumbbell, Settings, PackageCheck, AlertOctagon, Archive,
-  Truck, Zap, Wrench, Package, DollarSign, BarChart3, BadgeDollarSign, FileSpreadsheet, Microscope, Cpu, PhoneCall
+  Truck, Zap, Wrench, Package, DollarSign, BarChart3, BadgeDollarSign, FileSpreadsheet, Microscope, Cpu
 } from 'lucide-react';
 import Modal from './Modal';
 import ChangePasswordModal from './ChangePasswordModal';
@@ -135,7 +135,6 @@ const Sidebar = ({ onClose }) => {
       items: [
         { configKey: 'it_hub', name: (user?.role === 'admin' || user?.role === 'it_officer') ? 'IT Support Hub' : 'IT Support', icon: <Server size={18} />, path: '/it-ticketing', requiredPerm: null, allowedRoles: ALL_ROLES },
         { configKey: 'users', name: 'User Management', icon: <Users size={18} />, path: '/users', requiredPerm: { mod: 'user_management', act: 'view' }, allowedRoles: ['admin', 'it_officer'] },
-        { configKey: 'sukraa_patient_lookup', name: 'Patient Phone & Sukraa Lookup', icon: <PhoneCall size={18} />, path: '/admin/patient-lookup', requiredPerm: null, allowedRoles: ['admin', 'it_officer'] },
         { configKey: 'providers', name: 'Provider Management', icon: <UserCheck size={18} />, path: '/providers', requiredPerm: { mod: 'user_management', act: 'view' }, allowedRoles: ['admin', 'coo', 'deputy_coo', 'medical_director'] },
         { configKey: 'permissions', name: 'Permissions', icon: <Shield size={18} />, path: '/permissions', requiredPerm: { mod: 'user_management', act: 'edit' }, allowedRoles: ['admin'] },
         { configKey: 'audit_logs', name: 'Audit Logs', icon: <History size={18} />, path: '/audit-logs', requiredPerm: { mod: 'audit_logs', act: 'view' }, allowedRoles: ['admin', 'it_officer'] },

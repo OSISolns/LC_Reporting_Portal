@@ -47,7 +47,7 @@ export default function LabTeamLeadDashboard() {
       'Hematology': 'RAFIKI Justin',
       'Clinical Chemistry': 'NZABIHIMANA Shemayi',
       'Microbiology': 'ABAKUNDANYE Marie Chantal',
-      'Immunoassay': 'YUJITUZE Clemence',
+      'Biochemestry': 'YUJITUZE Clemence',
       'Histopathology': 'UWAMAHORO Marie Claire',
       'POCT': 'KAGABIRWA Jeanne',
       'Molecular Biology': 'KAYITESI Edith'
@@ -213,7 +213,7 @@ export default function LabTeamLeadDashboard() {
 
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6 font-sans text-slate-800 antialiased bg-slate-50/40 min-h-screen">
-      
+
       {/* ── TOP HEADER ── */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-gradient-to-r from-[#0d47a1] via-[#1565c0] to-[#1976d2] p-6 rounded-2xl text-white shadow-lg border border-blue-900">
         <div className="space-y-1">
@@ -266,7 +266,7 @@ export default function LabTeamLeadDashboard() {
 
       {/* ── KPI METRICS CARDS ── */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
-        
+
         {/* Active Samples */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:border-blue-400 transition-all">
           <div className="flex items-center justify-between">
@@ -282,9 +282,8 @@ export default function LabTeamLeadDashboard() {
         </div>
 
         {/* STAT Urgency */}
-        <div className={`p-4 rounded-2xl border shadow-sm flex flex-col justify-between transition-all ${
-          metrics.stat_pending > 0 ? 'bg-rose-50/60 border-rose-200 hover:border-rose-400' : 'bg-white border-slate-200'
-        }`}>
+        <div className={`p-4 rounded-2xl border shadow-sm flex flex-col justify-between transition-all ${metrics.stat_pending > 0 ? 'bg-rose-50/60 border-rose-200 hover:border-rose-400' : 'bg-white border-slate-200'
+          }`}>
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-rose-600 uppercase tracking-wider">STAT Priority</span>
             <div className="p-1.5 bg-rose-100 text-rose-700 rounded-xl">
@@ -305,9 +304,8 @@ export default function LabTeamLeadDashboard() {
         </div>
 
         {/* Awaiting Lead Verification */}
-        <div className={`p-4 rounded-2xl border shadow-sm flex flex-col justify-between transition-all ${
-          metrics.awaiting_verification > 0 ? 'bg-amber-50/50 border-amber-200 hover:border-amber-400' : 'bg-white border-slate-200'
-        }`}>
+        <div className={`p-4 rounded-2xl border shadow-sm flex flex-col justify-between transition-all ${metrics.awaiting_verification > 0 ? 'bg-amber-50/50 border-amber-200 hover:border-amber-400' : 'bg-white border-slate-200'
+          }`}>
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">Verification</span>
             <div className="p-1.5 bg-amber-100 text-amber-700 rounded-xl">
@@ -321,9 +319,8 @@ export default function LabTeamLeadDashboard() {
         </div>
 
         {/* Critical Alerts */}
-        <div className={`p-4 rounded-2xl border shadow-sm flex flex-col justify-between transition-all ${
-          metrics.critical_alerts > 0 ? 'bg-red-50 border-red-300' : 'bg-white border-slate-200'
-        }`}>
+        <div className={`p-4 rounded-2xl border shadow-sm flex flex-col justify-between transition-all ${metrics.critical_alerts > 0 ? 'bg-red-50 border-red-300' : 'bg-white border-slate-200'
+          }`}>
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-red-600 uppercase tracking-wider">Critical Alerts</span>
             <div className="p-1.5 bg-red-100 text-red-700 rounded-xl">
@@ -370,11 +367,10 @@ export default function LabTeamLeadDashboard() {
       <div className="flex border-b border-slate-200 bg-white px-3 pt-2 rounded-2xl shadow-sm overflow-x-auto gap-2">
         <button
           onClick={() => setActiveTab('bench_flow')}
-          className={`flex items-center gap-2 py-3 px-4 border-b-2 font-bold text-xs whitespace-nowrap transition-all cursor-pointer ${
-            activeTab === 'bench_flow'
+          className={`flex items-center gap-2 py-3 px-4 border-b-2 font-bold text-xs whitespace-nowrap transition-all cursor-pointer ${activeTab === 'bench_flow'
               ? 'border-[#0d47a1] text-[#0d47a1]'
               : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
+            }`}
         >
           <Layers size={16} />
           <span>Bench & Shift Flow</span>
@@ -382,11 +378,10 @@ export default function LabTeamLeadDashboard() {
 
         <button
           onClick={() => setActiveTab('verification')}
-          className={`flex items-center gap-2 py-3 px-4 border-b-2 font-bold text-xs whitespace-nowrap transition-all cursor-pointer ${
-            activeTab === 'verification'
+          className={`flex items-center gap-2 py-3 px-4 border-b-2 font-bold text-xs whitespace-nowrap transition-all cursor-pointer ${activeTab === 'verification'
               ? 'border-[#0d47a1] text-[#0d47a1]'
               : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
+            }`}
         >
           <FileCheck size={16} />
           <span>Technical Verification Queue</span>
@@ -399,11 +394,10 @@ export default function LabTeamLeadDashboard() {
 
         <button
           onClick={() => setActiveTab('qc')}
-          className={`flex items-center gap-2 py-3 px-4 border-b-2 font-bold text-xs whitespace-nowrap transition-all cursor-pointer ${
-            activeTab === 'qc'
+          className={`flex items-center gap-2 py-3 px-4 border-b-2 font-bold text-xs whitespace-nowrap transition-all cursor-pointer ${activeTab === 'qc'
               ? 'border-[#0d47a1] text-[#0d47a1]'
               : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
+            }`}
         >
           <Activity size={16} />
           <span>IQC & Westgard Surveillance</span>
@@ -411,11 +405,10 @@ export default function LabTeamLeadDashboard() {
 
         <button
           onClick={() => setActiveTab('pre_analytical')}
-          className={`flex items-center gap-2 py-3 px-4 border-b-2 font-bold text-xs whitespace-nowrap transition-all cursor-pointer ${
-            activeTab === 'pre_analytical'
+          className={`flex items-center gap-2 py-3 px-4 border-b-2 font-bold text-xs whitespace-nowrap transition-all cursor-pointer ${activeTab === 'pre_analytical'
               ? 'border-[#0d47a1] text-[#0d47a1]'
               : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
+            }`}
         >
           <AlertOctagon size={16} />
           <span>Specimen Quality Exceptions</span>
@@ -428,11 +421,10 @@ export default function LabTeamLeadDashboard() {
 
         <button
           onClick={() => setActiveTab('staffing')}
-          className={`flex items-center gap-2 py-3 px-4 border-b-2 font-bold text-xs whitespace-nowrap transition-all cursor-pointer ${
-            activeTab === 'staffing'
+          className={`flex items-center gap-2 py-3 px-4 border-b-2 font-bold text-xs whitespace-nowrap transition-all cursor-pointer ${activeTab === 'staffing'
               ? 'border-[#0d47a1] text-[#0d47a1]'
               : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
+            }`}
         >
           <Users size={16} />
           <span>Bench Allocation & Roster</span>
@@ -442,7 +434,7 @@ export default function LabTeamLeadDashboard() {
       {/* ── TAB 1: BENCH & SHIFT FLOW ── */}
       {activeTab === 'bench_flow' && (
         <div className="space-y-6">
-          
+
           {/* URGENT STAT QUEUE CAROUSEL / HIGHLIGHT */}
           {statQueue.length > 0 && (
             <div className="bg-rose-50/70 border border-rose-200 rounded-2xl p-5 shadow-sm space-y-3">
@@ -469,13 +461,12 @@ export default function LabTeamLeadDashboard() {
                         <span className="text-xs font-black text-slate-800 block">{order.test_name || 'STAT Test'}</span>
                         <span className="text-[11px] font-semibold text-slate-600 block">{order.patient_name} ({order.patient_id})</span>
                       </div>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                        order.is_overdue
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${order.is_overdue
                           ? 'bg-red-600 text-white animate-pulse'
                           : (order.tat_remaining_mins !== null && order.tat_remaining_mins < 15)
-                          ? 'bg-amber-500 text-white'
-                          : 'bg-rose-100 text-rose-800'
-                      }`}>
+                            ? 'bg-amber-500 text-white'
+                            : 'bg-rose-100 text-rose-800'
+                        }`}>
                         {order.is_overdue ? 'TAT BREACHED' : `${order.tat_remaining_mins ?? 30}m Left`}
                       </span>
                     </div>
@@ -503,7 +494,7 @@ export default function LabTeamLeadDashboard() {
               <Layers size={18} className="text-[#0d47a1]" />
               Workload by Laboratory Bench
             </h3>
-            
+
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5">
               {benchBreakdown.map((item, idx) => (
                 <div key={idx} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-all">
@@ -563,11 +554,10 @@ export default function LabTeamLeadDashboard() {
                 <div key={analyzer.id} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 flex flex-col justify-between space-y-2">
                   <div className="flex justify-between items-start">
                     <span className="text-xs font-bold text-slate-800">{analyzer.name}</span>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                      analyzer.status === 'Operational' || analyzer.status === 'operational'
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${analyzer.status === 'Operational' || analyzer.status === 'operational'
                         ? 'bg-emerald-100 text-emerald-800'
                         : 'bg-amber-100 text-amber-800'
-                    }`}>
+                      }`}>
                       {analyzer.status}
                     </span>
                   </div>
@@ -590,7 +580,7 @@ export default function LabTeamLeadDashboard() {
       {/* ── TAB 2: TECHNICAL VERIFICATION QUEUE ── */}
       {activeTab === 'verification' && (
         <div className="space-y-4">
-          
+
           {/* Action Bar for Batch Verification */}
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div className="flex items-center gap-3">
@@ -647,12 +637,11 @@ export default function LabTeamLeadDashboard() {
                 return (
                   <div
                     key={order.id}
-                    className={`bg-white p-4 rounded-2xl border transition-all shadow-sm ${
-                      isSelected ? 'border-[#0d47a1] ring-1 ring-[#0d47a1] bg-blue-50/20' : 'border-slate-200 hover:border-slate-300'
-                    }`}
+                    className={`bg-white p-4 rounded-2xl border transition-all shadow-sm ${isSelected ? 'border-[#0d47a1] ring-1 ring-[#0d47a1] bg-blue-50/20' : 'border-slate-200 hover:border-slate-300'
+                      }`}
                   >
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-                      
+
                       {/* Left: Checkbox & Info */}
                       <div className="flex items-start gap-3">
                         <button
@@ -828,9 +817,8 @@ export default function LabTeamLeadDashboard() {
                           )}
                         </td>
                         <td className="py-2.5 px-4">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                            qc.status === 'Passed' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
-                          }`}>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${qc.status === 'Passed' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                            }`}>
                             {qc.status}
                           </span>
                         </td>
@@ -892,9 +880,8 @@ export default function LabTeamLeadDashboard() {
                           </span>
                         </td>
                         <td className="py-2.5 px-4">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            order.urgency === 'STAT' ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600'
-                          }`}>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${order.urgency === 'STAT' ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600'
+                            }`}>
                             {order.urgency}
                           </span>
                         </td>
@@ -985,7 +972,7 @@ export default function LabTeamLeadDashboard() {
                 >
                   <option value="Sysmex XN-550 (Hematology)">Sysmex XN-550 (Hematology)</option>
                   <option value="Cobas c311 (Clinical Chemistry)">Cobas c311 (Clinical Chemistry)</option>
-                  <option value="Maglumi 800 (CLIA Immunoassay)">Maglumi 800 (CLIA Immunoassay)</option>
+                  <option value="Maglumi 800 (CLIA Biochemestry)">Maglumi 800 (CLIA Biochemestry)</option>
                   <option value="Stat Profile Prime (Electrolytes / ABG)">Stat Profile Prime (Electrolytes / ABG)</option>
                   <option value="Stago Satellite (Coagulation)">Stago Satellite (Coagulation)</option>
                 </select>

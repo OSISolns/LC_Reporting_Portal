@@ -25,7 +25,7 @@ async function syncActualAnalyzers() {
       status: 'Operational',
       last_calibrated: '2026-05-20',
       next_calibration_due: '2026-08-20',
-      notes: 'Electrochemiluminescence (ECLIA) immunoassay analyzer for thyroid, fertility, and cardiac markers.',
+      notes: 'Electrochemiluminescence (ECLIA) Biochemestry analyzer for thyroid, fertility, and cardiac markers.',
       added_by: 'Laboratory Team Lead'
     },
     {

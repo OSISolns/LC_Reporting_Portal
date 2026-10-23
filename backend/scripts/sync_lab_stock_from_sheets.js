@@ -4,7 +4,7 @@ async function syncStockFromSheets() {
   console.log('🔄 Syncing in-hand laboratory inventory with institutional physical sheets...');
 
   const roomTempItems = [
-    // Cobas e411 Reagents (Immunoassay Reagents)
+    // Cobas e411 Reagents (Biochemestry Reagents)
     { name: 'Assay Buf Elecsys Pro-Cell', group: 'Cobas e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 21, uom: 'pcs' },
     { name: 'Clean-Sol Elecsys Clean-Cell', group: 'Cobas e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 22, uom: 'pcs' },
     { name: 'Assay tip Elecsys 2010 *IM', group: 'Cobas e411 Reagents', dept: 'Biochemistry', unit: 'room_temp_1', qty: 11, uom: 'box' },

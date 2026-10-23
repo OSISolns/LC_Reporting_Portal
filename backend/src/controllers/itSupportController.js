@@ -106,22 +106,25 @@ exports.getAssets = async (req, res) => {
 
 exports.createAsset = async (req, res) => {
   try {
-    const { name, assigned_to, department, status, asset_type, serial_number, purchase_date, warranty_expiry } = req.body;
+    const { name, assigned_to, department, status, asset_type, serial_number, model, manufacturer, location, asset_tag, purchase_date, warranty_expiry } = req.body;
 
     if (!name) {
       return res.status(400).json({ success: false, message: 'Asset name is required' });
     }
 
-    // Get max ID to generate next asset tag
-    const { rows: maxRow } = await db.query("SELECT MAX(id) as maxId FROM it_assets");
-    const nextId = (Number(maxRow[0]?.maxId) || 0) + 1;
-    const assetTag = `AST-EQP-${String(nextId).padStart(2, '0')}`;
+    let finalTag = asset_tag ? asset_tag.trim() : null;
+    if (!finalTag) {
+      // Get max ID to generate next asset tag
+      const { rows: maxRow } = await db.query("SELECT MAX(id) as maxId FROM it_assets");
+      const nextId = (Number(maxRow[0]?.maxId) || 0) + 1;
+      finalTag = `AST-EQP-${String(nextId).padStart(2, '0')}`;
+    }
 
     const { rows: inserted } = await db.query(
       `INSERT INTO it_assets 
-        (asset_tag, name, assigned_to, department, status, asset_type, serial_number, purchase_date, warranty_expiry) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-      [assetTag, name, assigned_to || '', department || '', status || 'Active', asset_type || '', serial_number || '', purchase_date || null, warranty_expiry || null]
+        (asset_tag, name, assigned_to, department, status, asset_type, serial_number, model, manufacturer, location, purchase_date, warranty_expiry) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+      [finalTag, name, assigned_to || '', department || '', status || 'Active', asset_type || '', serial_number || '', model || '', manufacturer || '', location || '', purchase_date || null, warranty_expiry || null]
     );
 
     res.status(201).json({ success: true, asset: inserted[0] });
@@ -134,7 +137,7 @@ exports.createAsset = async (req, res) => {
 exports.updateAsset = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, name, assigned_to, department, asset_type, serial_number, purchase_date, warranty_expiry } = req.body;
+    const { status, name, assigned_to, department, asset_type, serial_number, model, manufacturer, location, purchase_date, warranty_expiry } = req.body;
 
     const { rows: existing } = await db.query("SELECT * FROM it_assets WHERE id = $1", [id]);
     if (existing.length === 0) {
@@ -149,10 +152,13 @@ exports.updateAsset = async (req, res) => {
            department = COALESCE($4, department),
            asset_type = COALESCE($5, asset_type),
            serial_number = COALESCE($6, serial_number),
-           purchase_date = COALESCE($7, purchase_date),
-           warranty_expiry = COALESCE($8, warranty_expiry)
-       WHERE id = $9`,
-      [status, name, assigned_to, department, asset_type, serial_number, purchase_date, warranty_expiry, id]
+           model = COALESCE($7, model),
+           manufacturer = COALESCE($8, manufacturer),
+           location = COALESCE($9, location),
+           purchase_date = COALESCE($10, purchase_date),
+           warranty_expiry = COALESCE($11, warranty_expiry)
+       WHERE id = $12`,
+      [status, name, assigned_to, department, asset_type, serial_number, model, manufacturer, location, purchase_date, warranty_expiry, id]
     );
 
     res.json({ success: true, message: 'Asset updated successfully' });

@@ -438,9 +438,42 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
             console.warn("⚠️ ALTER TABLE it_tickets ADD COLUMN it_intervention failed:", err.message);
           }
         });
-        console.log('✅ SQLite Schema Migration: ensured user_id, working_station, and it_intervention columns on it_tickets');
+        await client.execute("ALTER TABLE it_tickets ADD COLUMN assigned_to TEXT").catch((err) => {
+          if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+            console.warn("⚠️ ALTER TABLE it_tickets ADD COLUMN assigned_to failed:", err.message);
+          }
+        });
+        await client.execute("ALTER TABLE it_tickets ADD COLUMN resolution_notes TEXT").catch((err) => {
+          if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+            console.warn("⚠️ ALTER TABLE it_tickets ADD COLUMN resolution_notes failed:", err.message);
+          }
+        });
+        console.log('✅ SQLite Schema Migration: ensured user_id, working_station, it_intervention, assigned_to, and resolution_notes columns on it_tickets');
       } catch (err) {
         console.error('❌ IT Tickets column migration error:', err.message);
+      }
+
+      // ─── IT Assets Column Migration ───────────────────────────────────────────────────
+      try {
+        const assetCols = [
+          'ALTER TABLE it_assets ADD COLUMN asset_type TEXT',
+          'ALTER TABLE it_assets ADD COLUMN serial_number TEXT',
+          'ALTER TABLE it_assets ADD COLUMN model TEXT',
+          'ALTER TABLE it_assets ADD COLUMN manufacturer TEXT',
+          'ALTER TABLE it_assets ADD COLUMN location TEXT',
+          'ALTER TABLE it_assets ADD COLUMN purchase_date TEXT',
+          'ALTER TABLE it_assets ADD COLUMN warranty_expiry TEXT'
+        ];
+        for (const sql of assetCols) {
+          await client.execute(sql).catch((err) => {
+            if (!err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+              console.warn('⚠️ it_assets column migration note:', err.message);
+            }
+          });
+        }
+        console.log('✅ SQLite Schema Migration: ensured extra metadata columns on it_assets');
+      } catch (err) {
+        console.error('❌ IT Assets column migration error:', err.message);
       }
 
       // ─── Fleet Trip Type Column Migration ─────────────────────────────────────────
@@ -1499,7 +1532,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
           if (count <= 1) {
             const analyzersSeed = [
               ['Cobas C 311', 'Roche Diagnostics', 'Cobas C 311', 'Biochemistry', 'RCH-C311-9014', 'Operational', '2026-06-05', '2026-09-05', 'Automated discrete clinical chemistry analyzer with ultrasonic mixing.', 'Laboratory Team Lead'],
-              ['Cobas e411', 'Roche Diagnostics', 'Cobas e411', 'Biochemistry', 'RCH-E411-7731', 'Operational', '2026-05-20', '2026-08-20', 'Electrochemiluminescence (ECLIA) immunoassay analyzer for thyroid, fertility, and cardiac markers.', 'Laboratory Team Lead'],
+              ['Cobas e411', 'Roche Diagnostics', 'Cobas e411', 'Biochemistry', 'RCH-E411-7731', 'Operational', '2026-05-20', '2026-08-20', 'Electrochemiluminescence (ECLIA) Biochemestry analyzer for thyroid, fertility, and cardiac markers.', 'Laboratory Team Lead'],
               ['VITEK 2 Compact', 'bioMérieux', 'VITEK 2 Compact', 'Biochemistry', 'BMX-VTK2-4412', 'Operational', '2026-06-12', '2026-09-12', 'Automated platform for rapid diagnostic testing and quantitative cartridges.', 'Laboratory Team Lead'],
               ['Mispa i3', 'Agappe Diagnostics', 'Mispa i3', 'Biochemistry', 'AGP-MI3-8105', 'Operational', '2026-06-15', '2026-09-15', 'Cartridge-based specific protein analyzer utilizing rate-based nephelometry.', 'Laboratory Team Lead'],
               ['Mindray BS-430', 'Mindray Bio-Medical', 'BS-430', 'Biochemistry', 'MDR-BS430-6721', 'Operational', '2026-06-10', '2026-09-10', 'Floor-standing discrete random-access clinical chemistry system with CD8 wash monitoring.', 'Laboratory Team Lead'],
@@ -3944,27 +3977,40 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
     try {
       await client.execute(`
       CREATE TABLE IF NOT EXISTS it_assets (
-        id            INTEGER PRIMARY KEY AUTOINCREMENT,
-        asset_tag     TEXT UNIQUE NOT NULL,
-        name          TEXT NOT NULL,
-        assigned_to   TEXT,
-        department    TEXT,
-        status        TEXT DEFAULT 'Active'
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        asset_tag       TEXT UNIQUE NOT NULL,
+        name            TEXT NOT NULL,
+        assigned_to     TEXT,
+        department      TEXT,
+        status          TEXT DEFAULT 'Active',
+        asset_type      TEXT,
+        serial_number   TEXT,
+        model           TEXT,
+        manufacturer    TEXT,
+        location        TEXT,
+        purchase_date   TEXT,
+        warranty_expiry TEXT,
+        created_at      TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
       )
     `);
       console.log('✅ SQLite Schema Migration: created/verified it_assets table');
 
       await client.execute(`
       CREATE TABLE IF NOT EXISTS it_tickets (
-        id            INTEGER PRIMARY KEY AUTOINCREMENT,
-        ticket_number TEXT UNIQUE NOT NULL,
-        title         TEXT NOT NULL,
-        description   TEXT,
-        reporter      TEXT NOT NULL,
-        category      TEXT NOT NULL,
-        status        TEXT DEFAULT 'Open',
-        priority      TEXT DEFAULT 'Medium',
-        created_at    TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+        id               INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_number    TEXT UNIQUE NOT NULL,
+        title            TEXT NOT NULL,
+        description      TEXT,
+        reporter         TEXT NOT NULL,
+        category         TEXT NOT NULL,
+        status           TEXT DEFAULT 'Open',
+        priority         TEXT DEFAULT 'Medium',
+        user_id          INTEGER REFERENCES users(id),
+        working_station  TEXT,
+        it_intervention  INTEGER DEFAULT 0,
+        assigned_to      TEXT,
+        resolution_notes TEXT,
+        created_at       TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
       )
     `);
       console.log('✅ SQLite Schema Migration: created/verified it_tickets table');

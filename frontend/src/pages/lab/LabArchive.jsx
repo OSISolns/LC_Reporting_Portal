@@ -24,7 +24,7 @@ const CLASSIFICATIONS = ['Public', 'Internal', 'Confidential', 'Restricted'];
 
 const DEPARTMENTS = [
   'Hematology', 'Biochemistry', 'Microbiology', 'Serology / Immunology',
-  'Urinalysis', 'Blood Bank', 'Coagulation', 'Immunoassay', 'Molecular', 'General', 'Other'
+  'Urinalysis', 'Blood Bank', 'Coagulation', 'Biochemestry', 'Molecular', 'General', 'Other'
 ];
 
 const MANAGER_ROLES = [
@@ -33,21 +33,21 @@ const MANAGER_ROLES = [
 ];
 
 const CLASSIFICATION_CONFIG = {
-  Public:       { color: 'bg-slate-100 text-slate-700 border-slate-300',   icon: <Shield size={11} /> },
-  Internal:     { color: 'bg-[#1B669E]/10 text-[#1B669E] border-[#1B669E]/30', icon: <ShieldCheck size={11} /> },
-  Confidential: { color: 'bg-amber-50 text-amber-800 border-amber-200',     icon: <ShieldAlert size={11} /> },
-  Restricted:   { color: 'bg-rose-50 text-rose-800 border-rose-200',        icon: <Lock size={11} /> },
+  Public: { color: 'bg-slate-100 text-slate-700 border-slate-300', icon: <Shield size={11} /> },
+  Internal: { color: 'bg-[#1B669E]/10 text-[#1B669E] border-[#1B669E]/30', icon: <ShieldCheck size={11} /> },
+  Confidential: { color: 'bg-amber-50 text-amber-800 border-amber-200', icon: <ShieldAlert size={11} /> },
+  Restricted: { color: 'bg-rose-50 text-rose-800 border-rose-200', icon: <Lock size={11} /> },
 };
 
 const FILE_ICONS = {
-  pdf:  <FileText size={18} className="text-rose-500 flex-shrink-0" />,
+  pdf: <FileText size={18} className="text-rose-500 flex-shrink-0" />,
   docx: <FileText size={18} className="text-[#1B669E] flex-shrink-0" />,
-  doc:  <FileText size={18} className="text-[#1B669E] flex-shrink-0" />,
+  doc: <FileText size={18} className="text-[#1B669E] flex-shrink-0" />,
   xlsx: <FileSpreadsheet size={18} className="text-emerald-500 flex-shrink-0" />,
-  xls:  <FileSpreadsheet size={18} className="text-emerald-500 flex-shrink-0" />,
-  csv:  <FileSpreadsheet size={18} className="text-teal-500 flex-shrink-0" />,
-  png:  <Image size={18} className="text-purple-500 flex-shrink-0" />,
-  jpg:  <Image size={18} className="text-purple-500 flex-shrink-0" />,
+  xls: <FileSpreadsheet size={18} className="text-emerald-500 flex-shrink-0" />,
+  csv: <FileSpreadsheet size={18} className="text-teal-500 flex-shrink-0" />,
+  png: <Image size={18} className="text-purple-500 flex-shrink-0" />,
+  jpg: <Image size={18} className="text-purple-500 flex-shrink-0" />,
   jpeg: <Image size={18} className="text-purple-500 flex-shrink-0" />,
 };
 const getFileIcon = (ext) => FILE_ICONS[(ext || '').toLowerCase()] || <File size={18} className="text-slate-400 flex-shrink-0" />;
@@ -152,13 +152,12 @@ function UploadModal({ onClose, onUploaded, defaultCategory }) {
             onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
             onDragLeave={() => setDragging(false)}
             onClick={() => fileRef.current?.click()}
-            className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
-              dragging ? 'border-[#1B669E] bg-[#1B669E]/10' : files.length > 0 ? 'border-[#1B669E]/50 bg-[#1B669E]/5' : 'border-slate-300 hover:border-[#1B669E]/60 hover:bg-slate-50'
-            }`}
+            className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${dragging ? 'border-[#1B669E] bg-[#1B669E]/10' : files.length > 0 ? 'border-[#1B669E]/50 bg-[#1B669E]/5' : 'border-slate-300 hover:border-[#1B669E]/60 hover:bg-slate-50'
+              }`}
           >
             <input ref={fileRef} type="file" multiple className="hidden" onChange={handleFileInput}
               accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.xls,.png,.jpg,.jpeg" />
-            
+
             <Upload size={28} className="mx-auto text-[#1B669E] mb-2" />
             <p className="text-sm font-semibold text-slate-700">Drop files here or click to browse</p>
             <p className="text-xs text-slate-400 mt-1">Select single or multiple files (PDF, DOCX, XLSX, TXT, CSV, Images — max 25 MB each)</p>
@@ -383,11 +382,10 @@ function ExcelPreviewCanvas({ base64Data, fileName }) {
                 key={name}
                 type="button"
                 onClick={() => setActiveSheet(name)}
-                className={`px-3 py-1 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                  isActive
+                className={`px-3 py-1 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${isActive
                     ? 'bg-emerald-600 text-white shadow-xs'
                     : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                }`}
+                  }`}
               >
                 <FileSpreadsheet size={13} />
                 {name}
@@ -629,19 +627,19 @@ function DocumentDetailView({ docMeta, isManager, onBack, onEdit, onDelete, onDo
         <div className="lg:col-span-4 space-y-4">
           <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
             <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Document Metadata</h2>
-            
+
             <div className="grid grid-cols-2 gap-3 text-xs">
               {[
                 { label: 'Ref / Doc No.', value: docMeta.reference_number },
-                { label: 'Department',    value: docMeta.department },
+                { label: 'Department', value: docMeta.department },
                 { label: 'Document Date', value: formatDate(docMeta.document_date) },
-                { label: 'Expiry Date',   value: formatDate(docMeta.expiry_date) },
-                { label: 'File Size',     value: formatBytes(docMeta.file_size_bytes) },
-                { label: 'File Format',   value: (docMeta.file_extension || '').toUpperCase() },
-                { label: 'Uploaded By',   value: docMeta.uploaded_by_name },
-                { label: 'Archived On',   value: formatDate(docMeta.created_at) },
-                { label: 'Live Views',    value: docMeta.view_count },
-                { label: 'Downloads',     value: docMeta.download_count },
+                { label: 'Expiry Date', value: formatDate(docMeta.expiry_date) },
+                { label: 'File Size', value: formatBytes(docMeta.file_size_bytes) },
+                { label: 'File Format', value: (docMeta.file_extension || '').toUpperCase() },
+                { label: 'Uploaded By', value: docMeta.uploaded_by_name },
+                { label: 'Archived On', value: formatDate(docMeta.created_at) },
+                { label: 'Live Views', value: docMeta.view_count },
+                { label: 'Downloads', value: docMeta.download_count },
               ].map(({ label, value }) => value ? (
                 <div key={label} className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                   <p className="text-slate-400 font-semibold uppercase tracking-wider text-[9px]">{label}</p>
@@ -699,11 +697,10 @@ function DocumentDetailView({ docMeta, isManager, onBack, onEdit, onDelete, onDo
                 <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                   {log.map(entry => (
                     <div key={entry.id} className="flex items-start gap-2.5 p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
-                      <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
-                        entry.action === 'download' ? 'bg-[#1B669E]' :
-                        entry.action === 'delete' ? 'bg-rose-500' :
-                        entry.action === 'update' ? 'bg-amber-500' : 'bg-emerald-500'
-                      }`} />
+                      <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${entry.action === 'download' ? 'bg-[#1B669E]' :
+                          entry.action === 'delete' ? 'bg-rose-500' :
+                            entry.action === 'update' ? 'bg-amber-500' : 'bg-emerald-500'
+                        }`} />
                       <div>
                         <p className="font-bold text-slate-800 capitalize">{entry.action}</p>
                         <p className="text-[11px] text-slate-500">{entry.user_name} · {formatDate(entry.accessed_at)}</p>
@@ -790,32 +787,32 @@ export default function LabArchive() {
   const userRole = (user?.role || '').toLowerCase();
   const isManager = MANAGER_ROLES.includes(userRole);
 
-  const [docs, setDocs]                 = useState([]);
-  const [total, setTotal]               = useState(0);
+  const [docs, setDocs] = useState([]);
+  const [total, setTotal] = useState(0);
   const [categoryCounts, setCatCounts] = useState({});
-  const [loading, setLoading]           = useState(true);
-  
+  const [loading, setLoading] = useState(true);
+
   // Navigation & Filtering
   const [activeCategory, setActiveCategory] = useState('ALL'); // 'ALL' or category name
-  const [search, setSearch]             = useState('');
-  const [filterClass, setFClass]        = useState('');
-  const [filterType, setFType]          = useState('');
-  const [dateFrom, setDateFrom]         = useState('');
-  const [dateTo, setDateTo]             = useState('');
-  const [filterOpen, setFilterOpen]     = useState(false);
+  const [search, setSearch] = useState('');
+  const [filterClass, setFClass] = useState('');
+  const [filterType, setFType] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [filterOpen, setFilterOpen] = useState(false);
 
   // Pagination & Sorting
-  const [page, setPage]                 = useState(1);
-  const [pageSize, setPageSize]         = useState(25);
-  const [sortField, setSortField]       = useState('created_at');
-  const [sortDir, setSortDir]           = useState('desc');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [sortField, setSortField] = useState('created_at');
+  const [sortDir, setSortDir] = useState('desc');
 
   // Modals & Side Panels
-  const [showUpload, setShowUpload]     = useState(false);
-  const [selectedDoc, setSelectedDoc]   = useState(null);
-  const [detailData, setDetailData]     = useState(null);
+  const [showUpload, setShowUpload] = useState(false);
+  const [selectedDoc, setSelectedDoc] = useState(null);
+  const [detailData, setDetailData] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [editTarget, setEditTarget]     = useState(null);
+  const [editTarget, setEditTarget] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -827,9 +824,9 @@ export default function LabArchive() {
       };
       if (activeCategory !== 'ALL') params.category = activeCategory;
       if (filterClass) params.classification = filterClass;
-      if (filterType)  params.file_type = filterType;
-      if (dateFrom)    params.date_from = dateFrom;
-      if (dateTo)      params.date_to = dateTo;
+      if (filterType) params.file_type = filterType;
+      if (dateFrom) params.date_from = dateFrom;
+      if (dateTo) params.date_to = dateTo;
 
       const res = await listDocuments(params);
       setDocs(res.data?.data || []);
@@ -986,11 +983,10 @@ export default function LabArchive() {
             {/* "All" Folder */}
             <button
               onClick={() => { setActiveCategory('ALL'); setPage(1); }}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer flex-shrink-0 ${
-                activeCategory === 'ALL'
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer flex-shrink-0 ${activeCategory === 'ALL'
                   ? 'bg-[#1B669E] text-white border-[#1B669E] shadow-sm'
                   : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-              }`}
+                }`}
             >
               <FolderOpen size={14} className={activeCategory === 'ALL' ? 'text-white' : 'text-slate-400'} />
               <span>All Documents</span>
@@ -1006,11 +1002,10 @@ export default function LabArchive() {
                 <button
                   key={cat}
                   onClick={() => { setActiveCategory(cat); setPage(1); }}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer flex-shrink-0 ${
-                    isActive
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer flex-shrink-0 ${isActive
                       ? 'bg-[#1B669E] text-white border-[#1B669E] shadow-sm'
                       : 'bg-white text-slate-700 border-slate-200 hover:border-[#1B669E]/40 hover:bg-slate-50'
-                  }`}
+                    }`}
                 >
                   <Folder size={14} className={isActive ? 'text-white' : 'text-slate-400'} />
                   <span>{cat}</span>
@@ -1027,7 +1022,7 @@ export default function LabArchive() {
       {/* ── Toolbar: Search & Filters ── */}
       <div className="bg-white border-b border-slate-200 px-6 py-2.5 flex-shrink-0">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-          
+
           {/* Breadcrumb / Category Status */}
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 w-full sm:w-auto">
             <span className="text-slate-400">Viewing:</span>
@@ -1053,11 +1048,10 @@ export default function LabArchive() {
             {/* Filter Toggle */}
             <button
               onClick={() => setFilterOpen(f => !f)}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                filterOpen || activeFilters > 0
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${filterOpen || activeFilters > 0
                   ? 'bg-[#1B669E]/10 text-[#1B669E] border-[#1B669E]/30'
                   : 'text-slate-600 border-slate-200 hover:bg-slate-50'
-              }`}
+                }`}
             >
               <Filter size={12} /> Filters {activeFilters > 0 && <span className="bg-[#1B669E] text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{activeFilters}</span>}
               <ChevronDown size={11} className={`transition-transform ${filterOpen ? 'rotate-180' : ''}`} />
@@ -1138,7 +1132,7 @@ export default function LabArchive() {
             </div>
           ) : (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-              
+
               {/* Data Table */}
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
@@ -1187,7 +1181,7 @@ export default function LabArchive() {
                           onClick={() => handleCardClick(doc)}
                         >
                           <td className="py-3 px-4 text-center text-slate-400 font-mono text-[11px]">{rowIndex}</td>
-                          
+
                           {/* Title & File Name */}
                           <td className="py-3 px-4 max-w-xs">
                             <div className="flex items-center gap-2.5">

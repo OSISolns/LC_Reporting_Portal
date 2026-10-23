@@ -234,11 +234,11 @@ router.post(
   }
 );
 
-// ─── Schedule: run auto-close every 15 minutes ───────────────────────────────
-const INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
+// ─── Schedule: run auto-close every 5 minutes (checks for 12:00 AM midnight cutoff) ───
+const INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 setInterval(() => {
   shift.autoCloseExpiredShifts().then(n => {
-    if (n > 0) console.log(`[ShiftPolicy] Scheduled run: ${n} shift(s) auto-closed`);
+    if (n > 0) console.log(`[ShiftPolicy] Scheduled run: ${n} shift(s) auto-closed at 12:00 AM cutoff`);
   });
 }, INTERVAL_MS);
 

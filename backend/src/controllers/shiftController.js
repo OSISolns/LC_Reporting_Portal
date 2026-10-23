@@ -10,7 +10,7 @@ const ExcelJS      = require('exceljs');
 const MAX_SHIFT_HOURS  = 8;   // Auto-close threshold
 const MIN_SHIFT_HOURS  = 6;   // Agent self-close minimum (general)
 const EVENING_MIN_HOURS = 5;  // Special minimum for 3PM-8PM shift
-const COOLDOWN_HOURS   = 12;  // Required rest between shifts
+const COOLDOWN_HOURS   = 0;   // Rest policy between shifts disabled (cooldown removed)
 const CHEF_NURSE_ROLES = ['chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse'];
 
 const isChefNurseRole = (role) => {
@@ -133,6 +133,35 @@ function getWaveEndDateTime(shift) {
   // Kigali is UTC+2 (no DST). UTC hour = Kigali hour - 2
   const endUtc = Date.UTC(year, month, endDay, endH - 2, endM, 0, 0);
   return new Date(endUtc);
+}
+
+/**
+ * Calculate the exact 12:00 AM (midnight) facility cutoff for a given shift.
+ * A shift opened on calendar day D in Kigali remains valid until 12:00 AM at the end of day D
+ * (which is 00:00:00 Kigali time on day D+1).
+ */
+function getShiftMidnightCutoff(shift) {
+  if (!shift || !shift.opened_at) return null;
+  const openedDate = new Date(shift.opened_at);
+  if (isNaN(openedDate.getTime())) return null;
+
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Africa/Kigali',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour12: false
+  }).formatToParts(openedDate);
+
+  const kmap = {};
+  for (const p of parts) kmap[p.type] = p.value;
+  const year = parseInt(kmap.year, 10);
+  const month = parseInt(kmap.month, 10) - 1;
+  const day = parseInt(kmap.day, 10);
+
+  // 12:00 AM (00:00:00) Kigali time on day + 1 (Africa/Kigali is UTC+2 -> subtract 2 hours from UTC midnight)
+  const midnightUtc = Date.UTC(year, month, day + 1, 0, 0, 0, 0) - (2 * 60 * 60 * 1000);
+  return new Date(midnightUtc);
 }
 
 /**
@@ -366,29 +395,6 @@ exports.openShift = async (req, res, next) => {
         message: 'You already have an open or draft shift. Please close it first.',
         shiftId: existing.id,
       });
-    }
-
-    // 12-hour cooldown check (skipped for supervisors with override)
-    if (!isOverride) {
-      const lastClosed = await q1(
-        `SELECT closed_at FROM shift_sessions
-         WHERE user_id = ? AND status = 'closed' AND closed_at IS NOT NULL
-         ORDER BY closed_at DESC LIMIT 1`,
-        [userId]
-      );
-      if (lastClosed) {
-        const hoursSinceLast = (Date.now() - new Date(lastClosed.closed_at).getTime()) / 3_600_000;
-        if (hoursSinceLast < COOLDOWN_HOURS) {
-          const remainingMins = Math.ceil((COOLDOWN_HOURS - hoursSinceLast) * 60);
-          return res.status(403).json({
-            success: false,
-            code:    'COOLDOWN_ACTIVE',
-            message: `Policy requires a ${COOLDOWN_HOURS}-hour rest between shifts. Please wait ${remainingMins} more minute${remainingMins !== 1 ? 's' : ''}, or ask your supervisor to authorise an override.`,
-            remainingMinutes: remainingMins,
-            cooldownHours:    COOLDOWN_HOURS,
-          });
-        }
-      }
     }
 
     // Validate shift role
@@ -1470,10 +1476,10 @@ async function upsertRoleCloseData(shift_role, shiftId, cashier_close, helpdesk_
   }
 }
 
-// ─── AUTO-CLOSE EXPIRED SHIFTS ────────────────────────────────────────────────
+// ─── AUTO-CLOSE UNCLOSED SHIFTS AT 12:00 AM ──────────────────────────────────
 /**
- * Runs periodically. Finds any shift that has passed the 1-hour grace period after shift end:
- *  1. Force-closes it with an OVERTIME flag
+ * Runs periodically. Finds any unclosed shift that has reached or passed 12:00 AM (midnight) facility cutoff:
+ *  1. Force-closes it with an UNCLOSED_AT_MIDNIGHT flag
  *  2. Sends an in-app notification to the agent
  *  3. Sends an in-app notification to every admin + deputy_coo
  */
@@ -1492,17 +1498,12 @@ exports.autoCloseExpiredShifts = async () => {
     const expired = [];
 
     for (const shift of activeShifts) {
-      const waveCfg = getWaveConfig(shift);
-      const waveEnd = getWaveEndDateTime(shift);
-      // Cutoff is exactly 1 hour after the shift end time
-      const cutoffTime = waveEnd
-        ? waveEnd.getTime() + 60 * 60 * 1000
-        : new Date(shift.opened_at).getTime() + MAX_SHIFT_HOURS * 60 * 60 * 1000;
-
-      if (now > cutoffTime) {
+      const midnightCutoff = getShiftMidnightCutoff(shift);
+      // Cutoff is strictly 12:00 AM midnight following the shift calendar day
+      if (midnightCutoff && now >= midnightCutoff.getTime()) {
         expired.push({
           ...shift,
-          reasonText: `Shift exceeded 1-hour closing grace period after shift end (${waveCfg.schedule}).`,
+          reasonText: 'Shift remained unclosed at 12:00 AM midnight facility cutoff.',
         });
       }
     }
@@ -1533,7 +1534,7 @@ exports.autoCloseExpiredShifts = async () => {
          WHERE id = ?`,
         [
           JSON.stringify(flagReasons),
-          `AUTO-CLOSED: ${reasonText} No handover submitted.`,
+          `AUTO-CLOSED: ${reasonText} No handover submitted before 12:00 AM.`,
           shift.id,
         ]
       );
@@ -1551,6 +1552,7 @@ exports.autoCloseExpiredShifts = async () => {
       );
 
       const openedAt  = new Date(shift.opened_at).toLocaleString('en-GB', {
+        timeZone: 'Africa/Kigali',
         hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short',
       });
       const shiftLink = `/shifts/${shift.id}`;
@@ -1558,8 +1560,8 @@ exports.autoCloseExpiredShifts = async () => {
       // Notify the agent who failed to close
       await Notification.create({
         userId:  shift.user_id,
-        title:   '⚠️ Your Shift Was Auto-Closed',
-        message: `Your shift (opened at ${openedAt}) was automatically closed and flagged: ${reasonText} Please contact your supervisor immediately.`,
+        title:   '⚠️ Your Shift Was Auto-Closed at 12:00 AM',
+        message: `Your shift (opened at ${openedAt}) remained unclosed and was automatically closed at 12:00 AM midnight facility cutoff.`,
         type:    'error',
         link:    shiftLink,
       });
@@ -1568,14 +1570,14 @@ exports.autoCloseExpiredShifts = async () => {
       for (const sup of supervisors) {
         await Notification.create({
           userId:  sup.id,
-          title:   `🚨 Shift Auto-Closed — ${shift.user_name}`,
-          message: `${shift.user_name}'s ${shift.shift_role.replace('_', ' ')} shift (opened ${openedAt}) was auto-closed and flagged: ${reasonText}`,
+          title:   `🚨 Shift Auto-Closed at 12:00 AM — ${shift.user_name}`,
+          message: `${shift.user_name}'s ${shift.shift_role.replace('_', ' ')} shift (opened ${openedAt}) was auto-closed at 12:00 AM midnight facility cutoff.`,
           type:    'error',
           link:    shiftLink,
         });
       }
 
-      console.log(`[ShiftPolicy] Auto-closed shift #${shift.id} for ${shift.user_name} (Reason: ${reasonText})`);
+      console.log(`[ShiftPolicy] Auto-closed shift #${shift.id} for ${shift.user_name} (12:00 AM midnight cutoff)`);
     }
 
     return expired.length;

@@ -4,14 +4,14 @@ import { toast } from 'react-hot-toast';
 import { getAnalyzers, createAnalyzer, updateAnalyzer, deleteAnalyzer } from '../../api/lab';
 import { useAuth } from '../../context/AuthContext';
 
-const DEPARTMENTS = ['Hematology', 'Biochemistry', 'Microbiology', 'Serology / Immunology', 'Urinalysis', 'Blood Bank', 'Coagulation', 'Immunoassay', 'Molecular', 'Other'];
+const DEPARTMENTS = ['Hematology', 'Biochemistry', 'Microbiology', 'Serology / Immunology', 'Urinalysis', 'Blood Bank', 'Coagulation', 'Biochemestry', 'Molecular', 'Other'];
 const STATUSES = ['Operational', 'Maintenance Due', 'Under Maintenance', 'Out of Service'];
 
 const STATUS_CONFIG = {
-  'Operational':        { color: 'bg-emerald-50 text-emerald-800 border-emerald-200', icon: <CheckCircle size={12} /> },
-  'Maintenance Due':    { color: 'bg-amber-50 text-amber-800 border-amber-200',   icon: <Clock size={12} /> },
-  'Under Maintenance':  { color: 'bg-blue-50 text-blue-800 border-blue-200',      icon: <WrenchIcon size={12} /> },
-  'Out of Service':     { color: 'bg-rose-50 text-rose-800 border-rose-200',      icon: <AlertTriangle size={12} /> },
+  'Operational': { color: 'bg-emerald-50 text-emerald-800 border-emerald-200', icon: <CheckCircle size={12} /> },
+  'Maintenance Due': { color: 'bg-amber-50 text-amber-800 border-amber-200', icon: <Clock size={12} /> },
+  'Under Maintenance': { color: 'bg-blue-50 text-blue-800 border-blue-200', icon: <WrenchIcon size={12} /> },
+  'Out of Service': { color: 'bg-rose-50 text-rose-800 border-rose-200', icon: <AlertTriangle size={12} /> },
 };
 
 const EMPTY_FORM = {
@@ -111,11 +111,10 @@ function AnalyzerModal({ initial, onSave, onClose, saving }) {
                   key={s}
                   type="button"
                   onClick={() => set('status', s)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                    form.status === s
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${form.status === s
                       ? STATUS_CONFIG[s]?.color || 'bg-slate-100 text-slate-800 border-slate-300'
                       : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
-                  }`}
+                    }`}
                 >
                   {s}
                 </button>
@@ -305,10 +304,10 @@ export default function LabAnalyzers() {
       {/* ── Summary Tiles ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'Total',            value: analyzers.length,                                                              color: 'text-blue-900' },
-          { label: 'Operational',      value: analyzers.filter(a => a.status === 'Operational').length,                      color: 'text-emerald-700' },
-          { label: 'Maintenance Due',  value: analyzers.filter(a => a.status === 'Maintenance Due').length,                  color: 'text-amber-700' },
-          { label: 'Out of Service',   value: analyzers.filter(a => a.status === 'Out of Service' || a.status === 'Under Maintenance').length, color: 'text-rose-700' },
+          { label: 'Total', value: analyzers.length, color: 'text-blue-900' },
+          { label: 'Operational', value: analyzers.filter(a => a.status === 'Operational').length, color: 'text-emerald-700' },
+          { label: 'Maintenance Due', value: analyzers.filter(a => a.status === 'Maintenance Due').length, color: 'text-amber-700' },
+          { label: 'Out of Service', value: analyzers.filter(a => a.status === 'Out of Service' || a.status === 'Under Maintenance').length, color: 'text-rose-700' },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">{label}</p>
