@@ -84,7 +84,7 @@ export default function LabManagerDashboard() {
           </button>
           <button
             onClick={() => navigate('/lab')}
-            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+            className="px-4 py-2 bg-[#1B669E] hover:bg-[#155280] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
           >
             Return to Laboratory Hub
           </button>

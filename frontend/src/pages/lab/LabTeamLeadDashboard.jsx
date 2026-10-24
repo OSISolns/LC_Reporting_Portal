@@ -184,7 +184,7 @@ export default function LabTeamLeadDashboard() {
         </div>
         <button
           onClick={() => navigate('/lab')}
-          className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
+          className="px-5 py-2.5 bg-[#1B669E] hover:bg-[#155280] text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
         >
           Return to Laboratory Hub
         </button>
@@ -888,7 +888,7 @@ export default function LabTeamLeadDashboard() {
                         <td className="py-2.5 px-4">
                           <button
                             onClick={() => navigate('/lab')}
-                            className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                            className="px-2.5 py-1 bg-[#1B669E] hover:bg-[#155280] text-white rounded-lg text-[10px] font-bold transition-all cursor-pointer shadow-2xs"
                           >
                             Trigger Recollection
                           </button>

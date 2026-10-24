@@ -384,7 +384,7 @@ const LIFECYCLE_STAGES = [
 const FieldTooltip = ({ text, children }) => (
   <div className="relative group w-full">
     {children}
-    <div className="absolute bottom-full mb-1.5 left-2 z-50 px-2.5 py-1 bg-slate-900 text-white text-[10px] font-normal rounded-md shadow-md opacity-0 group-hover:opacity-100 transition-all duration-150 pointer-events-none whitespace-nowrap after:content-[''] after:absolute after:top-full after:left-4 after:-translate-x-1/2 after:border-4 after:border-transparent after:border-t-slate-900">
+    <div className="absolute bottom-full mb-1.5 left-2 z-50 px-2.5 py-1 bg-[#1B669E] text-white text-[10px] font-normal rounded-md shadow-md opacity-0 group-hover:opacity-100 transition-all duration-150 pointer-events-none whitespace-nowrap after:content-[''] after:absolute after:top-full after:left-4 after:-translate-x-1/2 after:border-4 after:border-transparent after:border-t-[#1B669E]">
       {text}
     </div>
   </div>
@@ -1100,7 +1100,7 @@ const LabHub = () => {
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-              <FlaskConical className="text-slate-700" size={20} /> Laboratory Hub
+              <FlaskConical className="text-[#1B669E]" size={20} /> Laboratory Hub
             </h1>
             {isManager ? (
               <span className="px-2.5 py-0.5 bg-blue-100/80 text-blue-900 border border-blue-200 rounded-full text-[10px] font-bold flex items-center gap-1 shadow-2xs">
@@ -1125,14 +1125,14 @@ const LabHub = () => {
           {isManager && (
             <button
               onClick={() => navigate('/lab-manager')}
-              className="px-3.5 py-2 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+              className="px-3.5 py-2 bg-[#1B669E] hover:bg-[#155280] text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
             >
               <Activity size={15} /> Manager Dashboard
             </button>
           )}
           <button
             onClick={() => { handleGenerateBarcode(); setShowRegModal(true); }}
-            className="flex-1 sm:flex-none px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+            className="flex-1 sm:flex-none px-4 py-2 bg-[#1B669E] hover:bg-[#155280] text-white font-semibold text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
           >
             <Plus size={15} /> Register Specimen
           </button>
@@ -1194,7 +1194,7 @@ const LabHub = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
           <div>
             <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-              <FlaskConical size={14} className="text-slate-700" /> Operational Laboratory Units (Staff Stock In Use)
+              <FlaskConical size={14} className="text-[#1B669E]" /> Operational Laboratory Units (Staff Stock In Use)
             </h2>
             <p className="text-[11px] text-slate-500">
               Filter specimen queues and local operational stock by diagnostic discipline
@@ -1204,8 +1204,8 @@ const LabHub = () => {
             <button
               onClick={() => setUnitFilter('all')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${unitFilter === 'all'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  ? 'bg-[#1B669E] text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-[#1B669E]'
                 }`}
             >
               All Disciplines ({unitCounts.all})
@@ -1222,7 +1222,7 @@ const LabHub = () => {
                 key={unit.id}
                 onClick={() => setUnitFilter(isSelected ? 'all' : unit.id)}
                 className={`p-3 rounded-xl border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${isSelected
-                    ? 'border-indigo-600 bg-indigo-50/70 shadow-xs ring-1 ring-indigo-500/30'
+                    ? 'border-[#1B669E] bg-blue-50/70 shadow-xs ring-1 ring-[#1B669E]/30'
                     : 'border-slate-200/80 bg-white hover:bg-slate-50 hover:border-slate-300'
                   }`}
               >
@@ -1230,7 +1230,7 @@ const LabHub = () => {
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-bold text-xs text-slate-900">{unit.name}</span>
                     <span
-                      className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${count > 0 ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'
+                      className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${count > 0 ? 'bg-[#1B669E] text-white' : 'bg-slate-100 text-slate-400'
                         }`}
                     >
                       {count}
@@ -1241,7 +1241,7 @@ const LabHub = () => {
                   </p>
                 </div>
                 {isSelected && (
-                  <div className="mt-2 text-[9px] font-bold text-indigo-700 flex items-center gap-1">
+                  <div className="mt-2 text-[9px] font-bold text-[#1B669E] flex items-center gap-1">
                     <CheckCircle2 size={10} /> Active Filter
                   </div>
                 )}
@@ -1254,7 +1254,7 @@ const LabHub = () => {
       {/* ── WORKLIST HEADER & PHASE FILTERS ── */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 pb-3">
         <div className="flex items-center gap-2">
-          <Activity size={16} className="text-slate-700" />
+          <Activity size={16} className="text-[#1B669E]" />
           <h2 className="text-sm font-bold text-slate-900 tracking-tight">Specimen Worklist</h2>
         </div>
 
@@ -1264,7 +1264,7 @@ const LabHub = () => {
             <button
               key={p}
               onClick={() => setPhaseFilter(p)}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-medium capitalize cursor-pointer transition-colors ${phaseFilter === p ? 'bg-slate-900 text-white font-semibold' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+              className={`px-2.5 py-1 rounded-md text-[11px] font-medium capitalize cursor-pointer transition-colors ${phaseFilter === p ? 'bg-[#1B669E] text-white font-semibold shadow-xs' : 'text-slate-500 hover:text-[#1B669E] hover:bg-blue-50/70'
                 }`}
             >
               {p}
@@ -1284,7 +1284,7 @@ const LabHub = () => {
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Search patient, Accession No, barcode..."
-              className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200/80 rounded-lg text-xs font-normal focus:outline-none focus:border-slate-400 shadow-2xs"
+              className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200/80 rounded-lg text-xs font-normal focus:outline-none focus:border-[#1B669E] focus:ring-1 focus:ring-[#1B669E]/30 shadow-2xs"
             />
           </div>
 
@@ -1315,7 +1315,7 @@ const LabHub = () => {
                         <tr
                           key={order.id}
                           onClick={() => handleSelectOrder(order)}
-                          className={`cursor-pointer transition-colors ${isSelected ? 'bg-slate-100/70 border-l-2 border-l-slate-900' : 'hover:bg-slate-50'
+                          className={`cursor-pointer transition-colors ${isSelected ? 'bg-blue-50/70 border-l-2 border-l-[#1B669E]' : 'hover:bg-slate-50'
                             }`}
                         >
                           <td className="py-2.5 px-3">
@@ -1409,7 +1409,7 @@ const LabHub = () => {
                           <td className="py-2.5 px-3.5 text-right">
                             <button
                               onClick={(e) => { e.stopPropagation(); handleSelectOrder(order); }}
-                              className="px-2.5 py-1 text-slate-700 hover:text-slate-900 hover:bg-slate-100 text-[11px] font-medium rounded transition-colors cursor-pointer border border-slate-200"
+                              className="px-2.5 py-1 text-[#1B669E] hover:text-[#155280] hover:bg-blue-50 text-[11px] font-semibold rounded transition-colors cursor-pointer border border-blue-200/80"
                             >
                               View
                             </button>
@@ -1655,7 +1655,7 @@ const LabHub = () => {
                     handleAssignOrderStorage(selectedOrder.id, currentUnit);
                     toast.success(`Sample stored in ${getUnitLabel(currentUnit)}`);
                   }}
-                  className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
+                  className="w-full py-2.5 bg-[#1B669E] hover:bg-[#155280] text-white font-semibold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
                 >
                   <Save size={14} /> Store Sample in Unit
                 </button>
@@ -1695,7 +1695,7 @@ const LabHub = () => {
                     type="text"
                     value={patientSearchQuery}
                     onChange={e => setPatientSearchQuery(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded text-xs font-medium text-slate-900 focus:outline-none focus:border-slate-400"
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded text-xs font-medium text-slate-900 focus:outline-none focus:border-[#1B669E] focus:ring-1 focus:ring-[#1B669E]/30"
                   />
                 </FieldTooltip>
                 {searchingPatients && (
@@ -1924,7 +1924,7 @@ const LabHub = () => {
                   <button
                     type="button"
                     onClick={handleGenerateBarcode}
-                    className="px-3 py-2 bg-slate-800 text-white font-medium text-xs rounded cursor-pointer shrink-0"
+                    className="px-3 py-2 bg-[#1B669E] hover:bg-[#155280] text-white font-medium text-xs rounded cursor-pointer shrink-0 shadow-xs"
                   >
                     Gen
                   </button>
@@ -1941,7 +1941,7 @@ const LabHub = () => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2 bg-slate-900 hover:bg-slate-800 text-white font-medium rounded transition-colors cursor-pointer"
+                  className="flex-1 py-2 bg-[#1B669E] hover:bg-[#155280] text-white font-medium rounded transition-colors cursor-pointer shadow-xs"
                 >
                   Submit Order
                 </button>
