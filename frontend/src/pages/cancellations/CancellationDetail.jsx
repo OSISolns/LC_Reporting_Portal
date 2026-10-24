@@ -1,20 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  getCancellationById, 
-  verifyCancellation, 
-  approveCancellation, 
+import {
+  getCancellationById,
+  verifyCancellation,
+  approveCancellation,
   rejectCancellation,
   getCancellationPDF,
   uploadCancellationDocument
 } from '../../api/cancellations';
 import { submitRating } from '../../api/performance';
 import { useAuth } from '../../context/AuthContext';
-import { 
-  ChevronLeft, 
-  Download, 
-  CheckCircle, 
-  XCircle, 
+import {
+  ChevronLeft,
+  Download,
+  CheckCircle,
+  XCircle,
   ShieldCheck,
   MessageSquare,
   History,
@@ -58,7 +58,7 @@ const CancellationDetail = () => {
       setData(res.data.data);
     } catch (err) {
       if (isDev) {
-        console.warn('Failed to fetch request details, using mock fallback.');
+        console.warn('Failed to fetch Cancellation Request Details, using mock fallback.');
         setData({
           id: id.startsWith('CAN-') ? id : 'CAN-1025',
           patient_full_name: 'Robert Chen',
@@ -160,13 +160,13 @@ const CancellationDetail = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <CancellationDetailsView data={data} onExport={downloadPDF} />
-          
-          <SupportingDocumentSection 
-            data={data} 
-            requestId={id} 
-            requestType="cancellation" 
-            user={user} 
-            onUpload={handleDocumentUpload} 
+
+          <SupportingDocumentSection
+            data={data}
+            requestId={id}
+            requestType="cancellation"
+            user={user}
+            onUpload={handleDocumentUpload}
           />
 
           {data.status === 'rejected' && (
@@ -188,7 +188,7 @@ const CancellationDetail = () => {
               <ShieldCheck size={20} style={{ color: 'var(--primary)' }} />
               Workflow Actions
             </h3>
-            
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {data.status === 'pending' && hasPermission('cancellations', 'review') && (
                 <button onClick={handleVerify} style={{ padding: '14px', backgroundColor: 'var(--info)', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(23, 162, 184, 0.2)' }}>
@@ -207,7 +207,7 @@ const CancellationDetail = () => {
               {((data.status === 'pending' || data.status === 'verified') && hasPermission('cancellations', 'reject') && !(user.role === 'coo' && data.status === 'pending')) && (
                 <button onClick={() => setRejectModal(true)} style={{ padding: '14px', backgroundColor: 'transparent', color: 'var(--danger)', border: '1.5px solid var(--danger)', borderRadius: '10px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', cursor: 'pointer' }}>
                   <XCircle size={18} />
-                   Reject Request
+                  Reject Request
                 </button>
               )}
 
@@ -220,7 +220,7 @@ const CancellationDetail = () => {
                 ) : (
                   <button onClick={() => setRateModal(true)} style={{ padding: '14px', backgroundColor: '#003b44', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(0, 59, 68, 0.2)' }}>
                     <Star size={18} />
-                     Rate Staff Reason
+                    Rate Staff Reason
                   </button>
                 )
               )}
@@ -273,15 +273,15 @@ const CancellationDetail = () => {
           <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', lineHeight: 1.5 }}>
             Rating request reason provided by <strong>{data.creator_name}</strong>.
           </p>
-          
+
           <div>
             <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem', color: 'var(--primary-dark)' }}>Reason for Rating</label>
-            <input 
+            <input
               required
-              type="text" 
+              type="text"
               placeholder="e.g. Failure to verify patient PID"
-              value={ratingForm.reason} 
-              onChange={e => setRatingForm({...ratingForm, reason: e.target.value})}
+              value={ratingForm.reason}
+              onChange={e => setRatingForm({ ...ratingForm, reason: e.target.value })}
               style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', outline: 'none' }}
             />
           </div>
@@ -291,11 +291,11 @@ const CancellationDetail = () => {
               <label style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--primary-dark)' }}>Severity Score (1-10)</label>
               <span style={{ fontWeight: 800, color: ratingForm.severity >= 4 ? '#dc2626' : ratingForm.severity === 3 ? '#d97706' : '#10b981' }}>{ratingForm.severity}</span>
             </div>
-            <input 
-              type="range" 
-              min="1" max="10" 
-              value={ratingForm.severity} 
-              onChange={e => setRatingForm({...ratingForm, severity: parseInt(e.target.value)})}
+            <input
+              type="range"
+              min="1" max="10"
+              value={ratingForm.severity}
+              onChange={e => setRatingForm({ ...ratingForm, severity: parseInt(e.target.value) })}
               style={{ width: '100%', cursor: 'pointer' }}
             />
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
@@ -303,10 +303,10 @@ const CancellationDetail = () => {
               <span>3: Warning (Deducts 0.5 per 3)</span>
               <span>4-10: Point Deduction</span>
             </div>
-            
+
             <div style={{ marginTop: '1rem', padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
               <div style={{ fontWeight: 600, color: 'var(--primary-dark)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Info size={14}/> Deduction Legend
+                <Info size={14} /> Deduction Legend
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
                 <span><strong>1:</strong> 0 pts (Tolerable)</span>
@@ -325,10 +325,10 @@ const CancellationDetail = () => {
 
           <div>
             <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.9rem', color: 'var(--primary-dark)' }}>Additional Notes (Optional)</label>
-            <textarea 
+            <textarea
               rows="3"
-              value={ratingForm.note} 
-              onChange={e => setRatingForm({...ratingForm, note: e.target.value})}
+              value={ratingForm.note}
+              onChange={e => setRatingForm({ ...ratingForm, note: e.target.value })}
               style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', outline: 'none', resize: 'none' }}
             />
           </div>
@@ -346,11 +346,11 @@ const CancellationDetail = () => {
 const TimelineItem = ({ label, by, date, active, isLast }) => (
   <div style={{ display: 'flex', gap: '15px' }}>
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <div style={{ 
-        width: '12px', 
-        height: '12px', 
-        borderRadius: '50%', 
-        backgroundColor: active ? 'var(--primary)' : '#e2e8f0', 
+      <div style={{
+        width: '12px',
+        height: '12px',
+        borderRadius: '50%',
+        backgroundColor: active ? 'var(--primary)' : '#e2e8f0',
         border: active ? '3px solid rgba(0,123,138,0.2)' : 'none',
         marginTop: '6px',
         zIndex: 2

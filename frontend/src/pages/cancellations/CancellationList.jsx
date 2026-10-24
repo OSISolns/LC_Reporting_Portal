@@ -8,12 +8,12 @@ import Modal from '../../components/Modal';
 import CancellationFormFields from './components/CancellationFormFields';
 import CancellationDetailsView from './components/CancellationDetailsView';
 import { useFormAutoSave } from '../../hooks/useFormAutoSave';
-import { 
-  getCancellationById, 
-  createCancellation, 
+import {
+  getCancellationById,
+  createCancellation,
   updateCancellation,
-  getCancellationPDF, 
-  getCancellations, 
+  getCancellationPDF,
+  getCancellations,
   deleteCancellation,
   verifyCancellation,
   approveCancellation,
@@ -199,7 +199,7 @@ const CancellationList = () => {
       const res = await getCancellationById(id);
       setActiveRequest(res.data.data);
     } catch (err) {
-      console.error('Failed to fetch request details');
+      console.error('Failed to fetch Cancellation Request Details');
     } finally {
       setDetailLoading(false);
     }
@@ -311,16 +311,16 @@ const CancellationList = () => {
           <h1 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--primary-dark)', marginBottom: '0.25rem' }}>Cancellation Requests</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>Workflow for patient invoice/receipt cancellations.</p>
         </div>
-          {hasPermission('cancellations', 'create') && (
-            <button 
-              onClick={handleOpenCreate}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: '#1b669e', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 600, boxShadow: '0 4px 6px -1px rgba(27, 102, 158, 0.2)', cursor: 'pointer' }}
-            >
-              <Plus size={18} />
-              New Request
-            </button>
-          )}
-        </div>
+        {hasPermission('cancellations', 'create') && (
+          <button
+            onClick={handleOpenCreate}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: '#1b669e', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 600, boxShadow: '0 4px 6px -1px rgba(27, 102, 158, 0.2)', cursor: 'pointer' }}
+          >
+            <Plus size={18} />
+            New Request
+          </button>
+        )}
+      </div>
 
 
       <div className="glass card-shadow" style={{ padding: '1.25rem', marginBottom: '2rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', backgroundColor: '#ffffff', borderRadius: '12px' }}>
@@ -367,8 +367,8 @@ const CancellationList = () => {
           />
         </div>
         {(filters.search || filters.status || filters.startDate || filters.endDate) && (
-          <button 
-            onClick={() => setFilters({ search: '', status: '', startDate: '', endDate: '' })} 
+          <button
+            onClick={() => setFilters({ search: '', status: '', startDate: '', endDate: '' })}
             style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', padding: '0 8px', whiteSpace: 'nowrap' }}
           >
             Reset Filters
@@ -469,7 +469,7 @@ const CancellationList = () => {
                         </span>
                       ) : (
                         ['cashier', 'customer_care'].includes(r.billed_by_role || r.creator_role) ? (
-                          <button 
+                          <button
                             onClick={() => navigate(`/performance`, { state: { staffId: r.billed_by || r.created_by, type: 'cancellation', requestId: r.id } })}
                             style={{ color: 'var(--primary)', background: 'none', border: 'none', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
                           >
@@ -482,15 +482,15 @@ const CancellationList = () => {
                     </td>
                   )}
                   <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                    <button 
+                    <button
                       onClick={() => handleViewDetails(r.id)}
                       title="View Details"
-                      style={{ 
-                        color: 'var(--primary)', 
+                      style={{
+                        color: 'var(--primary)',
                         background: 'none',
                         border: 'none',
-                        display: 'inline-flex', 
-                        alignItems: 'center', 
+                        display: 'inline-flex',
+                        alignItems: 'center',
                         padding: '8px',
                         borderRadius: '8px',
                         cursor: 'pointer',
@@ -498,15 +498,15 @@ const CancellationList = () => {
                       }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,123,138,0.1)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                       <Eye size={18} />
                     </button>
-                    <button 
+                    <button
                       onClick={() => handleExport(r.id)}
                       title="Download PDF"
-                      style={{ 
-                        color: 'var(--success)', 
+                      style={{
+                        color: 'var(--success)',
                         background: 'none',
                         border: 'none',
-                        display: 'inline-flex', 
-                        alignItems: 'center', 
+                        display: 'inline-flex',
+                        alignItems: 'center',
                         padding: '8px',
                         borderRadius: '8px',
                         cursor: 'pointer',
@@ -515,7 +515,7 @@ const CancellationList = () => {
                       <Download size={18} />
                     </button>
                     {(r.status === 'pending' || r.status === 'draft') && (user.role === 'admin' || r.created_by === user.id) && (
-                      <button 
+                      <button
                         onClick={() => handleOpenEdit(r)}
                         title={r.status === 'draft' ? "Edit / Complete Draft" : "Edit Request"}
                         style={{ color: r.status === 'draft' ? '#d97706' : '#1b669e', background: 'none', border: 'none', cursor: 'pointer', padding: '8px' }}
@@ -524,7 +524,7 @@ const CancellationList = () => {
                       </button>
                     )}
                     {(r.status === 'pending' || r.status === 'draft') && hasPermission('cancellations', 'delete') && (user.role === 'admin' || r.created_by === user.id) && (
-                      <button 
+                      <button
                         onClick={() => handleDelete(r.id)}
                         title="Delete Request"
                         style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', padding: '8px' }}
@@ -595,13 +595,13 @@ const CancellationList = () => {
         )}
       </div>
       {/* Form Modal */}
-      <Modal 
-        isOpen={showCreateModal} 
+      <Modal
+        isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         title={editingRequest ? (editingRequest.status === 'draft' ? "Edit Draft Request" : "Edit Cancellation Request") : "Create Cancellation Request"}
         maxWidth="1100px"
       >
-        <CancellationFormFields 
+        <CancellationFormFields
           formData={formData}
           handleChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }))}
           handleSubmit={handleCreateSubmit}
@@ -618,14 +618,14 @@ const CancellationList = () => {
       <Modal
         isOpen={showViewModal}
         onClose={() => setShowViewModal(false)}
-        title="Request Details"
+        title="Cancellation Request Details"
         maxWidth="1100px"
       >
         {detailLoading ? (
           <div style={{ padding: '3rem', textAlign: 'center' }}><LoadingSpinner /></div>
         ) : (
-          <CancellationDetailsView 
-            data={activeRequest} 
+          <CancellationDetailsView
+            data={activeRequest}
             user={user}
             onUploadDocument={handleDocumentUpload}
             onExport={() => activeRequest && handleExport(activeRequest.id)}
