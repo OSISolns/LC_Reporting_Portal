@@ -3336,13 +3336,33 @@ const checkDepartmentAccess = async (userRole, departmentId) => {
 const getDepartmentForRole = async (role) => {
   const r = String(role || '').toLowerCase();
 
+  const LAB_ROLES = [
+    'lab_hod', 'lab_manager', 'quality_manager', 'qm',
+    'lab_team_lead', 'lab_lead',
+    'lab_safety_officer', 'lab_stock_officer',
+    'head_biochemistry', 'head_microbiology', 'head_hematology', 'head_histopathology',
+    'head_poct', 'head_phlebotomy', 'head_molecular_biology',
+    'lab_micro_specialist', 'lab_scientist', 'lab_tech', 'lab'
+  ];
+
   // 1. Department-specific role matching (MUST execute before generic title keywords)
   let name = null;
   if (r.includes('dental_lab') || r.includes('dental_tech')) {
     name = 'DENTAL LAB';
   } else if (r.includes('dental') || r.includes('dentist') || r.includes('ortho') || r.includes('prostho')) {
     name = 'DENTAL CLINIC';
-  } else if (r.includes('lab') || r.includes('pathology') || r.includes('medtech')) {
+  } else if (
+    LAB_ROLES.includes(r) ||
+    r.includes('lab') ||
+    r.includes('pathology') ||
+    r.includes('medtech') ||
+    r.includes('biochem') ||
+    r.includes('microbio') ||
+    r.includes('hemato') ||
+    r.includes('phlebo') ||
+    r.includes('poct') ||
+    r.includes('molecular_bio')
+  ) {
     name = 'LABORATORY';
   } else if (r.includes('nurse') || r.includes('nursing')) {
     name = 'NURSING';
@@ -3356,7 +3376,10 @@ const getDepartmentForRole = async (role) => {
 
   if (name) {
     try {
-      const { rows } = await db.query("SELECT id, name FROM departments WHERE UPPER(name) LIKE $1 LIMIT 1", [`%${name}%`]);
+      const { rows } = await db.query(
+        "SELECT id, name FROM departments WHERE UPPER(name) = $1 OR (UPPER(name) LIKE $2 AND UPPER(name) NOT LIKE '%DENTAL%') ORDER BY CASE WHEN UPPER(name) = $1 THEN 0 ELSE 1 END LIMIT 1",
+        [name, `%${name}%`]
+      );
       if (rows[0]) return rows[0];
     } catch (err) {
       console.error('Error resolving department for role:', err);

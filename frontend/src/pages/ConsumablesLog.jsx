@@ -1058,6 +1058,26 @@ function ConsumablesStatsTab({ entries = [], distributedStock = [], departments 
   );
 }
 
+export const ALL_LAB_ROLES = [
+  'admin', 'deputy_coo', 'chairman',
+  'lab_hod', 'lab_manager', 'quality_manager', 'qm',
+  'lab_safety_officer', 'lab_stock_officer',
+  'head_biochemistry', 'head_microbiology', 'head_hematology', 'head_histopathology',
+  'head_poct', 'head_phlebotomy', 'head_molecular_biology',
+  'lab_micro_specialist', 'lab_scientist',
+  'lab_team_lead', 'lab_lead', 'lab_tech', 'lab'
+];
+
+export const isLabRoleCheck = (role) => {
+  if (!role) return false;
+  const r = String(role).toLowerCase().trim();
+  if (['admin', 'deputy_coo', 'chairman', 'coo', 'general_manager'].includes(r)) return false;
+  if (ALL_LAB_ROLES.includes(r)) return true;
+  if (r.includes('biochem') || r.includes('microbio') || r.includes('hemato') || r.includes('phlebo') || r.includes('poct') || r.includes('molecular_bio')) return true;
+  if ((r.includes('lab') || r.includes('pathology') || r.includes('medtech')) && !r.includes('dental')) return true;
+  return false;
+};
+
 export default function ConsumablesLog({ defaultDeptName = null }) {
   const { user } = useAuth();
 
@@ -1069,9 +1089,26 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
     setExpandedItemIds(prev => ({ ...prev, [itemId]: !prev[itemId] }));
   };
 
+  const isLabRole = useMemo(() => {
+    return isLabRoleCheck(user?.role);
+  }, [user]);
+
+  const labDeptObj = useMemo(() => {
+    return departments.find(d => {
+      const n = (d.name || '').toUpperCase();
+      return (n === 'LABORATORY' || n.includes('LAB')) && !n.includes('DENTAL');
+    }) || null;
+  }, [departments]);
+
   const userDept = useMemo(() => {
     if (defaultDeptName && departments.length > 0) {
       let found = departments.find(d => d.name.toUpperCase() === defaultDeptName.toUpperCase());
+      if (!found && defaultDeptName.toUpperCase().includes('LAB')) {
+        found = departments.find(d => {
+          const n = d.name.toUpperCase();
+          return (n === 'LABORATORY' || n.includes('LAB')) && !n.includes('DENTAL');
+        });
+      }
       if (!found && defaultDeptName.toUpperCase().includes('DENTAL')) {
         found = departments.find(d => d.name.toUpperCase() === 'DENTAL' || d.name.toUpperCase().includes('DENTAL'));
       }
@@ -1080,18 +1117,33 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
 
     const r = String(user?.role || '').toLowerCase();
     let deptName = null;
-    if (r.includes('nurse') || r.includes('nursing')) deptName = 'NURSING';
+    if (isLabRoleCheck(r)) deptName = 'LABORATORY';
+    else if (r.includes('nurse') || r.includes('nursing')) deptName = 'NURSING';
     else if (r.includes('dental_lab') || r.includes('dental_tech')) deptName = 'DENTAL LAB';
     else if (r.includes('dental') || r.includes('dentist') || r.includes('ortho') || r.includes('prostho')) deptName = 'DENTAL CLINIC';
-    else if (r.includes('lab') || r.includes('pathology') || r.includes('medtech')) deptName = 'LABORATORY';
     else if (r.includes('stock') || r.includes('procurement')) deptName = 'GENERAL STORE';
     else if (r.includes('physio')) deptName = 'PHYSIO';
     else if (r.includes('operations') || r.includes('ops')) deptName = 'OPERATIONS';
     else if (r.includes('imaging') || r.includes('radio') || r.includes('sono')) deptName = 'IMAGING';
     else if (r === 'admin') return null;
 
+    if (!deptName && user?.department) {
+      const uDept = String(user.department).toUpperCase();
+      if (uDept.includes('LAB') && !uDept.includes('DENTAL')) deptName = 'LABORATORY';
+      else if (uDept.includes('NURS')) deptName = 'NURSING';
+      else if (uDept.includes('PHYSIO')) deptName = 'PHYSIO';
+      else if (uDept.includes('IMAG')) deptName = 'IMAGING';
+      else if (uDept.includes('DENTAL')) deptName = 'DENTAL CLINIC';
+    }
+
     if (!deptName) return null;
     let found = departments.find(d => d.name.toUpperCase() === deptName.toUpperCase());
+    if (!found && deptName === 'LABORATORY') {
+      found = departments.find(d => {
+        const n = d.name.toUpperCase();
+        return (n === 'LABORATORY' || n.includes('LAB')) && !n.includes('DENTAL');
+      });
+    }
     if (!found && deptName.includes('DENTAL')) {
       found = departments.find(d => d.name.toUpperCase() === 'DENTAL' || d.name.toUpperCase().includes('DENTAL'));
     }
@@ -1162,37 +1214,27 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
   const [filterTo, setFilterTo] = useState('');
 
   const activeDeptName = useMemo(() => {
+    if (isLabRole) return 'LABORATORY';
     const activeD = userDept ? userDept.id : (filterDept || formDept);
     const activeDeptObj = departments.find(d => String(d.id) === String(activeD));
     return (activeDeptObj?.name || defaultDeptName || '').toUpperCase();
-  }, [userDept, filterDept, formDept, departments, defaultDeptName]);
-
-  const isLabRole = useMemo(() => {
-    const r = (user?.role || '').toLowerCase();
-    return [
-      'lab_hod', 'lab_manager', 'quality_manager', 'qm',
-      'lab_safety_officer', 'lab_stock_officer',
-      'head_biochemistry', 'head_microbiology', 'head_hematology', 'head_histopathology',
-      'head_poct', 'head_phlebotomy', 'head_molecular_biology',
-      'lab_micro_specialist', 'lab_scientist',
-      'lab_team_lead', 'lab_lead', 'lab_tech', 'lab'
-    ].includes(r);
-  }, [user]);
+  }, [isLabRole, userDept, filterDept, formDept, departments, defaultDeptName]);
 
   const isLabDept = useMemo(() => {
-    return activeDeptName.includes('LABORATORY') || activeDeptName === 'LAB';
+    return (activeDeptName.includes('LABORATORY') || activeDeptName === 'LAB') && !activeDeptName.includes('DENTAL');
   }, [activeDeptName]);
 
   const showLabConsumablesWorkspace = useMemo(() => {
+    if (isLabRole) return true;
     const activeD = filterDept || formDept;
     if (activeD) {
       const activeDeptObj = departments.find(d => String(d.id) === String(activeD));
       const activeName = (activeDeptObj?.name || '').toUpperCase();
-      if (!activeName.includes('LAB') && !activeName.includes('LABORATORY')) {
+      if (!activeName.includes('LAB') || activeName.includes('DENTAL')) {
         return false;
       }
     }
-    return isLabDept || isLabRole;
+    return isLabDept;
   }, [isLabDept, isLabRole, filterDept, formDept, departments]);
 
   const isLabStockOfficer = useMemo(() => {
@@ -1496,13 +1538,29 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
   const [reqItemSearch, setReqItemSearch] = useState('');
   const [reqPickerTab, setReqPickerTab] = useState('All');
 
-  // Sync role-based department restrictions when user object is loaded
+  // Sync role-based department restrictions when user object or departments load
   useEffect(() => {
     if (userDept && userDept.id) {
-      setFormDept(userDept.id);
-      setFilterDept(userDept.id);
+      setFormDept(String(userDept.id));
+      setFilterDept(String(userDept.id));
+    } else if (isLabRole && labDeptObj) {
+      setFormDept(String(labDeptObj.id));
+      setFilterDept(String(labDeptObj.id));
     }
-  }, [userDept?.id, userDept?.name]);
+  }, [userDept?.id, userDept?.name, isLabRole, labDeptObj]);
+
+  // Ensure Laboratory Consumables Workspace is always locked to Laboratory department
+  useEffect(() => {
+    if (showLabConsumablesWorkspace && labDeptObj) {
+      const activeD = String(filterDept || formDept || '');
+      const activeDeptObj = departments.find(d => String(d.id) === activeD);
+      const activeName = (activeDeptObj?.name || '').toUpperCase();
+      if (!activeD || (!activeName.includes('LAB') || activeName.includes('DENTAL'))) {
+        setFormDept(String(labDeptObj.id));
+        setFilterDept(String(labDeptObj.id));
+      }
+    }
+  }, [showLabConsumablesWorkspace, labDeptObj, filterDept, formDept, departments]);
 
   // Fetch open dental cases whenever the dental mode is active
   useEffect(() => {
@@ -1560,7 +1618,10 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
     const isSilent = silent || initialLoaded;
     isSilent ? setRefreshing(true) : setLoading(true);
     try {
-      const targetDept = userDept ? userDept.id : filterDept;
+      let targetDept = userDept ? userDept.id : filterDept;
+      if (isLabRole && labDeptObj) {
+        targetDept = String(labDeptObj.id);
+      }
       const [deptRes, stockRes, logRes, sumRes, reqRes, masterRes, deactRes] = await Promise.allSettled([
         api.get('/clinical/inventory/departments'),
         api.get('/clinical/inventory/distributed-stock?include_central=true'),
@@ -1576,7 +1637,20 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
           params: { department_id: targetDept || undefined }
         }),
       ]);
-      if (deptRes.status === 'fulfilled' && deptRes.value.data.success) setDepartments(deptRes.value.data.data || []);
+      if (deptRes.status === 'fulfilled' && deptRes.value.data.success) {
+        const fetchedDepts = deptRes.value.data.data || [];
+        setDepartments(fetchedDepts);
+        if (isLabRole) {
+          const lDept = fetchedDepts.find(d => {
+            const n = (d.name || '').toUpperCase();
+            return (n === 'LABORATORY' || n.includes('LAB')) && !n.includes('DENTAL');
+          });
+          if (lDept) {
+            setFormDept(String(lDept.id));
+            setFilterDept(String(lDept.id));
+          }
+        }
+      }
       if (stockRes.status === 'fulfilled' && stockRes.value.data.success) setDistributedStock(stockRes.value.data.data || []);
       if (logRes.status === 'fulfilled' && logRes.value.data.success) setEntries(logRes.value.data.data || []);
       if (sumRes.status === 'fulfilled' && sumRes.value.data.success) setSummary(sumRes.value.data.data);
@@ -2717,25 +2791,11 @@ export default function ConsumablesLog({ defaultDeptName = null }) {
             </div>
             
             <div className="flex items-center gap-2">
-              {/* Department switcher if user is admin / multi-dept */}
-              {!userDept && departments.length > 1 && (
-                <div className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-xs">
-                  <Building size={14} className="text-slate-400" />
-                  <span className="text-xs font-bold text-slate-500">Dept:</span>
-                  <select
-                    value={formDept || filterDept}
-                    onChange={(e) => {
-                      setFormDept(e.target.value);
-                      setFilterDept(e.target.value);
-                    }}
-                    className="bg-transparent text-xs font-extrabold text-slate-800 outline-none cursor-pointer"
-                  >
-                    {departments.map(d => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              {/* Department badge: strictly Laboratory */}
+              <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-xl shadow-xs">
+                <Building size={14} className="text-blue-600" />
+                <span className="text-xs font-black text-blue-800">Dept: Laboratory</span>
+              </div>
               <button onClick={() => loadData(true)}
                 className="p-2.5 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl text-slate-600 transition-all shadow-xs cursor-pointer">
                 <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
