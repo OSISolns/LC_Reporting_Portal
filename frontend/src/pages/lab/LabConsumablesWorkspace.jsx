@@ -4,7 +4,8 @@ import {
   AlertTriangle, CheckCircle2, Clock, Droplet, Microscope,
   Activity, Archive, Dna, FlaskConical, Download, Layers,
   ChevronRight, ArrowRight, ArrowUpRight, ShieldCheck, Zap,
-  Refrigerator, Snowflake, Thermometer, Box, Eye, CheckCircle, ArrowDown
+  Refrigerator, Snowflake, Thermometer, Box, Eye, CheckCircle, ArrowDown,
+  ChevronDown
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import {
@@ -77,23 +78,29 @@ export default function LabConsumablesWorkspace({ user }) {
   // Add Bench Item Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [addingItem, setAddingItem] = useState(false);
+  const [addModalItemDropdown, setAddModalItemDropdown] = useState(false);
   const [newItemForm, setNewItemForm] = useState({
     item_name: '',
     category: 'Reagents',
     quantity_in_use: 5,
     unit_of_measure: 'kit',
     min_threshold: 2,
-    storage_location: 'Main Unit Bench'
+    storage_location: 'Main Unit Bench',
+    inventory_ref_id: null
   });
 
   // Requisitions State
   const [requisitions, setRequisitions] = useState([]);
   const [isReqModalOpen, setIsReqModalOpen] = useState(false);
   const [submittingReq, setSubmittingReq] = useState(false);
+  const [activeLineDropdown, setActiveLineDropdown] = useState(null);
+  const [showCatalogPicker, setShowCatalogPicker] = useState(false);
+  const [catalogSearchTerm, setCatalogSearchTerm] = useState('');
+  const [catalogCategoryFilter, setCatalogCategoryFilter] = useState('All');
   const [reqForm, setReqForm] = useState({
     urgency: 'Normal',
     notes: '',
-    items: [{ item_name: '', requested_quantity: 5, unit_of_measure: 'kit', item_category: 'Reagents' }]
+    items: [{ item_name: '', requested_quantity: 5, unit_of_measure: 'kit', item_category: 'Reagents', inventory_ref_id: null }]
   });
 
   // Requisition Detail Drawer
@@ -175,6 +182,136 @@ export default function LabConsumablesWorkspace({ user }) {
 
     return { totalItems, depleted, lowStock, adequate, pendingReqs };
   }, [unitStock, requisitions]);
+
+  // ── Unified Reagent Catalog with Stock Levels (Bench + Storage) ───────────
+  const selectableReagents = useMemo(() => {
+    const map = new Map();
+
+    // 1. Storage inventory (in-hand stock in fridges, freezers, and storage units)
+    (storageInventory || []).forEach(item => {
+      const name = (item.item_name || '').trim();
+      if (!name) return;
+      const key = name.toLowerCase();
+      map.set(key, {
+        id: item.id,
+        item_name: name,
+        category: item.category || 'Reagents',
+        unit_of_measure: item.unit_of_measure || 'kit',
+        storage_stock: Number(item.quantity_in_hand ?? 0),
+        bench_stock: 0,
+        min_threshold: Number(item.min_threshold || 2),
+        storage_location: item.storage_unit_label || (item.storage_temp ? `Temp: ${item.storage_temp}` : 'Cold Storage'),
+        inventory_ref_id: item.id,
+        equipment_group: item.equipment_group || null
+      });
+    });
+
+    // 2. Unit stock in use (bench stock for active unit)
+    (unitStock || []).forEach(item => {
+      const name = (item.item_name || '').trim();
+      if (!name) return;
+      const key = name.toLowerCase();
+      const existing = map.get(key);
+      const benchQty = Number(item.quantity_in_use ?? 0);
+      if (existing) {
+        existing.bench_stock = benchQty;
+        if (item.storage_location) existing.bench_location = item.storage_location;
+        if (item.category) existing.category = item.category;
+        if (item.unit_of_measure) existing.unit_of_measure = item.unit_of_measure;
+      } else {
+        map.set(key, {
+          id: item.id,
+          item_name: name,
+          category: item.category || 'Reagents',
+          unit_of_measure: item.unit_of_measure || 'kit',
+          storage_stock: 0,
+          bench_stock: benchQty,
+          min_threshold: Number(item.min_threshold || 2),
+          storage_location: item.storage_location || 'Main Bench',
+          inventory_ref_id: item.inventory_ref_id || null,
+          equipment_group: null
+        });
+      }
+    });
+
+    return Array.from(map.values()).sort((a, b) => a.item_name.localeCompare(b.item_name));
+  }, [storageInventory, unitStock]);
+
+  const getFilteredCatalog = useCallback((searchTerm) => {
+    if (!searchTerm || !searchTerm.trim()) return selectableReagents;
+    const q = searchTerm.toLowerCase().trim();
+    return selectableReagents.filter(i =>
+      i.item_name.toLowerCase().includes(q) ||
+      i.category.toLowerCase().includes(q) ||
+      (i.equipment_group && i.equipment_group.toLowerCase().includes(q)) ||
+      (i.storage_location && i.storage_location.toLowerCase().includes(q))
+    );
+  }, [selectableReagents]);
+
+  const getReagentStock = useCallback((itemName) => {
+    if (!itemName || !itemName.trim()) return null;
+    const key = itemName.trim().toLowerCase();
+    return selectableReagents.find(i => i.item_name.toLowerCase() === key) || null;
+  }, [selectableReagents]);
+
+  const handleSelectBenchItem = (item) => {
+    setNewItemForm(prev => ({
+      ...prev,
+      item_name: item.item_name,
+      category: item.category || prev.category,
+      unit_of_measure: item.unit_of_measure || prev.unit_of_measure,
+      min_threshold: item.min_threshold || prev.min_threshold,
+      storage_location: item.storage_location || prev.storage_location,
+      inventory_ref_id: item.inventory_ref_id || item.id || null
+    }));
+    setAddModalItemDropdown(false);
+  };
+
+  const handleSelectReqItem = (idx, item) => {
+    setReqForm(prev => {
+      const updated = [...prev.items];
+      updated[idx] = {
+        ...updated[idx],
+        item_name: item.item_name,
+        item_category: item.category || updated[idx].item_category || 'Reagents',
+        unit_of_measure: item.unit_of_measure || updated[idx].unit_of_measure || 'kit',
+        inventory_ref_id: item.inventory_ref_id || item.id || null
+      };
+      return { ...prev, items: updated };
+    });
+    setActiveLineDropdown(null);
+  };
+
+  const handleAddCatalogItemToReq = (item) => {
+    setReqForm(prev => {
+      const last = prev.items[prev.items.length - 1];
+      if (last && !last.item_name.trim()) {
+        const updated = [...prev.items];
+        updated[updated.length - 1] = {
+          item_name: item.item_name,
+          requested_quantity: Math.max(5, (item.min_threshold || 2) * 2),
+          unit_of_measure: item.unit_of_measure || 'kit',
+          item_category: item.category || 'Reagents',
+          inventory_ref_id: item.inventory_ref_id || item.id || null
+        };
+        return { ...prev, items: updated };
+      }
+      return {
+        ...prev,
+        items: [
+          ...prev.items,
+          {
+            item_name: item.item_name,
+            requested_quantity: Math.max(5, (item.min_threshold || 2) * 2),
+            unit_of_measure: item.unit_of_measure || 'kit',
+            item_category: item.category || 'Reagents',
+            inventory_ref_id: item.inventory_ref_id || item.id || null
+          }
+        ]
+      };
+    });
+    toast.success(`Added ${item.item_name} to requisition.`);
+  };
 
   // ── Handler: Log Consumption ───────────────────────────────────────────────
   const handleOpenConsume = (item) => {
@@ -1200,8 +1337,8 @@ export default function LabConsumablesWorkspace({ user }) {
 
       {/* ── MODAL: Log Item Consumption ── */}
       {consumeModalItem && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-md overflow-hidden">
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-start justify-center p-4 pt-10 sm:pt-16 overflow-y-auto">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-md overflow-hidden mb-8">
             <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/60">
               <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                 <Package className="text-[#1B669E]" size={16} />
@@ -1274,29 +1411,110 @@ export default function LabConsumablesWorkspace({ user }) {
 
       {/* ── MODAL: Add New Bench Item ── */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-lg overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/60">
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-start justify-center p-4 pt-10 sm:pt-16 overflow-y-auto">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-lg overflow-visible mb-8">
+            <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/60 rounded-t-xl">
               <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                 <Plus className="text-[#1B669E]" size={16} />
                 Register Bench Item for {activeUnit}
               </h3>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+              <button onClick={() => { setIsAddModalOpen(false); setAddModalItemDropdown(false); }} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
                 <X size={16} />
               </button>
             </div>
 
             <form onSubmit={handleAddBenchItem} className="p-5 space-y-3.5 text-xs">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Item / Consumable Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Sysmex Cellclean Solution, EDTA Tubes"
-                  value={newItemForm.item_name}
-                  onChange={(e) => setNewItemForm({ ...newItemForm, item_name: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:border-[#1B669E] text-slate-900"
-                />
+              <div className="relative">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-bold text-slate-700">Item / Consumable Name *</label>
+                  <span className="text-[10px] text-slate-400 font-medium">Select from storage or type new</span>
+                </div>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    placeholder="Search reagents in storage or type item name..."
+                    value={newItemForm.item_name}
+                    onFocus={() => setAddModalItemDropdown(true)}
+                    onChange={(e) => {
+                      setNewItemForm({ ...newItemForm, item_name: e.target.value });
+                      setAddModalItemDropdown(true);
+                    }}
+                    className="w-full pl-3 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:border-[#1B669E] text-slate-900 font-medium"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setAddModalItemDropdown(!addModalItemDropdown)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                    tabIndex={-1}
+                  >
+                    <ChevronDown size={16} className={`transition-transform duration-150 ${addModalItemDropdown ? 'rotate-180' : ''}`} />
+                  </button>
+                </div>
+
+                {/* Dropdown with stock levels */}
+                {addModalItemDropdown && (
+                  <div className="absolute left-0 right-0 top-full mt-1 z-40 bg-white border border-slate-200 rounded-xl shadow-2xl max-h-56 overflow-y-auto divide-y divide-slate-100">
+                    <div className="p-2 bg-slate-50/90 sticky top-0 border-b border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-600 z-10">
+                      <span>Cold Storage &amp; Laboratory Reagents</span>
+                      <span className="text-[10px] text-slate-400 font-normal">{getFilteredCatalog(newItemForm.item_name).length} reagents available</span>
+                    </div>
+                    {getFilteredCatalog(newItemForm.item_name).length === 0 ? (
+                      <div className="p-3 text-center text-slate-400 text-xs">
+                        No catalog item matched. You can type any custom consumable name!
+                      </div>
+                    ) : (
+                      getFilteredCatalog(newItemForm.item_name).map((item) => (
+                        <div
+                          key={item.id}
+                          onClick={() => handleSelectBenchItem(item)}
+                          className="p-2.5 hover:bg-blue-50/70 cursor-pointer transition-colors flex items-center justify-between text-left"
+                        >
+                          <div className="min-w-0 pr-2">
+                            <span className="font-bold text-slate-900 block truncate text-xs">{item.item_name}</span>
+                            <div className="flex items-center gap-1.5 text-[10px] text-slate-500 mt-0.5">
+                              <span className="px-1.5 py-0.2 rounded bg-slate-100 font-medium">{item.category}</span>
+                              {item.storage_location && (
+                                <span className="truncate text-slate-400">• {item.storage_location}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              item.storage_stock > 0
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : 'bg-slate-100 text-slate-500'
+                            }`}>
+                              {item.storage_stock} {item.unit_of_measure} in Storage
+                            </span>
+                            {item.bench_stock > 0 && (
+                              <span className="block text-[10px] text-[#1B669E] font-medium mt-0.5">
+                                ({item.bench_stock} on Bench)
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {/* Stock info badge if selected/matched */}
+                {(() => {
+                  const stockInfo = getReagentStock(newItemForm.item_name);
+                  if (!stockInfo) return null;
+                  return (
+                    <div className="mt-1.5 p-2 bg-blue-50/70 border border-blue-100 rounded-lg flex items-center justify-between text-[11px]">
+                      <div className="flex items-center gap-1.5 text-slate-700">
+                        <Refrigerator size={13} className="text-[#1B669E]" />
+                        <span>Storage Stock: <strong className="text-slate-900">{stockInfo.storage_stock} {stockInfo.unit_of_measure}</strong> ({stockInfo.storage_location || 'Cold Storage'})</span>
+                      </div>
+                      {stockInfo.bench_stock > 0 && (
+                        <span className="text-[#1B669E] font-semibold">Bench: {stockInfo.bench_stock} {stockInfo.unit_of_measure}</span>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1367,7 +1585,7 @@ export default function LabConsumablesWorkspace({ user }) {
               <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsAddModalOpen(false)}
+                  onClick={() => { setIsAddModalOpen(false); setAddModalItemDropdown(false); }}
                   className="px-3.5 py-1.5 font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg"
                 >
                   Cancel
@@ -1387,14 +1605,14 @@ export default function LabConsumablesWorkspace({ user }) {
 
       {/* ── MODAL: Create New Unit Requisition ── */}
       {isReqModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-2xl overflow-hidden my-8">
-            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/60">
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-start justify-center p-4 pt-10 sm:pt-16 overflow-y-auto">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-2xl overflow-visible mb-8">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/60 rounded-t-xl">
               <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                 <ClipboardList className="text-[#1B669E]" size={16} />
                 Create Requisition to Lab Stock Manager ({activeUnit})
               </h3>
-              <button onClick={() => setIsReqModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+              <button onClick={() => { setIsReqModalOpen(false); setActiveLineDropdown(null); setShowCatalogPicker(false); }} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
                 <X size={16} />
               </button>
             </div>
@@ -1437,64 +1655,237 @@ export default function LabConsumablesWorkspace({ user }) {
               </div>
 
               <div>
-                <div className="flex justify-between items-center mb-1.5">
-                  <label className="font-bold text-slate-700">Requested Reagent &amp; Item Lines *</label>
-                  <button
-                    type="button"
-                    onClick={handleAddReqLine}
-                    className="text-xs font-semibold text-[#1B669E] hover:underline"
-                  >
-                    + Add Item Line
-                  </button>
+                <div className="flex justify-between items-center mb-2">
+                  <div>
+                    <label className="font-bold text-slate-700">Requested Reagent &amp; Item Lines *</label>
+                    <span className="text-[10px] text-slate-400 block">Select from reagents catalog with live stock balances or type item</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowCatalogPicker(!showCatalogPicker)}
+                      className={`text-xs font-semibold px-2.5 py-1 rounded-lg border transition-colors flex items-center gap-1.5 ${
+                        showCatalogPicker
+                          ? 'bg-blue-50 border-blue-200 text-[#1B669E]'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      <Refrigerator size={13} className="text-[#1B669E]" />
+                      <span>{showCatalogPicker ? 'Hide Catalog' : 'Browse Catalog Stock'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddReqLine}
+                      className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-[#1B669E]/10 text-[#1B669E] hover:bg-[#1B669E]/20"
+                    >
+                      + Add Line
+                    </button>
+                  </div>
                 </div>
 
-                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                  {reqForm.items.map((line, idx) => (
-                    <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 border border-slate-200">
-                      <input
-                        type="text"
-                        placeholder="Reagent or Consumable Name"
-                        required
-                        value={line.item_name}
-                        onChange={(e) => handleReqLineChange(idx, 'item_name', e.target.value)}
-                        className="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
-                      />
-                      <input
-                        type="number"
-                        min="1"
-                        required
-                        placeholder="Qty"
-                        value={line.requested_quantity}
-                        onChange={(e) => handleReqLineChange(idx, 'requested_quantity', Number(e.target.value))}
-                        className="w-16 px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold"
-                      />
+                {/* Expandable Catalog Drawer with Stock Levels */}
+                {showCatalogPicker && (
+                  <div className="mb-3 p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="relative flex-1">
+                        <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="text"
+                          placeholder="Search cold storage & laboratory stock catalog..."
+                          value={catalogSearchTerm}
+                          onChange={(e) => setCatalogSearchTerm(e.target.value)}
+                          className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
+                        />
+                      </div>
                       <select
-                        value={line.unit_of_measure}
-                        onChange={(e) => handleReqLineChange(idx, 'unit_of_measure', e.target.value)}
-                        className="w-24 px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
+                        value={catalogCategoryFilter}
+                        onChange={(e) => setCatalogCategoryFilter(e.target.value)}
+                        className="px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700"
                       >
-                        {UOM_OPTIONS.map(u => (
-                          <option key={u} value={u}>{u}</option>
+                        {ITEM_CATEGORIES.map(c => (
+                          <option key={c} value={c}>{c}</option>
                         ))}
                       </select>
-                      {reqForm.items.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveReqLine(idx)}
-                          className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg"
-                        >
-                          <X size={14} />
-                        </button>
-                      )}
                     </div>
-                  ))}
+
+                    <div className="max-h-48 overflow-y-auto divide-y divide-slate-200/70 border border-slate-200 rounded-lg bg-white">
+                      {selectableReagents
+                        .filter(i => {
+                          if (catalogCategoryFilter !== 'All' && i.category !== catalogCategoryFilter) return false;
+                          if (catalogSearchTerm.trim()) {
+                            const q = catalogSearchTerm.toLowerCase();
+                            return i.item_name.toLowerCase().includes(q) || (i.storage_location && i.storage_location.toLowerCase().includes(q));
+                          }
+                          return true;
+                        })
+                        .slice(0, 30)
+                        .map(item => (
+                          <div key={item.id} className="p-2 px-3 flex items-center justify-between hover:bg-blue-50/50 transition-colors">
+                            <div className="min-w-0 pr-2">
+                              <span className="font-bold text-slate-900 block truncate text-xs">{item.item_name}</span>
+                              <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                                <span>{item.category}</span>
+                                {item.storage_location && <span>• {item.storage_location}</span>}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0">
+                              <div className="text-right">
+                                <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  item.storage_stock > 0
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : 'bg-slate-100 text-slate-400'
+                                }`}>
+                                  {item.storage_stock} {item.unit_of_measure} Storage
+                                </span>
+                                {item.bench_stock > 0 && (
+                                  <span className="block text-[10px] text-[#1B669E] font-medium">
+                                    {item.bench_stock} on Bench
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleAddCatalogItemToReq(item)}
+                                className="px-2.5 py-1 text-xs font-semibold bg-[#1B669E] text-white hover:bg-[#155280] rounded-lg shadow-xs"
+                              >
+                                + Add
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Item Lines */}
+                <div className="space-y-2.5 max-h-72 overflow-y-visible pr-1">
+                  {reqForm.items.map((line, idx) => {
+                    const stockInfo = getReagentStock(line.item_name);
+                    const isDropdownOpen = activeLineDropdown === idx;
+
+                    return (
+                      <div key={idx} className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          {/* Searchable input with stock dropdown */}
+                          <div className="relative flex-1">
+                            <input
+                              type="text"
+                              placeholder="Search reagent name or type consumable..."
+                              required
+                              value={line.item_name}
+                              onFocus={() => setActiveLineDropdown(idx)}
+                              onChange={(e) => {
+                                handleReqLineChange(idx, 'item_name', e.target.value);
+                                setActiveLineDropdown(idx);
+                              }}
+                              className="w-full pl-2.5 pr-8 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#1B669E]"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setActiveLineDropdown(isDropdownOpen ? null : idx)}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                              tabIndex={-1}
+                            >
+                              <ChevronDown size={14} className={`transition-transform duration-150 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {/* Floating Dropdown */}
+                            {isDropdownOpen && (
+                              <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-2xl max-h-48 overflow-y-auto divide-y divide-slate-100">
+                                <div className="p-2 bg-slate-50/90 sticky top-0 border-b border-slate-100 flex items-center justify-between text-[10px] font-bold text-slate-600 z-10">
+                                  <span>Select Reagent (with Stock Balance)</span>
+                                  <span className="text-slate-400 font-normal">{getFilteredCatalog(line.item_name).length} items</span>
+                                </div>
+                                {getFilteredCatalog(line.item_name).length === 0 ? (
+                                  <div className="p-2.5 text-center text-slate-400 text-xs">
+                                    No reagent matched. You can type any custom item name!
+                                  </div>
+                                ) : (
+                                  getFilteredCatalog(line.item_name).map(item => (
+                                    <div
+                                      key={item.id}
+                                      onClick={() => handleSelectReqItem(idx, item)}
+                                      className="p-2 hover:bg-blue-50/70 cursor-pointer transition-colors flex items-center justify-between text-left"
+                                    >
+                                      <div className="min-w-0 pr-2">
+                                        <span className="font-bold text-slate-900 block truncate text-xs">{item.item_name}</span>
+                                        <span className="text-[10px] text-slate-500">{item.category} • {item.storage_location}</span>
+                                      </div>
+                                      <div className="text-right shrink-0">
+                                        <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                          item.storage_stock > 0
+                                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                            : 'bg-slate-100 text-slate-400'
+                                        }`}>
+                                          {item.storage_stock} {item.unit_of_measure} Storage
+                                        </span>
+                                        {item.bench_stock > 0 && (
+                                          <span className="block text-[10px] text-[#1B669E] font-medium">
+                                            ({item.bench_stock} on Bench)
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <input
+                              type="number"
+                              min="1"
+                              required
+                              placeholder="Qty"
+                              value={line.requested_quantity}
+                              onChange={(e) => handleReqLineChange(idx, 'requested_quantity', Number(e.target.value))}
+                              className="w-16 px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-center"
+                            />
+                            <select
+                              value={line.unit_of_measure}
+                              onChange={(e) => handleReqLineChange(idx, 'unit_of_measure', e.target.value)}
+                              className="w-24 px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
+                            >
+                              {UOM_OPTIONS.map(u => (
+                                <option key={u} value={u}>{u}</option>
+                              ))}
+                            </select>
+                            {reqForm.items.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveReqLine(idx)}
+                                className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg"
+                              >
+                                <X size={14} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Live Stock Balance Chip */}
+                        {stockInfo && (
+                          <div className="flex items-center justify-between text-[10px] text-slate-500 px-1">
+                            <span className="flex items-center gap-1">
+                              <Refrigerator size={11} className="text-[#1B669E]" />
+                              Available in Storage: <strong className="text-slate-800">{stockInfo.storage_stock} {stockInfo.unit_of_measure}</strong>
+                              {stockInfo.storage_location && ` (${stockInfo.storage_location})`}
+                            </span>
+                            <span>
+                              Active Bench Stock: <strong className={stockInfo.bench_stock > 0 ? 'text-[#1B669E]' : 'text-rose-600'}>{stockInfo.bench_stock} {stockInfo.unit_of_measure}</strong>
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex justify-end gap-2.5">
                 <button
                   type="button"
-                  onClick={() => setIsReqModalOpen(false)}
+                  onClick={() => { setIsReqModalOpen(false); setActiveLineDropdown(null); setShowCatalogPicker(false); }}
                   className="px-4 py-2 font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg"
                 >
                   Cancel
@@ -1514,8 +1905,8 @@ export default function LabConsumablesWorkspace({ user }) {
 
       {/* ── DRAWER / MODAL: View Requisition Items ── */}
       {selectedReq && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-md overflow-hidden">
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-start justify-center p-4 pt-10 sm:pt-16 overflow-y-auto">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-md overflow-hidden mb-8">
             <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/60">
               <div>
                 <h3 className="font-bold text-sm text-slate-900">
@@ -1595,8 +1986,8 @@ export default function LabConsumablesWorkspace({ user }) {
 
       {/* ── MODAL: Transfer from Storage Unit to Unit Bench Stock ── */}
       {transferModalItem && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-md overflow-hidden">
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-start justify-center p-4 pt-10 sm:pt-16 overflow-y-auto">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-md overflow-hidden mb-8">
             <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/60">
               <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                 <Refrigerator className="text-[#1B669E]" size={16} />
