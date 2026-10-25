@@ -61,15 +61,13 @@ const IncidentList = () => {
   // Determine user's incident report viewing scope
   const userRole = (user?.role || '').toLowerCase();
   const isInstitutionalViewer = ['hsfp', 'admin'].includes(userRole);
+  const isChefNurse = [
+    'chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse',
+    'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse'
+  ].includes(userRole);
+  const isOperationsExec = ['coo', 'deputy_coo', 'deputy-coo'].includes(userRole);
 
   const ELEVATED_DEPARTMENT_MAP = {
-    'chef-nurse': 'Nursing & Inpatient Units',
-    'chef_nurse': 'Nursing & Inpatient Units',
-    'chief_nurse': 'Nursing & Inpatient Units',
-    'chief-nurse': 'Nursing & Inpatient Units',
-    'deputy_chef_nurse': 'Nursing & Inpatient Units',
-    'deputy-chef-nurse': 'Nursing & Inpatient Units',
-    'deputy_chief_nurse': 'Nursing & Inpatient Units',
     'lab_hod': 'Laboratory Services',
     'lab_manager': 'Laboratory Services',
     'lab_lead': 'Laboratory Services',
@@ -167,6 +165,14 @@ const IncidentList = () => {
             {isInstitutionalViewer ? (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600, backgroundColor: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd' }}>
                 <ShieldCheck size={14} /> Institutional Oversight (All Incidents)
+              </span>
+            ) : isChefNurse ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600, backgroundColor: '#fdf2f8', color: '#be185d', border: '1px solid #fbcfe8' }}>
+                <Building2 size={14} /> Nursing Oversight (All Nursing Incidents)
+              </span>
+            ) : isOperationsExec ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600, backgroundColor: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0' }}>
+                <Building2 size={14} /> Operations Oversight (All Operations Incidents)
               </span>
             ) : elevatedDepartment ? (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600, backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}>

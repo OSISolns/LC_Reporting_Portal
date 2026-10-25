@@ -87,12 +87,59 @@ class Incident {
     // 2. Creator can always view their own incident report
     if (Number(incident.created_by) === Number(user.id)) return true;
 
-    // 3. Users with elevated access can view incident reports from their departments
+    const incDept = (incident.department || '').toLowerCase();
+    const incType = (incident.incident_type || '').toLowerCase();
+    const creatorRole = (incident.creator_role || '').toLowerCase();
+
+    // 3. Chef Nurse: Can view all nursing incident reports
+    const CHEF_NURSE_ROLES = [
+      'chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse',
+      'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse'
+    ];
+    if (CHEF_NURSE_ROLES.includes(role)) {
+      const NURSING_DEPTS = [
+        'nursing', 'nurse', 'ward', 'inpatient', 'ipd', 'opd', 'outpatient',
+        'emergency', 'er', 'maternity', 'labour', 'delivery', 'anc', 'pnc',
+        'midwife', 'midwifery', 'icu', 'nicu', 'picu', 'hdu', 'triage',
+        'pediatric', 'pediatrics', 'surgical ward', 'medical ward', 'recovery', 'theatre', 'ot'
+      ];
+      const NURSING_ROLES = [
+        'nurse', 'rn_midwife', 'chef-nurse', 'chef_nurse', 'chief_nurse',
+        'chief-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse'
+      ];
+      if (NURSING_DEPTS.some(d => incDept.includes(d))) return true;
+      if (creatorRole && NURSING_ROLES.includes(creatorRole)) return true;
+    }
+
+    // 4. COO & Deputy COO: Can view all operations-related incident reports
+    const COO_ROLES = ['coo', 'deputy_coo', 'deputy-coo'];
+    if (COO_ROLES.includes(role)) {
+      const OPERATIONS_DEPTS = [
+        'operation', 'operations', 'logistics', 'fleet', 'transport',
+        'facility', 'facilities', 'maintenance', 'power', 'biomedical',
+        'procurement', 'store', 'central store', 'inventory', 'stock',
+        'cashier', 'billing', 'sales', 'finance', 'revenue',
+        'customer care', 'reception', 'front desk',
+        'it', 'information technology', 'systems',
+        'security', 'hygiene', 'housekeeping', 'cleaning',
+        'administration', 'admin'
+      ];
+      const OPERATIONS_ROLES = [
+        'operations', 'operations_staff', 'logistics_manager', 'logistics_officer',
+        'procurement-manager', 'stock-manager', 'cashier', 'principal_cashier',
+        'sales_manager', 'customer_care', 'it_officer', 'facilities_manager',
+        'fleet_officer', 'coo', 'deputy_coo', 'deputy-coo'
+      ];
+      if (OPERATIONS_DEPTS.some(d => incDept.includes(d))) return true;
+      if (incType === 'equipment') return true;
+      if (creatorRole && OPERATIONS_ROLES.includes(creatorRole)) return true;
+    }
+
+    // 5. Other department leads with elevated access
     const elevatedMap = Incident.getElevatedDepartmentMap();
     const elevatedDepts = elevatedMap[role] || [];
     if (elevatedDepts.length > 0) {
-      const incDept = (incident.department || '').toLowerCase();
-      return elevatedDepts.some(d => incDept.includes(d.toLowerCase()));
+      if (elevatedDepts.some(d => incDept.includes(d.toLowerCase()))) return true;
     }
 
     return false;
@@ -100,38 +147,114 @@ class Incident {
 
   static async getAll(filters = {}, user = null) {
     let query = `
-      SELECT i.*, u.full_name as creator_name, r.full_name as reviewer_name
+      SELECT i.*,
+             u.full_name as creator_name,
+             ro.name as creator_role,
+             r.full_name as reviewer_name
       FROM incident_reports i
       LEFT JOIN users u ON i.created_by = u.id
+      LEFT JOIN roles ro ON u.role_id = ro.id
       LEFT JOIN users r ON i.reviewed_by = r.id
       WHERE 1=1
     `;
     const params = [];
 
     // Access control:
-    // - Only HSFP and Admin can view ALL incidents
-    // - Users with elevated access can view incident reports from their departments
-    // - Everyone else can only view reports they created
+    // - HSFP and Admin can view ALL incidents
+    // - Chef Nurse can view all Nursing incident reports
+    // - COO and Deputy COO can view all Operations-related incident reports
+    // - Elevated managers view their department incidents
+    // - Regular staff view only reports they created
     const userRole = (user?.role || '').toLowerCase();
     const canViewAll = user && ['hsfp', 'admin'].includes(userRole);
 
     if (!canViewAll) {
-      const elevatedMap = Incident.getElevatedDepartmentMap();
-      const elevatedDepts = elevatedMap[userRole] || [];
+      const CHEF_NURSE_ROLES = [
+        'chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse',
+        'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse'
+      ];
+      const COO_ROLES = ['coo', 'deputy_coo', 'deputy-coo'];
 
-      if (elevatedDepts.length > 0) {
-        // Elevated department access: Department incidents OR self-reported
-        const deptConditions = elevatedDepts.map(d => {
+      if (CHEF_NURSE_ROLES.includes(userRole)) {
+        // Chef Nurse: All Nursing incident reports + own reports
+        const NURSING_DEPTS = [
+          'Nursing', 'Nurse', 'Ward', 'Inpatient', 'IPD', 'OPD', 'Outpatient',
+          'Emergency', 'Maternity', 'Labour', 'Delivery', 'ANC', 'PNC',
+          'Midwife', 'Midwifery', 'ICU', 'NICU', 'PICU', 'HDU', 'Triage',
+          'Pediatric', 'Pediatrics', 'Surgical Ward', 'Medical Ward', 'Recovery', 'Theatre', 'OT'
+        ];
+        const NURSING_ROLES = [
+          'nurse', 'rn_midwife', 'chef-nurse', 'chef_nurse', 'chief_nurse',
+          'chief-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse'
+        ];
+
+        const deptClauses = NURSING_DEPTS.map(d => {
           params.push(`%${d}%`);
-          return `i.department ILIKE $${params.length}`;
+          return `LOWER(i.department) LIKE LOWER($${params.length})`;
+        }).join(' OR ');
+
+        const roleClauses = NURSING_ROLES.map(r => {
+          params.push(r);
+          return `LOWER(ro.name) = LOWER($${params.length})`;
         }).join(' OR ');
 
         params.push(user.id);
-        query += ` AND (${deptConditions} OR i.created_by = $${params.length})`;
-      } else {
-        // Regular staff: ONLY their own reports
+        const ownClause = `i.created_by = $${params.length}`;
+
+        query += ` AND (${deptClauses} OR ${roleClauses} OR ${ownClause})`;
+      } else if (COO_ROLES.includes(userRole)) {
+        // COO & Deputy COO: All Operations-related incident reports + Equipment incidents + own reports
+        const OPERATIONS_DEPTS = [
+          'Operation', 'Operations', 'Logistics', 'Fleet', 'Transport',
+          'Facility', 'Facilities', 'Maintenance', 'Power', 'Biomedical',
+          'Procurement', 'Store', 'Central Store', 'Inventory', 'Stock',
+          'Cashier', 'Billing', 'Sales', 'Finance', 'Revenue',
+          'Customer Care', 'Reception', 'Front Desk',
+          'IT', 'Information Technology', 'Systems',
+          'Security', 'Hygiene', 'Housekeeping', 'Cleaning',
+          'Administration', 'Admin'
+        ];
+        const OPERATIONS_ROLES = [
+          'operations', 'operations_staff', 'logistics_manager', 'logistics_officer',
+          'procurement-manager', 'stock-manager', 'cashier', 'principal_cashier',
+          'sales_manager', 'customer_care', 'it_officer', 'facilities_manager',
+          'fleet_officer', 'coo', 'deputy_coo', 'deputy-coo'
+        ];
+
+        const deptClauses = OPERATIONS_DEPTS.map(d => {
+          params.push(`%${d}%`);
+          return `LOWER(i.department) LIKE LOWER($${params.length})`;
+        }).join(' OR ');
+
+        const roleClauses = OPERATIONS_ROLES.map(r => {
+          params.push(r);
+          return `LOWER(ro.name) = LOWER($${params.length})`;
+        }).join(' OR ');
+
+        params.push('Equipment');
+        const equipmentClause = `LOWER(i.incident_type) = LOWER($${params.length})`;
+
         params.push(user.id);
-        query += ` AND i.created_by = $${params.length}`;
+        const ownClause = `i.created_by = $${params.length}`;
+
+        query += ` AND (${deptClauses} OR ${roleClauses} OR ${equipmentClause} OR ${ownClause})`;
+      } else {
+        const elevatedMap = Incident.getElevatedDepartmentMap();
+        const elevatedDepts = elevatedMap[userRole] || [];
+
+        if (elevatedDepts.length > 0) {
+          const deptConditions = elevatedDepts.map(d => {
+            params.push(`%${d}%`);
+            return `LOWER(i.department) LIKE LOWER($${params.length})`;
+          }).join(' OR ');
+
+          params.push(user.id);
+          query += ` AND (${deptConditions} OR i.created_by = $${params.length})`;
+        } else {
+          // Regular staff: ONLY their own reports
+          params.push(user.id);
+          query += ` AND i.created_by = $${params.length}`;
+        }
       }
     }
 
@@ -145,7 +268,7 @@ class Incident {
     }
     if (filters.department) {
       params.push(`%${filters.department}%`);
-      query += ` AND i.department ILIKE $${params.length}`;
+      query += ` AND LOWER(i.department) LIKE LOWER($${params.length})`;
     }
 
     query += ` ORDER BY i.created_at DESC LIMIT 100`;
@@ -156,9 +279,11 @@ class Incident {
   static async findById(id) {
     let query = `SELECT i.*,
               u.full_name as creator_name,
+              ro.name as creator_role,
               a.full_name as approver_name
        FROM incident_reports i
        LEFT JOIN users u ON i.created_by = u.id
+       LEFT JOIN roles ro ON u.role_id = ro.id
        LEFT JOIN users a ON i.approved_by = a.id
        WHERE i.id = $1`;
     const params = [id];
