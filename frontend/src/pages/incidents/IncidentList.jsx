@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Plus, Search, AlertCircle, Eye, Download, Trash2 } from 'lucide-react';
+import { Plus, Search, AlertCircle, Eye, Download, Trash2, ShieldCheck, Building2, FileText } from 'lucide-react';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Modal from '../../components/Modal';
 import IncidentFormFields from './components/IncidentFormFields';
@@ -55,7 +55,47 @@ const IncidentList = () => {
   };
 
   const canReviewIncidents = hasPermission('incident_reports', 'review');
-  const canCreateIncidents = hasPermission('incident_reports', 'create');
+  // Everyone is authorized to report new incidents
+  const canCreateIncidents = true;
+
+  // Determine user's incident report viewing scope
+  const userRole = (user?.role || '').toLowerCase();
+  const isInstitutionalViewer = ['hsfp', 'admin'].includes(userRole);
+
+  const ELEVATED_DEPARTMENT_MAP = {
+    'chef-nurse': 'Nursing & Inpatient Units',
+    'chef_nurse': 'Nursing & Inpatient Units',
+    'chief_nurse': 'Nursing & Inpatient Units',
+    'chief-nurse': 'Nursing & Inpatient Units',
+    'deputy_chef_nurse': 'Nursing & Inpatient Units',
+    'deputy-chef-nurse': 'Nursing & Inpatient Units',
+    'deputy_chief_nurse': 'Nursing & Inpatient Units',
+    'lab_hod': 'Laboratory Services',
+    'lab_manager': 'Laboratory Services',
+    'lab_lead': 'Laboratory Services',
+    'lab_team_lead': 'Laboratory Services',
+    'lab_safety_officer': 'Laboratory Safety & Quality',
+    'head_biochemistry': 'Biochemistry Laboratory',
+    'head_microbiology': 'Microbiology Laboratory',
+    'head_hematology': 'Hematology Laboratory',
+    'head_histopathology': 'Histopathology Laboratory',
+    'head_molecular_biology': 'Molecular Biology Laboratory',
+    'head_phlebotomy': 'Phlebotomy Unit',
+    'head_poct': 'Point of Care Testing (POCT)',
+    'dental_hod': 'Dental Clinic & Lab',
+    'dental_lab_manager': 'Dental Laboratory',
+    'imaging_manager': 'Medical Imaging & Radiology',
+    'physio_manager': 'Physiotherapy & Rehab',
+    'logistics_manager': 'Logistics & Facilities',
+    'logistics_officer': 'Logistics & Transport',
+    'procurement-manager': 'Procurement & Store',
+    'stock-manager': 'Central Store & Inventory',
+    'sales_manager': 'Sales & Customer Care',
+    'principal_cashier': 'Cashier & Billing Desk',
+    'it_officer': 'IT & Biomedical Systems'
+  };
+
+  const elevatedDepartment = ELEVATED_DEPARTMENT_MAP[userRole];
 
   const handleViewDetails = async (id) => {
     setActiveIncident(null);
@@ -120,10 +160,25 @@ const IncidentList = () => {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--primary-dark)', marginBottom: '0.25rem' }}>Incident & Sentinel Events</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>Quality and safety report tracking for clinical excellence.</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <h1 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--primary-dark)', margin: 0 }}>Incident & Sentinel Events</h1>
+            {isInstitutionalViewer ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600, backgroundColor: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd' }}>
+                <ShieldCheck size={14} /> Institutional Oversight (All Incidents)
+              </span>
+            ) : elevatedDepartment ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600, backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}>
+                <Building2 size={14} /> Departmental Oversight: {elevatedDepartment}
+              </span>
+            ) : (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600, backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1' }}>
+                <FileText size={14} /> Personal Register (My Reports)
+              </span>
+            )}
+          </div>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', margin: '0.35rem 0 0' }}>Quality and safety report tracking for clinical excellence.</p>
         </div>
         {canCreateIncidents && (
           <button

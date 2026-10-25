@@ -1,8 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
-import { Zap, Activity, Plus, CheckCircle2, AlertTriangle, ShieldCheck, Thermometer, BatteryCharging } from 'lucide-react';
+import { Zap, Activity, Plus, CheckCircle2, AlertTriangle, ShieldCheck, Thermometer, BatteryCharging, AlertCircle, FileSpreadsheet } from 'lucide-react';
 import Modal from '../../components/Modal';
+import { exportToLegacyExcel } from '../../utils/excelExport';
+import {
+  getGeneratorLogs,
+  createGeneratorLog,
+  getClinicTours,
+  createClinicTour
+} from '../../api/logistics';
 
 const FacilitiesPower = () => {
   const { user } = useAuth();
@@ -39,13 +46,12 @@ const FacilitiesPower = () => {
     try {
       setLoading(true);
       const [gRes, tRes] = await Promise.all([
-        fetch('/api/logistics/facilities/generator', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
-        fetch('/api/logistics/facilities/tours', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
+        getGeneratorLogs(),
+        getClinicTours()
       ]);
-      const [gJson, tJson] = await Promise.all([gRes.json(), tRes.json()]);
 
-      if (gJson.success) setGenLogs(gJson.data);
-      if (tJson.success) setTours(tJson.data);
+      if (gRes.data?.success) setGenLogs(gRes.data.data);
+      if (tRes.data?.success) setTours(tRes.data.data);
     } catch (err) {
       toast.error('Error loading facilities data');
     } finally {
@@ -61,24 +67,16 @@ const FacilitiesPower = () => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      const res = await fetch('/api/logistics/facilities/generator', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(genForm)
-      });
-      const json = await res.json();
-      if (json.success) {
+      const res = await createGeneratorLog(genForm);
+      if (res.data?.success) {
         toast.success('Generator daily log saved!');
         setIsGenModal(false);
         fetchData();
       } else {
-        toast.error(json.message || 'Failed to submit log');
+        toast.error(res.data?.message || 'Failed to submit log');
       }
     } catch (err) {
-      toast.error('Error submitting generator log');
+      toast.error(err.response?.data?.message || 'Error submitting generator log');
     } finally {
       setSubmitting(false);
     }
@@ -88,30 +86,94 @@ const FacilitiesPower = () => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      const res = await fetch('/api/logistics/facilities/tours', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(tourForm)
-      });
-      const json = await res.json();
-      if (json.success) {
+      const res = await createClinicTour(tourForm);
+      if (res.data?.success) {
         toast.success('Daily Morning Clinic Tour saved!');
         setIsTourModal(false);
         fetchData();
       } else {
-        toast.error(json.message || 'Failed to submit tour');
+        toast.error(res.data?.message || 'Failed to submit tour');
       }
     } catch (err) {
-      toast.error('Error saving tour report');
+      toast.error(err.response?.data?.message || 'Error saving tour report');
     } finally {
       setSubmitting(false);
     }
   };
 
   const latestGen = genLogs[0] || null;
+
+  const handleExportGenLogsExcel = async () => {
+    if (!genLogs || genLogs.length === 0) {
+      toast.error('No generator logs available to export');
+      return;
+    }
+
+    await exportToLegacyExcel({
+      title: 'Legacy Clinics — Standby Generator & Power Resilience Log',
+      subtitle: 'Fuel Reserves, Output Voltages, Battery Levels & Routine Run Tests',
+      filename: 'Legacy_Clinics_Generator_Logs',
+      sheetName: 'Generator Logs',
+      user,
+      metadata: [
+        ['Facility Asset', 'Standby Diesel Generator #01 (Primary Hospital Backup)'],
+        ['Total Inspections', `${genLogs.length} Logged Checks`],
+        ['Current Readiness', latestGen ? `${latestGen.fuel_level_pct}% Fuel (${latestGen.fuel_liters} Liters)` : 'N/A'],
+      ],
+      summaryMetrics: [
+        { label: 'TOTAL LOGGED CHECKS', value: genLogs.length },
+        { label: 'LATEST FUEL LEVEL', value: latestGen ? `${latestGen.fuel_level_pct}%` : 'N/A' },
+        { label: 'LATEST FUEL VOLUME', value: latestGen ? `${latestGen.fuel_liters} L` : 'N/A' },
+      ],
+      columns: [
+        { key: 'id', header: 'LOG ID', width: 12, alignment: 'center' },
+        { key: 'check_date', header: 'CHECK DATE', width: 18, alignment: 'center' },
+        { key: 'battery_voltage', header: 'BATTERY VOLTAGE (V)', width: 20, alignment: 'right' },
+        { key: 'output_voltage', header: 'OUTPUT VOLTAGE (V)', width: 20, alignment: 'right' },
+        { key: 'fuel_level_pct', header: 'FUEL LEVEL (%)', width: 16, numFmt: '0"%"', alignment: 'right' },
+        { key: 'fuel_liters', header: 'FUEL VOLUME (L)', width: 18, numFmt: '#,##0.0 "L"', alignment: 'right' },
+        { key: 'test_run_mins', header: 'TEST RUN (MINS)', width: 18, numFmt: '#,##0', alignment: 'right' },
+        { key: 'operator_name', header: 'TECHNICIAN / OPERATOR', width: 24 },
+        { key: 'notes', header: 'OPERATIONAL NOTES', width: 34 },
+      ],
+      data: genLogs,
+    });
+  };
+
+  const handleExportToursExcel = async () => {
+    if (!tours || tours.length === 0) {
+      toast.error('No inspection tour logs available to export');
+      return;
+    }
+
+    await exportToLegacyExcel({
+      title: 'Legacy Clinics — Daily Facility & Environmental Inspection Tours',
+      subtitle: 'Walkthrough Audits: HVAC, Water, Lighting, Cold Storage & Biohazard Waste',
+      filename: 'Legacy_Clinics_Facility_Tours',
+      sheetName: 'Clinic Tours',
+      user,
+      metadata: [
+        ['Inspection Area', 'Full Campus Hospital Facilities & Clinical Wings'],
+        ['Audits Conducted', `${tours.length} Completed Rounds`],
+      ],
+      summaryMetrics: [
+        { label: 'TOTAL TOURS', value: tours.length },
+        { label: 'DEFECTS IDENTIFIED', value: tours.filter(t => t.issues_notes && t.issues_notes.trim()).length },
+      ],
+      columns: [
+        { key: 'id', header: 'TOUR ID', width: 12, alignment: 'center' },
+        { key: 'tour_date', header: 'TOUR DATE', width: 18, alignment: 'center' },
+        { key: 'conducted_by', header: 'INSPECTED BY', width: 22 },
+        { key: 'hvac_status', header: 'HVAC SYSTEM', width: 15, isStatus: true, alignment: 'center' },
+        { key: 'water_status', header: 'WATER & SANITATION', width: 18, isStatus: true, alignment: 'center' },
+        { key: 'lighting_status', header: 'LIGHTING & ELECTRICAL', width: 20, isStatus: true, alignment: 'center' },
+        { key: 'cold_room_status', header: 'COLD STORAGE ROOM', width: 18, isStatus: true, alignment: 'center' },
+        { key: 'waste_status', header: 'BIOHAZARD WASTE', width: 18, isStatus: true, alignment: 'center' },
+        { key: 'issues_notes', header: 'OBSERVED DEFECTS & ACTIONS', width: 36 },
+      ],
+      data: tours,
+    });
+  };
 
   return (
     <div style={{ paddingBottom: '3rem' }}>
@@ -125,13 +187,22 @@ const FacilitiesPower = () => {
           </h1>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={() => setIsGenModal(true)} className="btn btn-primary" style={{ backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button onClick={() => setIsGenModal(true)} className="btn btn-primary" style={{ backgroundColor: '#1B669E', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', padding: '8px 14px', fontWeight: 600, border: 'none' }}>
             <Zap size={16} /> Log Generator Check
           </button>
-          <button onClick={() => setIsTourModal(true)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button onClick={() => setIsTourModal(true)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', padding: '8px 14px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#334155', fontWeight: 600 }}>
             <Activity size={16} /> Record Clinic Tour
           </button>
+          {activeTab === 'tour' ? (
+            <button onClick={handleExportToursExcel} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', padding: '8px 14px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#1B669E', fontWeight: 600 }}>
+              <FileSpreadsheet size={16} color="#1B669E" /> Export Tours Excel
+            </button>
+          ) : (
+            <button onClick={handleExportGenLogsExcel} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', padding: '8px 14px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#1B669E', fontWeight: 600 }}>
+              <FileSpreadsheet size={16} color="#1B669E" /> Export Generator Excel
+            </button>
+          )}
         </div>
       </div>
 
@@ -176,8 +247,25 @@ const FacilitiesPower = () => {
             border: 'none',
             background: 'none',
             fontWeight: activeTab === 'generator' ? 700 : 500,
-            color: activeTab === 'generator' ? '#0f172a' : '#64748b',
-            borderBottom: activeTab === 'generator' ? '2px solid #0f172a' : 'none',
+            color: activeTab === 'generator' ? '#1B669E' : '#64748b',
+            borderBottom: activeTab === 'generator' ? '2px solid #1B669E' : 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}
+        >
+          <Zap size={16} /> Generator Diagnostics
+        </button>
+        <button
+          onClick={() => setActiveTab('tour')}
+          style={{
+            padding: '10px 16px',
+            border: 'none',
+            background: 'none',
+            fontWeight: activeTab === 'tour' ? 700 : 500,
+            color: activeTab === 'tour' ? '#1B669E' : '#64748b',
+            borderBottom: activeTab === 'tour' ? '2px solid #1B669E' : 'none',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',

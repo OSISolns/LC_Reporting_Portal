@@ -8,9 +8,9 @@ const { validate, body, param } = require('../middleware/validation');
 
 router.use(authMiddleware);
 
+// Everyone can create their incident report
 router.post(
   '/',
-  checkPermission('incident_reports', 'create'),
   validate([
     body('incidentType').trim().notEmpty().withMessage('Incident type is required').isIn(['Patient', 'Staff', 'Equipment', 'Others']).withMessage('Invalid incident type'),
     body('department').trim().notEmpty().withMessage('Department is required'),
@@ -21,16 +21,14 @@ router.post(
   incidentController.createReport
 );
 
-router.get(
-  '/', 
-  (req, res, next) => next(), 
-  incidentController.getAllReports
-);
+// Scoped listing: HSFP views all; elevated users view their departments; others view their own
+router.get('/', incidentController.getAllReports);
 
-// Export routes
-router.get('/export/excel', checkPermission('reports', 'download'), incidentController.exportExcel);
-router.get('/:id/pdf', checkPermission('incident_reports', 'view'), validate([param('id').isInt().withMessage('Invalid report ID')]), incidentController.getPDF);
+// Export routes (scoped to authorized reports)
+router.get('/export/excel', incidentController.exportExcel);
+router.get('/:id/pdf', validate([param('id').isInt().withMessage('Invalid report ID')]), incidentController.getPDF);
 
+// HSFP Review & Approval
 router.patch(
   '/:id/approve',
   checkPermission('incident_reports', 'approve'),
@@ -41,7 +39,7 @@ router.patch(
   incidentController.approveReport
 );
 
-router.get('/:id', checkPermission('incident_reports', 'view'), validate([param('id').isInt().withMessage('Invalid report ID')]), incidentController.getReportById);
-router.delete('/:id', checkPermission('incident_reports', 'delete'), validate([param('id').isInt().withMessage('Invalid report ID')]), incidentController.deleteReport);
+router.get('/:id', validate([param('id').isInt().withMessage('Invalid report ID')]), incidentController.getReportById);
+router.delete('/:id', validate([param('id').isInt().withMessage('Invalid report ID')]), incidentController.deleteReport);
 
 module.exports = router;

@@ -8,6 +8,7 @@ import {
   Package, DollarSign, Calendar, RefreshCw, AlertTriangle, CheckCircle2,
   Clock, ArrowRight, ShieldAlert, FileText, ChevronRight
 } from 'lucide-react';
+import { getLogisticsDashboardStats } from '../../api/logistics';
 
 const LogisticsStatsDashboard = () => {
   const { user } = useAuth();
@@ -36,14 +37,11 @@ const LogisticsStatsDashboard = () => {
   const fetchStats = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/logistics/dashboard-stats', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      const json = await res.json();
-      if (json.success) {
-        setData(json.data);
+      const res = await getLogisticsDashboardStats();
+      if (res.data?.success) {
+        setData(res.data.data);
       } else {
-        toast.error(json.message || 'Failed to load logistics statistics');
+        toast.error(res.data?.message || 'Failed to load logistics statistics');
       }
     } catch (err) {
       console.error(err);

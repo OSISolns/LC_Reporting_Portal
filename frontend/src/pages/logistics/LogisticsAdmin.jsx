@@ -1,8 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
-import { DollarSign, Plane, Printer, FileText, Download, Plus, CheckCircle2, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { DollarSign, Plane, Printer, FileText, Download, Plus, CheckCircle2, ShieldCheck, AlertTriangle, ExternalLink, FileSpreadsheet } from 'lucide-react';
 import Modal from '../../components/Modal';
+import { exportToLegacyExcel, exportMultiSheetLegacyExcel } from '../../utils/excelExport';
+import {
+  getPettyCash,
+  createPettyCash,
+  updatePettyCash,
+  getSampleDispatches,
+  createSampleDispatch,
+  updateSampleDispatch,
+  getPrintRequisitions,
+  createPrintRequisition,
+  updatePrintRequisition,
+  getCfoReport
+} from '../../api/logistics';
 
 const LogisticsAdmin = () => {
   const { user } = useAuth();
@@ -45,17 +58,16 @@ const LogisticsAdmin = () => {
     try {
       setLoading(true);
       const [cRes, sRes, pRes, rRes] = await Promise.all([
-        fetch('/api/logistics/admin/petty-cash', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
-        fetch('/api/logistics/admin/sample-dispatches', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
-        fetch('/api/logistics/admin/print-requisitions', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
-        fetch('/api/logistics/admin/cfo-report', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
+        getPettyCash(),
+        getSampleDispatches(),
+        getPrintRequisitions(),
+        getCfoReport()
       ]);
-      const [cJson, sJson, pJson, rJson] = await Promise.all([cRes.json(), sRes.json(), pRes.json(), rRes.json()]);
 
-      if (cJson.success) setPettyCash(cJson.data);
-      if (sJson.success) setSamples(sJson.data);
-      if (pJson.success) setPrintReqs(pJson.data);
-      if (rJson.success) setCfoReport(rJson.data);
+      if (cRes.data?.success) setPettyCash(cRes.data.data);
+      if (sRes.data?.success) setSamples(sRes.data.data);
+      if (pRes.data?.success) setPrintReqs(pRes.data.data);
+      if (rRes.data?.success) setCfoReport(rRes.data.data);
     } catch (err) {
       toast.error('Error loading logistics admin data');
     } finally {
@@ -71,24 +83,16 @@ const LogisticsAdmin = () => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      const res = await fetch('/api/logistics/admin/petty-cash', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(cashForm)
-      });
-      const json = await res.json();
-      if (json.success) {
+      const res = await createPettyCash(cashForm);
+      if (res.data?.success) {
         toast.success('Petty cash expense logged!');
         setIsCashModal(false);
         fetchData();
       } else {
-        toast.error(json.message || 'Failed to log expense');
+        toast.error(res.data?.message || 'Failed to log expense');
       }
     } catch (err) {
-      toast.error('Error saving petty cash');
+      toast.error(err.response?.data?.message || 'Error saving petty cash');
     } finally {
       setSubmitting(false);
     }
@@ -98,24 +102,16 @@ const LogisticsAdmin = () => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      const res = await fetch('/api/logistics/admin/sample-dispatches', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(sampleForm)
-      });
-      const json = await res.json();
-      if (json.success) {
+      const res = await createSampleDispatch(sampleForm);
+      if (res.data?.success) {
         toast.success('NIPT Sample DHL dispatch logged!');
         setIsSampleModal(false);
         fetchData();
       } else {
-        toast.error(json.message || 'Failed to log shipment');
+        toast.error(res.data?.message || 'Failed to log shipment');
       }
     } catch (err) {
-      toast.error('Error recording sample dispatch');
+      toast.error(err.response?.data?.message || 'Error recording sample dispatch');
     } finally {
       setSubmitting(false);
     }
@@ -125,24 +121,16 @@ const LogisticsAdmin = () => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      const res = await fetch('/api/logistics/admin/print-requisitions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(printForm)
-      });
-      const json = await res.json();
-      if (json.success) {
+      const res = await createPrintRequisition(printForm);
+      if (res.data?.success) {
         toast.success('Stationery print requisition created!');
         setIsPrintModal(false);
         fetchData();
       } else {
-        toast.error(json.message || 'Failed to submit requisition');
+        toast.error(res.data?.message || 'Failed to submit requisition');
       }
     } catch (err) {
-      toast.error('Error creating requisition');
+      toast.error(err.response?.data?.message || 'Error creating requisition');
     } finally {
       setSubmitting(false);
     }
@@ -150,66 +138,180 @@ const LogisticsAdmin = () => {
 
   const handleUpdatePettyCashStatus = async (id, status) => {
     try {
-      const res = await fetch(`/api/logistics/admin/petty-cash/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
-        body: JSON.stringify({ status })
-      });
-      const json = await res.json();
-      if (json.success) {
+      const res = await updatePettyCash(id, { status });
+      if (res.data?.success) {
         toast.success(`Petty cash marked as ${status}`);
         fetchData();
       } else {
-        toast.error(json.message || 'Failed to update status');
+        toast.error(res.data?.message || 'Failed to update status');
       }
     } catch (err) {
-      toast.error('Error updating status');
+      toast.error(err.response?.data?.message || 'Error updating status');
     }
   };
 
   const handleUpdateSampleStatus = async (id, status) => {
     try {
-      const res = await fetch(`/api/logistics/admin/sample-dispatches/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
-        body: JSON.stringify({ status })
-      });
-      const json = await res.json();
-      if (json.success) {
+      const res = await updateSampleDispatch(id, { status });
+      if (res.data?.success) {
         toast.success(`Shipment updated to ${status}`);
         fetchData();
       } else {
-        toast.error(json.message || 'Failed to update status');
+        toast.error(res.data?.message || 'Failed to update status');
       }
     } catch (err) {
-      toast.error('Error updating status');
+      toast.error(err.response?.data?.message || 'Error updating status');
     }
   };
 
   const handleUpdatePrintStatus = async (id, status) => {
     try {
-      const res = await fetch(`/api/logistics/admin/print-requisitions/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
-        body: JSON.stringify({ status })
-      });
-      const json = await res.json();
-      if (json.success) {
+      const res = await updatePrintRequisition(id, { status });
+      if (res.data?.success) {
         toast.success(`Requisition updated to ${status}`);
         fetchData();
       } else {
-        toast.error(json.message || 'Failed to update status');
+        toast.error(res.data?.message || 'Failed to update status');
       }
     } catch (err) {
-      toast.error('Error updating status');
+      toast.error(err.response?.data?.message || 'Error updating status');
     }
+  };
+
+  const handleExportPettyCashExcel = async () => {
+    if (!pettyCash || pettyCash.length === 0) {
+      toast.error('No petty cash transactions to export');
+      return;
+    }
+
+    const totalExpense = pettyCash.reduce((acc, c) => acc + (Number(c.amount) || 0), 0);
+
+    await exportToLegacyExcel({
+      title: 'Legacy Clinics — Operational Petty Cash Ledger',
+      subtitle: 'Disbursements, Emergency Operations, Fuel & Technical Vouchers',
+      filename: 'Legacy_Clinics_Petty_Cash',
+      sheetName: 'Petty Cash Ledger',
+      user,
+      metadata: [
+        ['Reconciliation Account', 'Hospital Operational Petty Cash'],
+        ['Total Disbursed', `${totalExpense.toLocaleString()} RWF`],
+        ['Voucher Count', `${pettyCash.length} Recorded Transactions`],
+      ],
+      summaryMetrics: [
+        { label: 'TOTAL VOUCHERS', value: pettyCash.length },
+        { label: 'TOTAL DISBURSED', value: `${totalExpense.toLocaleString()} RWF` },
+        { label: 'AVG VOUCHER AMOUNT', value: `${Math.round(totalExpense / (pettyCash.length || 1)).toLocaleString()} RWF` },
+      ],
+      columns: [
+        { key: 'id', header: 'VOUCHER ID', width: 14, alignment: 'center' },
+        { key: 'transaction_date', header: 'DATE', width: 16, alignment: 'center' },
+        { key: 'category', header: 'EXPENSE CATEGORY', width: 22 },
+        { key: 'description', header: 'DESCRIPTION / JUSTIFICATION', width: 32 },
+        { key: 'amount', header: 'AMOUNT (RWF)', width: 18, numFmt: '#,##0 "RWF"', alignment: 'right' },
+        { key: 'receipt_number', header: 'RECEIPT / INVOICE #', width: 20, alignment: 'center' },
+        { key: 'logged_by', header: 'LOGGED BY', width: 20 },
+        { key: 'status', header: 'STATUS', width: 14, isStatus: true, alignment: 'center' },
+      ],
+      data: pettyCash,
+    });
+  };
+
+  const handleExportSamplesExcel = async () => {
+    if (!samples || samples.length === 0) {
+      toast.error('No DHL dispatch records to export');
+      return;
+    }
+
+    await exportToLegacyExcel({
+      title: 'Legacy Clinics — DHL International Specimen Dispatches',
+      subtitle: 'Cold-Chain Diagnostic Samples, NIPT European Lab Shipments & Air Waybills',
+      filename: 'Legacy_Clinics_DHL_Dispatches',
+      sheetName: 'Specimen Dispatches',
+      user,
+      metadata: [
+        ['Diagnostic Partner', 'Eurofins Biomnis / Belgian Reference Laboratory'],
+        ['Total Sample Dispatches', `${samples.length} International Shipments`],
+      ],
+      summaryMetrics: [
+        { label: 'TOTAL SHIPMENTS', value: samples.length },
+        { label: 'COLD-CHAIN VERIFIED', value: samples.filter(s => s.cold_chain_status === 'Verified' || s.status === 'In Transit').length },
+      ],
+      columns: [
+        { key: 'id', header: 'DISPATCH ID', width: 14, alignment: 'center' },
+        { key: 'created_at', header: 'DISPATCH DATE', width: 18, alignment: 'center' },
+        { key: 'patient_code', header: 'PATIENT CODE', width: 18, alignment: 'center' },
+        { key: 'dhl_waybill', header: 'DHL WAYBILL NUMBER', width: 24, alignment: 'center' },
+        { key: 'destination', header: 'DESTINATION', width: 20 },
+        { key: 'cold_chain_status', header: 'COLD CHAIN STATUS', width: 20, alignment: 'center' },
+        { key: 'status', header: 'STATUS', width: 14, isStatus: true, alignment: 'center' },
+      ],
+      data: samples,
+    });
+  };
+
+  const handleExportCfoReportExcel = async () => {
+    if (!cfoReport) {
+      toast.error('CFO Report data not loaded yet');
+      return;
+    }
+
+    await exportMultiSheetLegacyExcel({
+      title: 'Legacy Clinics — Monthly Logistics & Operations Management Report',
+      filename: `Legacy_Clinics_CFO_Logistics_Report_${cfoReport.reportMonth || 'Current'}`,
+      user,
+      sheets: [
+        {
+          sheetName: 'Executive Overview',
+          title: 'Legacy Clinics — Executive Operations & Logistics Summary',
+          subtitle: `Aggregated Performance Metrics & Costs — Month of ${cfoReport.reportMonth}`,
+          columns: [
+            { key: 'metric', header: 'OPERATIONAL KPI / EXPENSE ITEM', width: 36 },
+            { key: 'value', header: 'REPORTED VALUE', width: 24, alignment: 'right' },
+            { key: 'notes', header: 'OPERATIONAL CONTEXT', width: 36 },
+          ],
+          data: [
+            { metric: 'Operational Petty Cash Total', value: `${(cfoReport.pettyCashTotal || 0).toLocaleString()} RWF`, notes: 'Emergency clinic & vehicle cash disbursements' },
+            { metric: 'Total Vehicle & Ambulance Dispatches', value: `${cfoReport.totalTrips || 0} Runs`, notes: 'Patient evacuations, shuttle & mission trips' },
+            { metric: 'Fleet Fuel Consumed', value: `${(cfoReport.totalFuelLiters || 0).toFixed(1)} Liters`, notes: 'Fleet diesel & petrol consumption' },
+            { metric: 'Logged Facilities / Fleet Incidents', value: `${cfoReport.totalIncidents || 0} Incidents`, notes: 'Breakdowns, defect reports & infrastructure flags' },
+            { metric: 'Pending Stationery Print Orders', value: `${printReqs.filter(p => p.status === 'Pending').length} Pending`, notes: 'Clinical stationery awaiting press fulfillment' },
+            { metric: 'Active International Courier Samples', value: `${samples.length} Samples`, notes: 'NIPT / international diagnostic cold-chain shipments' },
+          ],
+          metadata: [
+            ['Reporting Scope', `Institutional Logistics & Transport — ${cfoReport.reportMonth}`],
+            ['Executive Destination', 'Chief Financial Officer (CFO) & Operations Committee'],
+          ],
+          summaryMetrics: [
+            { label: 'PETTY CASH TOTAL', value: `${(cfoReport.pettyCashTotal || 0).toLocaleString()} RWF` },
+            { label: 'AMBULANCE RUNS', value: cfoReport.totalTrips || 0 },
+            { label: 'FUEL CONSUMED', value: `${(cfoReport.totalFuelLiters || 0).toFixed(1)} L` },
+          ]
+        },
+        {
+          sheetName: 'Petty Cash Ledger',
+          title: 'Legacy Clinics — Monthly Petty Cash Transaction Breakdown',
+          subtitle: `Detailed Expense Vouchers — Month of ${cfoReport.reportMonth}`,
+          columns: [
+            { key: 'id', header: 'VOUCHER ID', width: 14, alignment: 'center' },
+            { key: 'transaction_date', header: 'DATE', width: 16, alignment: 'center' },
+            { key: 'category', header: 'CATEGORY', width: 22 },
+            { key: 'description', header: 'DESCRIPTION', width: 32 },
+            { key: 'amount', header: 'AMOUNT (RWF)', width: 18, numFmt: '#,##0 "RWF"', alignment: 'right' },
+            { key: 'receipt_number', header: 'RECEIPT #', width: 18, alignment: 'center' },
+            { key: 'logged_by', header: 'LOGGED BY', width: 20 },
+            { key: 'status', header: 'STATUS', width: 14, isStatus: true, alignment: 'center' },
+          ],
+          data: pettyCash,
+        }
+      ]
+    });
   };
 
   return (
     <div style={{ paddingBottom: '3rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <span style={{ backgroundColor: '#e0f2fe', color: '#0284c7', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
+          <span style={{ backgroundColor: '#f1f5f9', color: '#475569', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
             OPERATIONS ADMIN
           </span>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '6px 0 0 0', color: '#0f172a' }}>
@@ -217,21 +319,34 @@ const LogisticsAdmin = () => {
           </h1>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={() => setIsCashModal(true)} className="btn btn-primary" style={{ backgroundColor: '#0284c7', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button onClick={() => setIsCashModal(true)} className="btn btn-primary" style={{ backgroundColor: '#1B669E', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', padding: '8px 14px', fontWeight: 600, border: 'none' }}>
             <DollarSign size={16} /> Log Petty Cash
           </button>
-          <button onClick={() => setIsSampleModal(true)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {activeTab === 'cfo_report' ? (
+            <button onClick={handleExportCfoReportExcel} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', padding: '8px 14px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#1B669E', fontWeight: 600 }}>
+              <FileSpreadsheet size={16} color="#1B669E" /> Export CFO Report Excel
+            </button>
+          ) : activeTab === 'nipt' ? (
+            <button onClick={handleExportSamplesExcel} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', padding: '8px 14px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#1B669E', fontWeight: 600 }}>
+              <FileSpreadsheet size={16} color="#1B669E" /> Export Courier Excel
+            </button>
+          ) : (
+            <button onClick={handleExportPettyCashExcel} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', padding: '8px 14px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#1B669E', fontWeight: 600 }}>
+              <FileSpreadsheet size={16} color="#1B669E" /> Export Petty Cash Excel
+            </button>
+          )}
+          <button onClick={() => setIsSampleModal(true)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', padding: '8px 14px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#334155', fontWeight: 600 }}>
             <Plane size={16} /> Track NIPT Belgian Courier
           </button>
-          <button onClick={() => setIsPrintModal(true)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button onClick={() => setIsPrintModal(true)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', padding: '8px 14px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#334155', fontWeight: 600 }}>
             <Printer size={16} /> Print Requisition
           </button>
         </div>
       </div>
 
       {/* TABS */}
-      <div style={{ display: 'flex', borderBottom: '2px solid #e2e8f0', marginBottom: '1.5rem', gap: '1rem' }}>
+      <div style={{ display: 'flex', borderBottom: '2px solid #e2e8f0', marginBottom: '1.5rem', gap: '1rem', overflowX: 'auto' }}>
         <button
           onClick={() => setActiveTab('petty_cash')}
           style={{
@@ -239,12 +354,13 @@ const LogisticsAdmin = () => {
             border: 'none',
             background: 'none',
             fontWeight: 700,
-            color: activeTab === 'petty_cash' ? '#0284c7' : '#64748b',
-            borderBottom: activeTab === 'petty_cash' ? '3px solid #0284c7' : 'none',
+            color: activeTab === 'petty_cash' ? '#1B669E' : '#64748b',
+            borderBottom: activeTab === 'petty_cash' ? '3px solid #1B669E' : 'none',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '6px'
+            gap: '6px',
+            whiteSpace: 'nowrap'
           }}
         >
           <DollarSign size={16} /> Petty Cash Sheet
@@ -257,12 +373,13 @@ const LogisticsAdmin = () => {
             border: 'none',
             background: 'none',
             fontWeight: 700,
-            color: activeTab === 'nipt' ? '#0284c7' : '#64748b',
-            borderBottom: activeTab === 'nipt' ? '3px solid #0284c7' : 'none',
+            color: activeTab === 'nipt' ? '#1B669E' : '#64748b',
+            borderBottom: activeTab === 'nipt' ? '3px solid #1B669E' : 'none',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '6px'
+            gap: '6px',
+            whiteSpace: 'nowrap'
           }}
         >
           <Plane size={16} /> NIPT Belgian Courier Tracker
@@ -275,15 +392,16 @@ const LogisticsAdmin = () => {
             border: 'none',
             background: 'none',
             fontWeight: 700,
-            color: activeTab === 'printing' ? '#0284c7' : '#64748b',
-            borderBottom: activeTab === 'printing' ? '3px solid #0284c7' : 'none',
+            color: activeTab === 'printing' ? '#1B669E' : '#64748b',
+            borderBottom: activeTab === 'printing' ? '3px solid #1B669E' : 'none',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '6px'
+            gap: '6px',
+            whiteSpace: 'nowrap'
           }}
         >
-          <Printer size={16} /> Nursing Stationery Requisitions
+          <Printer size={16} /> Print Requisitions
         </button>
 
         <button
@@ -293,17 +411,19 @@ const LogisticsAdmin = () => {
             border: 'none',
             background: 'none',
             fontWeight: 700,
-            color: activeTab === 'cfo_report' ? '#0284c7' : '#64748b',
-            borderBottom: activeTab === 'cfo_report' ? '3px solid #0284c7' : 'none',
+            color: activeTab === 'cfo_report' ? '#1B669E' : '#64748b',
+            borderBottom: activeTab === 'cfo_report' ? '3px solid #1B669E' : 'none',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '6px'
+            gap: '6px',
+            whiteSpace: 'nowrap'
           }}
         >
-          <FileText size={16} /> Automated Monthly CFO Report
+          <FileText size={16} /> CFO Expense Summary
         </button>
       </div>
+
 
       {activeTab === 'petty_cash' && (
         <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
@@ -385,7 +505,22 @@ const LogisticsAdmin = () => {
                         Cold Chain OK
                       </span>
                     </td>
-                    <td style={{ padding: '12px 16px', fontWeight: 700, fontFamily: 'monospace', color: '#0f172a' }}>{s.dhl_waybill}</td>
+                    <td style={{ padding: '12px 16px', fontWeight: 700, fontFamily: 'monospace' }}>
+                      {s.dhl_waybill ? (
+                        <a
+                          href={`https://www.dhl.com/en/express/tracking.html?AWB=${encodeURIComponent(s.dhl_waybill)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: '#1B669E', display: 'inline-flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}
+                          title="Track on DHL"
+                        >
+                          {s.dhl_waybill}
+                          <ExternalLink size={12} />
+                        </a>
+                      ) : (
+                        <span style={{ color: '#94a3b8' }}>—</span>
+                      )}
+                    </td>
                     <td style={{ padding: '12px 16px' }}>
                       <span style={{
                         padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700,

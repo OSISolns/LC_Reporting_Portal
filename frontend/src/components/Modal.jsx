@@ -2,7 +2,7 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 
-const Modal = ({ isOpen, onClose, title, children, maxWidth = '600px' }) => {
+const Modal = ({ isOpen, onClose, title, children, maxWidth = '600px', position = 'top' }) => {
   const [shouldRender, setShouldRender] = useState(isOpen);
   const [isAnimated, setIsAnimated] = useState(isOpen);
   const cardRef = useRef(null);
@@ -55,10 +55,13 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = '600px' }) => {
         bottom: 0,
         backgroundColor: 'rgba(15, 23, 42, 0.65)',
         display: 'flex',
-        alignItems: 'center',
+        alignItems: position === 'top' ? 'flex-start' : 'center',
         justifyContent: 'center',
         zIndex: 999999,
         padding: '1rem',
+        paddingTop: position === 'top' ? 'min(5vh, 2.5rem)' : '1rem',
+        paddingBottom: '2.5rem',
+        overflowY: 'auto',
         backdropFilter: 'blur(4px)',
         WebkitBackdropFilter: 'blur(4px)',
         opacity: isAnimated ? 1 : 0,

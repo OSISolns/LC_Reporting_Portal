@@ -9,6 +9,13 @@ import {
   Fuel, Gauge, AlertCircle, ArrowUpRight, Radio, Server, Layers, Shield
 } from 'lucide-react';
 import Modal from '../../components/Modal';
+import {
+  getLogisticsDashboardStats,
+  createTrip,
+  createGeneratorLog,
+  createVehicle,
+  createPpmRecord
+} from '../../api/logistics';
 
 // Import sub-modules for embedded tab navigation
 import FleetOperations from './FleetOperations';
@@ -92,14 +99,11 @@ const LogisticsDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/logistics/dashboard-stats', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      const json = await res.json();
-      if (json.success) {
-        setData(json.data);
+      const res = await getLogisticsDashboardStats();
+      if (res.data?.success) {
+        setData(res.data.data);
       } else {
-        toast.error(json.message || 'Failed to load dashboard data');
+        toast.error(res.data?.message || 'Failed to load dashboard data');
       }
     } catch (err) {
       console.error(err);
@@ -117,24 +121,16 @@ const LogisticsDashboard = () => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      const res = await fetch('/api/logistics/fleet/trips', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(dispatchForm)
-      });
-      const json = await res.json();
-      if (json.success) {
+      const res = await createTrip(dispatchForm);
+      if (res.data?.success) {
         toast.success('Vehicle trip dispatched successfully!');
         setActiveModal(null);
         fetchDashboardData();
       } else {
-        toast.error(json.message || 'Failed to dispatch trip');
+        toast.error(res.data?.message || 'Failed to dispatch trip');
       }
     } catch (err) {
-      toast.error('Error dispatching trip');
+      toast.error(err.response?.data?.message || 'Error dispatching trip');
     } finally {
       setSubmitting(false);
     }
@@ -144,24 +140,16 @@ const LogisticsDashboard = () => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      const res = await fetch('/api/logistics/facilities/generator', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(genForm)
-      });
-      const json = await res.json();
-      if (json.success) {
+      const res = await createGeneratorLog(genForm);
+      if (res.data?.success) {
         toast.success('Generator daily check recorded successfully!');
         setActiveModal(null);
         fetchDashboardData();
       } else {
-        toast.error(json.message || 'Failed to record generator check');
+        toast.error(res.data?.message || 'Failed to record generator check');
       }
     } catch (err) {
-      toast.error('Error submitting generator log');
+      toast.error(err.response?.data?.message || 'Error submitting generator log');
     } finally {
       setSubmitting(false);
     }
@@ -171,16 +159,8 @@ const LogisticsDashboard = () => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      const res = await fetch('/api/logistics/fleet/vehicles', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(vehicleForm)
-      });
-      const json = await res.json();
-      if (json.success) {
+      const res = await createVehicle(vehicleForm);
+      if (res.data?.success) {
         toast.success('Vehicle registered successfully!');
         setActiveModal(null);
         setVehicleForm({
@@ -196,10 +176,10 @@ const LogisticsDashboard = () => {
         });
         fetchDashboardData();
       } else {
-        toast.error(json.message || 'Failed to register vehicle');
+        toast.error(res.data?.message || 'Failed to register vehicle');
       }
     } catch (err) {
-      toast.error('Error registering vehicle');
+      toast.error(err.response?.data?.message || 'Error registering vehicle');
     } finally {
       setSubmitting(false);
     }
@@ -209,30 +189,22 @@ const LogisticsDashboard = () => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      const res = await fetch('/api/logistics/assets/ppm', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          maintenance_type: workOrderForm.category,
-          scheduled_date: new Date().toISOString().split('T')[0],
-          technician: workOrderForm.requested_by,
-          findings: `[${workOrderForm.priority}] ${workOrderForm.title}: ${workOrderForm.description}`
-        })
+      const res = await createPpmRecord({
+        maintenance_type: workOrderForm.category,
+        scheduled_date: new Date().toISOString().split('T')[0],
+        technician: workOrderForm.requested_by,
+        findings: `[${workOrderForm.priority}] ${workOrderForm.title}: ${workOrderForm.description}`
       });
-      const json = await res.json();
-      if (json.success) {
+      if (res.data?.success) {
         toast.success('Work Order request submitted!');
         setActiveModal(null);
         setWorkOrderForm({ title: '', category: 'Facility Repair', priority: 'Normal', description: '', requested_by: user?.full_name || user?.fullName || '' });
         fetchDashboardData();
       } else {
-        toast.error(json.message || 'Failed to submit work order');
+        toast.error(res.data?.message || 'Failed to submit work order');
       }
     } catch (err) {
-      toast.error('Error submitting work order');
+      toast.error(err.response?.data?.message || 'Error submitting work order');
     } finally {
       setSubmitting(false);
     }

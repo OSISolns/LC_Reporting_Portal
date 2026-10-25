@@ -25,6 +25,79 @@ class Incident {
     return rows[0];
   }
 
+  static getElevatedDepartmentMap() {
+    return {
+      // Nursing & Inpatient Units
+      'chef-nurse': ['Nursing', 'Ward', 'Inpatient', 'OPD', 'Emergency', 'Maternity', 'ICU', 'Triage'],
+      'chef_nurse': ['Nursing', 'Ward', 'Inpatient', 'OPD', 'Emergency', 'Maternity', 'ICU', 'Triage'],
+      'chief_nurse': ['Nursing', 'Ward', 'Inpatient', 'OPD', 'Emergency', 'Maternity', 'ICU', 'Triage'],
+      'chief-nurse': ['Nursing', 'Ward', 'Inpatient', 'OPD', 'Emergency', 'Maternity', 'ICU', 'Triage'],
+      'deputy_chef_nurse': ['Nursing', 'Ward', 'Inpatient', 'OPD', 'Emergency', 'Maternity', 'ICU', 'Triage'],
+      'deputy-chef-nurse': ['Nursing', 'Ward', 'Inpatient', 'OPD', 'Emergency', 'Maternity', 'ICU', 'Triage'],
+      'deputy_chief_nurse': ['Nursing', 'Ward', 'Inpatient', 'OPD', 'Emergency', 'Maternity', 'ICU', 'Triage'],
+
+      // Laboratory & Sub-sections
+      'lab_hod': ['Laboratory', 'Lab', 'Biochemistry', 'Microbiology', 'Hematology', 'Histopathology', 'Molecular', 'Phlebotomy', 'POCT'],
+      'lab_manager': ['Laboratory', 'Lab', 'Biochemistry', 'Microbiology', 'Hematology', 'Histopathology', 'Molecular', 'Phlebotomy', 'POCT'],
+      'lab_lead': ['Laboratory', 'Lab', 'Biochemistry', 'Microbiology', 'Hematology', 'Histopathology', 'Molecular', 'Phlebotomy', 'POCT'],
+      'lab_team_lead': ['Laboratory', 'Lab', 'Biochemistry', 'Microbiology', 'Hematology', 'Histopathology', 'Molecular', 'Phlebotomy', 'POCT'],
+      'lab_safety_officer': ['Laboratory', 'Lab'],
+      'head_biochemistry': ['Biochemistry', 'Laboratory', 'Lab'],
+      'head_microbiology': ['Microbiology', 'Laboratory', 'Lab'],
+      'head_hematology': ['Hematology', 'Laboratory', 'Lab'],
+      'head_histopathology': ['Histopathology', 'Laboratory', 'Lab'],
+      'head_molecular_biology': ['Molecular', 'Laboratory', 'Lab'],
+      'head_phlebotomy': ['Phlebotomy', 'Laboratory', 'Lab'],
+      'head_poct': ['POCT', 'Laboratory', 'Lab'],
+
+      // Dental Department & Lab
+      'dental_hod': ['Dental', 'Dental Clinic', 'Dental Lab', 'Orthodontics'],
+      'dental_lab_manager': ['Dental', 'Dental Lab'],
+
+      // Radiology & Imaging
+      'imaging_manager': ['Imaging', 'Radiology', 'X-Ray', 'CT', 'Ultrasound', 'MRI'],
+
+      // Physiotherapy
+      'physio_manager': ['Physiotherapy', 'Physio', 'Rehabilitation'],
+
+      // Logistics & Facilities & Transport
+      'logistics_manager': ['Logistics', 'Facilities', 'Transport', 'Fleet', 'Maintenance'],
+      'logistics_officer': ['Logistics', 'Transport', 'Fleet'],
+
+      // Procurement & Store
+      'procurement-manager': ['Procurement', 'Store', 'Central Store', 'Inventory'],
+      'stock-manager': ['Store', 'Central Store', 'Inventory', 'Stock'],
+
+      // Sales & Billing
+      'sales_manager': ['Sales', 'Cashier', 'Billing', 'Customer Care'],
+      'principal_cashier': ['Cashier', 'Billing', 'Finance'],
+
+      // IT Support
+      'it_officer': ['IT', 'Information Technology', 'Systems', 'Biomedical']
+    };
+  }
+
+  static canUserViewIncident(user, incident) {
+    if (!user || !incident) return false;
+    const role = (user.role || '').toLowerCase();
+    
+    // 1. Only HSFP and Admin can view all incidents across the hospital
+    if (['hsfp', 'admin'].includes(role)) return true;
+
+    // 2. Creator can always view their own incident report
+    if (Number(incident.created_by) === Number(user.id)) return true;
+
+    // 3. Users with elevated access can view incident reports from their departments
+    const elevatedMap = Incident.getElevatedDepartmentMap();
+    const elevatedDepts = elevatedMap[role] || [];
+    if (elevatedDepts.length > 0) {
+      const incDept = (incident.department || '').toLowerCase();
+      return elevatedDepts.some(d => incDept.includes(d.toLowerCase()));
+    }
+
+    return false;
+  }
+
   static async getAll(filters = {}, user = null) {
     let query = `
       SELECT i.*, u.full_name as creator_name, r.full_name as reviewer_name
@@ -35,36 +108,31 @@ class Incident {
     `;
     const params = [];
 
-    // Access control: Executive, safety, line managers / department leads, and all Laboratory staff can view incident reports
-    const LINE_MANAGER_ROLES = [
-      'coo', 'deputy_coo', 'admin', 'it_officer', 'principal_cashier', 'sales_manager', 'hsfp', 'medical_director',
-      'chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse',
-      'lab_team_lead', 'lab_lead', 'lab_manager',
-      'dental_hod', 'dental_lab_manager',
-      'imaging_manager',
-      'physio_manager',
-      'logistics_manager',
-      'procurement-manager',
-      'quality_manager', 'qm', 'quality_accreditation_officer'
-    ];
-    const ALL_LAB_ROLES = [
-      'lab_hod', 'lab_manager', 'quality_manager', 'qm',
-      'lab_safety_officer', 'lab_stock_officer',
-      'head_biochemistry', 'head_microbiology', 'head_hematology', 'head_histopathology',
-      'head_poct', 'head_phlebotomy', 'head_molecular_biology',
-      'lab_micro_specialist', 'lab_scientist',
-      'lab_team_lead', 'lab_lead', 'lab_tech', 'lab',
-      'lab_head', 'lab_supervisor'
-    ];
-    const isLabStaff = user && (
-      ALL_LAB_ROLES.includes(user.role?.toLowerCase()) ||
-      String(user.role || '').toLowerCase().startsWith('lab_') ||
-      String(user.department || '').toLowerCase().includes('lab')
-    );
+    // Access control:
+    // - Only HSFP and Admin can view ALL incidents
+    // - Users with elevated access can view incident reports from their departments
+    // - Everyone else can only view reports they created
+    const userRole = (user?.role || '').toLowerCase();
+    const canViewAll = user && ['hsfp', 'admin'].includes(userRole);
 
-    if (user && !LINE_MANAGER_ROLES.includes(user.role) && !isLabStaff) {
-      params.push(user.id);
-      query += ` AND i.created_by = $${params.length}`;
+    if (!canViewAll) {
+      const elevatedMap = Incident.getElevatedDepartmentMap();
+      const elevatedDepts = elevatedMap[userRole] || [];
+
+      if (elevatedDepts.length > 0) {
+        // Elevated department access: Department incidents OR self-reported
+        const deptConditions = elevatedDepts.map(d => {
+          params.push(`%${d}%`);
+          return `i.department ILIKE $${params.length}`;
+        }).join(' OR ');
+
+        params.push(user.id);
+        query += ` AND (${deptConditions} OR i.created_by = $${params.length})`;
+      } else {
+        // Regular staff: ONLY their own reports
+        params.push(user.id);
+        query += ` AND i.created_by = $${params.length}`;
+      }
     }
 
     if (filters.status) {

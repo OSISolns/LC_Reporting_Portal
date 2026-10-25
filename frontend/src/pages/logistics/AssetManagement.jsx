@@ -1,8 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
-import { Wrench, ShieldCheck, Plus, ArrowRightLeft, Calendar, DollarSign, Tag, CheckCircle, FileText, AlertTriangle, CheckCircle2, TrendingUp, Activity, Download } from 'lucide-react';
+import { Wrench, ShieldCheck, Plus, ArrowRightLeft, Calendar, DollarSign, Tag, CheckCircle, FileText, AlertTriangle, CheckCircle2, TrendingUp, Activity, Download, FileSpreadsheet } from 'lucide-react';
 import Modal from '../../components/Modal';
+import { exportToLegacyExcel } from '../../utils/excelExport';
+import {
+  getAssets,
+  createAsset,
+  updateAsset,
+  deleteAsset,
+  getAssetTransfers,
+  createAssetTransfer,
+  updateAssetTransfer,
+  getPpmRecords,
+  createPpmRecord,
+  updatePpmRecord
+} from '../../api/logistics';
 
 const AssetManagement = () => {
   const { user } = useAuth();
@@ -50,15 +63,14 @@ const AssetManagement = () => {
     try {
       setLoading(true);
       const [aRes, tRes, pRes] = await Promise.all([
-        fetch('/api/logistics/assets', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
-        fetch('/api/logistics/assets/transfers', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
-        fetch('/api/logistics/assets/ppm', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
+        getAssets(),
+        getAssetTransfers(),
+        getPpmRecords()
       ]);
-      const [aJson, tJson, pJson] = await Promise.all([aRes.json(), tRes.json(), pRes.json()]);
 
-      if (aJson.success) setAssets(aJson.data);
-      if (tJson.success) setTransfers(tJson.data);
-      if (pJson.success) setPpmRecords(pJson.data);
+      if (aRes.data?.success) setAssets(aRes.data.data);
+      if (tRes.data?.success) setTransfers(tRes.data.data);
+      if (pRes.data?.success) setPpmRecords(pRes.data.data);
     } catch (err) {
       toast.error('Error loading asset management data');
     } finally {
@@ -74,24 +86,16 @@ const AssetManagement = () => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      const res = await fetch('/api/logistics/assets', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(assetForm)
-      });
-      const json = await res.json();
-      if (json.success) {
+      const res = await createAsset(assetForm);
+      if (res.data?.success) {
         toast.success('Asset added to Master Register!');
         setIsAssetModal(false);
         fetchData();
       } else {
-        toast.error(json.message || 'Failed to add asset');
+        toast.error(res.data?.message || 'Failed to add asset');
       }
     } catch (err) {
-      toast.error('Error submitting asset');
+      toast.error(err.response?.data?.message || 'Error submitting asset');
     } finally {
       setSubmitting(false);
     }
@@ -101,24 +105,16 @@ const AssetManagement = () => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      const res = await fetch('/api/logistics/assets/transfers', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(transferForm)
-      });
-      const json = await res.json();
-      if (json.success) {
+      const res = await createAssetTransfer(transferForm);
+      if (res.data?.success) {
         toast.success('Asset custody transfer initiated!');
         setIsTransferModal(false);
         fetchData();
       } else {
-        toast.error(json.message || 'Failed to submit transfer');
+        toast.error(res.data?.message || 'Failed to submit transfer');
       }
     } catch (err) {
-      toast.error('Error submitting transfer');
+      toast.error(err.response?.data?.message || 'Error submitting transfer');
     } finally {
       setSubmitting(false);
     }
@@ -128,24 +124,16 @@ const AssetManagement = () => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      const res = await fetch('/api/logistics/assets/ppm', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(ppmForm)
-      });
-      const json = await res.json();
-      if (json.success) {
+      const res = await createPpmRecord(ppmForm);
+      if (res.data?.success) {
         toast.success('PPM maintenance work order scheduled!');
         setIsPpmModal(false);
         fetchData();
       } else {
-        toast.error(json.message || 'Failed to schedule PPM');
+        toast.error(res.data?.message || 'Failed to schedule PPM');
       }
     } catch (err) {
-      toast.error('Error submitting PPM record');
+      toast.error(err.response?.data?.message || 'Error submitting PPM record');
     } finally {
       setSubmitting(false);
     }
@@ -153,20 +141,18 @@ const AssetManagement = () => {
 
   const handleApproveTransfer = async (id, toDept) => {
     try {
-      const res = await fetch(`/api/logistics/assets/transfers/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
-        body: JSON.stringify({ status: 'Approved', approved_by: user?.full_name || 'Asset Manager' })
+      const res = await updateAssetTransfer(id, {
+        status: 'Approved',
+        approved_by: user?.full_name || 'Asset Manager'
       });
-      const json = await res.json();
-      if (json.success) {
+      if (res.data?.success) {
         toast.success(`Transfer approved! Asset relocated to ${toDept}`);
         fetchData();
       } else {
-        toast.error(json.message || 'Failed to approve transfer');
+        toast.error(res.data?.message || 'Failed to approve transfer');
       }
     } catch (err) {
-      toast.error('Error approving transfer');
+      toast.error(err.response?.data?.message || 'Error approving transfer');
     }
   };
 
@@ -174,40 +160,112 @@ const AssetManagement = () => {
     const findings = window.prompt('Enter PPM maintenance findings / calibration result:', 'Inspected, calibrated, all parameters within nominal tolerance.');
     if (findings === null) return;
     try {
-      const res = await fetch(`/api/logistics/assets/ppm/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
-        body: JSON.stringify({ status: 'Completed', findings })
+      const res = await updatePpmRecord(id, {
+        status: 'Completed',
+        findings
       });
-      const json = await res.json();
-      if (json.success) {
+      if (res.data?.success) {
         toast.success('PPM Work Order marked Completed!');
         fetchData();
       } else {
-        toast.error(json.message || 'Failed to update PPM status');
+        toast.error(res.data?.message || 'Failed to update PPM status');
       }
     } catch (err) {
-      toast.error('Error updating PPM status');
+      toast.error(err.response?.data?.message || 'Error updating PPM status');
     }
   };
 
   const handleDeleteAsset = async (id, tag) => {
     if (!window.confirm(`Are you sure you want to remove asset tag ${tag}?`)) return;
     try {
-      const res = await fetch(`/api/logistics/assets/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      const json = await res.json();
-      if (json.success) {
+      const res = await deleteAsset(id);
+      if (res.data?.success) {
         toast.success('Asset removed from register');
         fetchData();
       } else {
-        toast.error(json.message || 'Failed to delete asset');
+        toast.error(res.data?.message || 'Failed to delete asset');
       }
     } catch (err) {
-      toast.error('Error deleting asset');
+      toast.error(err.response?.data?.message || 'Error deleting asset');
     }
+  };
+
+  const handleExportAssetsExcel = async () => {
+    if (!assets || assets.length === 0) {
+      toast.error('No assets available to export');
+      return;
+    }
+
+    const totalValuation = assets.reduce((acc, a) => acc + (Number(a.purchase_cost) || 0), 0);
+
+    await exportToLegacyExcel({
+      title: 'Legacy Clinics — Biomedical & Physical Asset Register',
+      subtitle: 'Hospital Machinery, Biomedical Devices, Facilities & IT Inventory',
+      filename: 'Legacy_Clinics_Asset_Register',
+      sheetName: 'Asset Inventory',
+      user,
+      metadata: [
+        ['Division', 'Biomedical Engineering & Facilities Directorate'],
+        ['Total Asset Count', `${assets.length} Registered Units`],
+        ['Total Capital Valuation', `${totalValuation.toLocaleString()} RWF`],
+      ],
+      summaryMetrics: [
+        { label: 'TOTAL ASSETS', value: assets.length },
+        { label: 'OPERATIONAL', value: assets.filter(a => a.status === 'Operational' || a.status === 'Active').length },
+        { label: 'UNDER MAINTENANCE', value: assets.filter(a => a.status === 'Maintenance').length },
+        { label: 'TOTAL VALUATION', value: `${totalValuation.toLocaleString()} RWF` },
+      ],
+      columns: [
+        { key: 'asset_tag', header: 'ASSET TAG', width: 16, alignment: 'center' },
+        { key: 'serial_number', header: 'SERIAL NUMBER', width: 18, alignment: 'center' },
+        { key: 'name', header: 'EQUIPMENT / ASSET NAME', width: 28 },
+        { key: 'category', header: 'CATEGORY', width: 18 },
+        { key: 'department', header: 'DEPARTMENT', width: 18 },
+        { key: 'custodian', header: 'CUSTODIAN / OWNER', width: 20 },
+        { key: 'purchase_date', header: 'PURCHASE DATE', width: 16, alignment: 'center' },
+        { key: 'warranty_exp', header: 'WARRANTY EXPIRY', width: 16, alignment: 'center' },
+        { key: 'purchase_cost', header: 'COST (RWF)', width: 18, numFmt: '#,##0 "RWF"', alignment: 'right' },
+        { key: 'status', header: 'STATUS', width: 15, isStatus: true, alignment: 'center' },
+      ],
+      data: assets,
+    });
+  };
+
+  const handleExportPpmExcel = async () => {
+    if (!ppmRecords || ppmRecords.length === 0) {
+      toast.error('No PPM maintenance records to export');
+      return;
+    }
+
+    await exportToLegacyExcel({
+      title: 'Legacy Clinics — Planned Preventive Maintenance (PPM) Log',
+      subtitle: 'Biomedical & Facilities Calibration, Service Schedules & Maintenance Records',
+      filename: 'Legacy_Clinics_PPM_Schedule',
+      sheetName: 'PPM Schedules',
+      user,
+      metadata: [
+        ['Directorate', 'Biomedical Engineering & Quality Assurance'],
+        ['Total Service Records', `${ppmRecords.length} Recorded Interventions`],
+      ],
+      summaryMetrics: [
+        { label: 'TOTAL PPM RECORDS', value: ppmRecords.length },
+        { label: 'COMPLETED', value: ppmRecords.filter(p => p.status === 'Completed').length },
+        { label: 'PENDING', value: ppmRecords.filter(p => p.status === 'Pending').length },
+      ],
+      columns: [
+        { key: 'id', header: 'RECORD ID', width: 14, alignment: 'center' },
+        { key: 'asset_name', header: 'EQUIPMENT / ASSET', width: 26 },
+        { key: 'asset_tag', header: 'ASSET TAG', width: 16, alignment: 'center' },
+        { key: 'maintenance_type', header: 'TYPE', width: 18 },
+        { key: 'scheduled_date', header: 'SCHEDULED DATE', width: 16, alignment: 'center' },
+        { key: 'completed_date', header: 'COMPLETED DATE', width: 16, alignment: 'center' },
+        { key: 'technician', header: 'TECHNICIAN / VENDOR', width: 22 },
+        { key: 'cost', header: 'SERVICE COST (RWF)', width: 18, numFmt: '#,##0 "RWF"', alignment: 'right' },
+        { key: 'notes', header: 'FINDINGS & NOTES', width: 32 },
+        { key: 'status', header: 'STATUS', width: 14, isStatus: true, alignment: 'center' },
+      ],
+      data: ppmRecords,
+    });
   };
 
   return (
@@ -222,14 +280,23 @@ const AssetManagement = () => {
           </h1>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={() => setIsAssetModal(true)} className="btn btn-primary" style={{ backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button onClick={() => setIsAssetModal(true)} className="btn btn-primary" style={{ backgroundColor: '#1B669E', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', padding: '8px 14px', fontWeight: 600, border: 'none' }}>
             <Plus size={16} /> Add Asset
           </button>
-          <button onClick={() => setIsTransferModal(true)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {activeTab === 'ppm' ? (
+            <button onClick={handleExportPpmExcel} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', padding: '8px 14px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#1B669E', fontWeight: 600 }}>
+              <FileSpreadsheet size={16} color="#1B669E" /> Export PPM Excel
+            </button>
+          ) : (
+            <button onClick={handleExportAssetsExcel} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', padding: '8px 14px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#1B669E', fontWeight: 600 }}>
+              <FileSpreadsheet size={16} color="#1B669E" /> Export Assets Excel
+            </button>
+          )}
+          <button onClick={() => setIsTransferModal(true)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', padding: '8px 14px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#334155', fontWeight: 600 }}>
             <ArrowRightLeft size={16} /> Transfer Custody
           </button>
-          <button onClick={() => setIsPpmModal(true)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button onClick={() => setIsPpmModal(true)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', padding: '8px 14px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#334155', fontWeight: 600 }}>
             <Calendar size={16} /> Schedule PPM
           </button>
         </div>

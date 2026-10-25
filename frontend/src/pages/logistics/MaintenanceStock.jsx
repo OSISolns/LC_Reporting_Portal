@@ -1,8 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
-import { Package, Plus, Send, AlertTriangle, CheckCircle, RefreshCw } from 'lucide-react';
+import { Package, Plus, Send, AlertTriangle, CheckCircle, RefreshCw, Download, FileSpreadsheet } from 'lucide-react';
 import Modal from '../../components/Modal';
+import { exportToLegacyExcel } from '../../utils/excelExport';
+import {
+  getStockItems,
+  createStockItem,
+  deleteStockItem,
+  getStockReleases,
+  createStockRelease
+} from '../../api/logistics';
 
 const MaintenanceStock = () => {
   const { user } = useAuth();
@@ -35,13 +43,12 @@ const MaintenanceStock = () => {
     try {
       setLoading(true);
       const [iRes, rRes] = await Promise.all([
-        fetch('/api/logistics/inventory/items', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
-        fetch('/api/logistics/inventory/releases', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
+        getStockItems(),
+        getStockReleases()
       ]);
-      const [iJson, rJson] = await Promise.all([iRes.json(), rRes.json()]);
 
-      if (iJson.success) setItems(iJson.data);
-      if (rJson.success) setReleases(rJson.data);
+      if (iRes.data?.success) setItems(iRes.data.data);
+      if (rRes.data?.success) setReleases(rRes.data.data);
     } catch (err) {
       toast.error('Error loading inventory data');
     } finally {
@@ -57,24 +64,16 @@ const MaintenanceStock = () => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      const res = await fetch('/api/logistics/inventory/items', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(itemForm)
-      });
-      const json = await res.json();
-      if (json.success) {
+      const res = await createStockItem(itemForm);
+      if (res.data?.success) {
         toast.success('Maintenance stock item added!');
         setIsItemModal(false);
         fetchData();
       } else {
-        toast.error(json.message || 'Failed to add item');
+        toast.error(res.data?.message || 'Failed to add item');
       }
     } catch (err) {
-      toast.error('Error submitting item');
+      toast.error(err.response?.data?.message || 'Error submitting item');
     } finally {
       setSubmitting(false);
     }
@@ -85,27 +84,19 @@ const MaintenanceStock = () => {
     try {
       setSubmitting(true);
       const selectedItem = items.find(i => String(i.id) === String(releaseForm.item_id));
-      const res = await fetch('/api/logistics/inventory/releases', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          ...releaseForm,
-          item_name: selectedItem ? selectedItem.item_name : 'Spare Part'
-        })
+      const res = await createStockRelease({
+        ...releaseForm,
+        item_name: selectedItem ? selectedItem.item_name : 'Spare Part'
       });
-      const json = await res.json();
-      if (json.success) {
+      if (res.data?.success) {
         toast.success('Stock released and perpetual balance updated!');
         setIsReleaseModal(false);
         fetchData();
       } else {
-        toast.error(json.message || 'Failed to release stock');
+        toast.error(res.data?.message || 'Failed to release stock');
       }
     } catch (err) {
-      toast.error('Error releasing stock');
+      toast.error(err.response?.data?.message || 'Error releasing stock');
     } finally {
       setSubmitting(false);
     }
@@ -114,27 +105,110 @@ const MaintenanceStock = () => {
   const handleDeleteStockItem = async (id, name) => {
     if (!window.confirm(`Are you sure you want to remove item "${name}" from stock directory?`)) return;
     try {
-      const res = await fetch(`/api/logistics/inventory/items/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      const json = await res.json();
-      if (json.success) {
+      const res = await deleteStockItem(id);
+      if (res.data?.success) {
         toast.success('Stock item removed');
         fetchData();
       } else {
-        toast.error(json.message || 'Failed to remove item');
+        toast.error(res.data?.message || 'Failed to remove item');
       }
     } catch (err) {
-      toast.error('Error removing stock item');
+      toast.error(err.response?.data?.message || 'Error removing stock item');
     }
+  };
+
+  const handleExportStockExcel = async () => {
+    if (!items || items.length === 0) {
+      toast.error('No stock items to export');
+      return;
+    }
+
+    const totalValuation = items.reduce((acc, i) => acc + ((Number(i.quantity_on_hand) || 0) * (Number(i.unit_cost) || 0)), 0);
+    const lowStockCount = items.filter(i => (Number(i.quantity_on_hand) || 0) <= (Number(i.min_threshold) || 0)).length;
+
+    await exportToLegacyExcel({
+      title: 'Legacy Clinics — Technical Maintenance Stock Inventory',
+      subtitle: 'Facility Materials, Spare Parts, Electrical & Plumbing Stock Valuation',
+      filename: 'Legacy_Clinics_Maintenance_Stock',
+      sheetName: 'Stock Inventory',
+      user,
+      metadata: [
+        ['Store Location', 'Central Maintenance & Facilities Store'],
+        ['Catalog Count', `${items.length} Stock Keeping Units (SKUs)`],
+        ['Total Inventory Valuation', `${totalValuation.toLocaleString()} RWF`],
+        ['Items Below Safety Threshold', `${lowStockCount} Reorder Alerts`],
+      ],
+      summaryMetrics: [
+        { label: 'TOTAL SKUs', value: items.length },
+        { label: 'LOW STOCK ALERTS', value: lowStockCount },
+        { label: 'TOTAL INVENTORY VALUE', value: `${totalValuation.toLocaleString()} RWF` },
+      ],
+      columns: [
+        { key: 'id', header: 'SKU / ITEM ID', width: 14, alignment: 'center' },
+        { key: 'item_name', header: 'ITEM DESCRIPTION', width: 28 },
+        { key: 'category', header: 'CATEGORY', width: 18 },
+        { key: 'unit', header: 'UNIT OF MEASURE', width: 16, alignment: 'center' },
+        { key: 'quantity_on_hand', header: 'QTY ON HAND', width: 16, numFmt: '#,##0', alignment: 'right' },
+        { key: 'min_threshold', header: 'MIN THRESHOLD', width: 16, numFmt: '#,##0', alignment: 'right' },
+        { key: 'unit_cost', header: 'UNIT COST (RWF)', width: 18, numFmt: '#,##0 "RWF"', alignment: 'right' },
+        { 
+          key: 'total_valuation', 
+          header: 'TOTAL VALUATION (RWF)', 
+          width: 22, 
+          numFmt: '#,##0 "RWF"', 
+          alignment: 'right',
+          render: i => ((Number(i.quantity_on_hand) || 0) * (Number(i.unit_cost) || 0))
+        },
+        { 
+          key: 'reorder_status', 
+          header: 'STATUS', 
+          width: 16, 
+          isStatus: true, 
+          alignment: 'center',
+          render: i => ((Number(i.quantity_on_hand) || 0) <= (Number(i.min_threshold) || 0) ? 'REORDER LOW' : 'OPTIMAL')
+        },
+      ],
+      data: items,
+    });
+  };
+
+  const handleExportReleasesExcel = async () => {
+    if (!releases || releases.length === 0) {
+      toast.error('No stock release records to export');
+      return;
+    }
+
+    await exportToLegacyExcel({
+      title: 'Legacy Clinics — Maintenance Stock Release Slips',
+      subtitle: 'Issued Maintenance Items, Materials & Departmental Consumptions',
+      filename: 'Legacy_Clinics_Stock_Releases',
+      sheetName: 'Stock Releases',
+      user,
+      metadata: [
+        ['Store Officer', 'Facilities & Technical Logistics Store'],
+        ['Total Dispatches', `${releases.length} Release Slips`],
+      ],
+      summaryMetrics: [
+        { label: 'TOTAL RELEASES', value: releases.length },
+        { label: 'TOTAL ITEMS ISSUED', value: releases.reduce((acc, r) => acc + (Number(r.quantity) || 0), 0) },
+      ],
+      columns: [
+        { key: 'id', header: 'RELEASE ID', width: 14, alignment: 'center' },
+        { key: 'release_date', header: 'RELEASE DATE', width: 16, alignment: 'center' },
+        { key: 'item_name', header: 'ITEM ISSUED', width: 28 },
+        { key: 'quantity', header: 'QUANTITY', width: 14, numFmt: '#,##0', alignment: 'right' },
+        { key: 'target_location', header: 'TARGET LOCATION / DEPT', width: 24 },
+        { key: 'requested_by', header: 'REQUESTED BY', width: 22 },
+      ],
+      data: releases,
+    });
   };
 
   return (
     <div style={{ paddingBottom: '3rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <span style={{ backgroundColor: '#dcfce7', color: '#16a34a', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
+          <span style={{ backgroundColor: '#f1f5f9', color: '#475569', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
             MAINTENANCE STOCK
           </span>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '6px 0 0 0', color: '#0f172a' }}>
@@ -142,11 +216,20 @@ const MaintenanceStock = () => {
           </h1>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={() => setIsReleaseModal(true)} className="btn btn-primary" style={{ backgroundColor: '#16a34a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button onClick={() => setIsReleaseModal(true)} className="btn btn-primary" style={{ backgroundColor: '#1B669E', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', padding: '8px 14px', fontWeight: 600, border: 'none' }}>
             <Send size={16} /> Issue Stock Release
           </button>
-          <button onClick={() => setIsItemModal(true)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {activeTab === 'releases' ? (
+            <button onClick={handleExportReleasesExcel} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', padding: '8px 14px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#1B669E', fontWeight: 600 }}>
+              <FileSpreadsheet size={16} color="#1B669E" /> Export Releases Excel
+            </button>
+          ) : (
+            <button onClick={handleExportStockExcel} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', padding: '8px 14px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#1B669E', fontWeight: 600 }}>
+              <FileSpreadsheet size={16} color="#1B669E" /> Export Stock Excel
+            </button>
+          )}
+          <button onClick={() => setIsItemModal(true)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', padding: '8px 14px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#334155', fontWeight: 600 }}>
             <Plus size={16} /> Add Stock Item
           </button>
         </div>
@@ -161,8 +244,8 @@ const MaintenanceStock = () => {
             border: 'none',
             background: 'none',
             fontWeight: 700,
-            color: activeTab === 'inventory' ? '#0284c7' : '#64748b',
-            borderBottom: activeTab === 'inventory' ? '3px solid #0284c7' : 'none',
+            color: activeTab === 'inventory' ? '#1B669E' : '#64748b',
+            borderBottom: activeTab === 'inventory' ? '3px solid #1B669E' : 'none',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -179,8 +262,8 @@ const MaintenanceStock = () => {
             border: 'none',
             background: 'none',
             fontWeight: 700,
-            color: activeTab === 'releases' ? '#0284c7' : '#64748b',
-            borderBottom: activeTab === 'releases' ? '3px solid #0284c7' : 'none',
+            color: activeTab === 'releases' ? '#1B669E' : '#64748b',
+            borderBottom: activeTab === 'releases' ? '3px solid #1B669E' : 'none',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',

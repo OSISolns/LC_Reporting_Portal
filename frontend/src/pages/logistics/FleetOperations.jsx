@@ -1,8 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
-import { Truck, CheckSquare, Calendar, Plus, ShieldCheck, Clock, FileText, AlertTriangle, Search, CheckCircle2, XCircle, User, UserCheck, Pencil, Trash2 } from 'lucide-react';
+import { Truck, CheckSquare, Calendar, Plus, ShieldCheck, Clock, FileText, AlertTriangle, Search, CheckCircle2, XCircle, User, UserCheck, Pencil, Trash2, Download, FileSpreadsheet } from 'lucide-react';
 import Modal from '../../components/Modal';
+import { exportToLegacyExcel } from '../../utils/excelExport';
+import {
+  getVehicles,
+  createVehicle,
+  updateVehicle,
+  deleteVehicle,
+  getTrips,
+  createTrip,
+  updateTrip,
+  getChecklists,
+  createChecklist,
+  getDrivers,
+  createDriver,
+  updateDriver,
+  deleteDriver
+} from '../../api/logistics';
 
 const FleetOperations = () => {
   const { user } = useAuth();
@@ -97,18 +113,16 @@ const FleetOperations = () => {
     try {
       setLoading(true);
       const [vRes, tRes, cRes, dRes] = await Promise.all([
-        fetch('/api/logistics/fleet/vehicles', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
-        fetch('/api/logistics/fleet/trips', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
-        fetch('/api/logistics/fleet/checklists', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
-        fetch('/api/logistics/fleet/drivers', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
+        getVehicles(),
+        getTrips(),
+        getChecklists(),
+        getDrivers()
       ]);
 
-      const [vJson, tJson, cJson, dJson] = await Promise.all([vRes.json(), tRes.json(), cRes.json(), dRes.json()]);
-
-      if (vJson.success) setVehicles(vJson.data);
-      if (tJson.success) setTrips(tJson.data);
-      if (cJson.success) setChecklists(cJson.data);
-      if (dJson.success) setDrivers(dJson.data);
+      if (vRes.data?.success) setVehicles(vRes.data.data);
+      if (tRes.data?.success) setTrips(tRes.data.data);
+      if (cRes.data?.success) setChecklists(cRes.data.data);
+      if (dRes.data?.success) setDrivers(dRes.data.data);
     } catch (err) {
       toast.error('Error loading fleet operations data');
     } finally {
@@ -124,27 +138,19 @@ const FleetOperations = () => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      const url = driverForm.id ? `/api/logistics/fleet/drivers/${driverForm.id}` : '/api/logistics/fleet/drivers';
-      const method = driverForm.id ? 'PUT' : 'POST';
-      const res = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(driverForm)
-      });
-      const json = await res.json();
-      if (json.success) {
+      const res = driverForm.id
+        ? await updateDriver(driverForm.id, driverForm)
+        : await createDriver(driverForm);
+      if (res.data?.success) {
         toast.success(driverForm.id ? 'Driver updated successfully!' : 'Driver created successfully!');
         setIsDriverModal(false);
         setDriverForm({ id: null, full_name: '', license_number: '', phone: '', status: 'Active', notes: '' });
         fetchData();
       } else {
-        toast.error(json.message || 'Failed to save driver');
+        toast.error(res.data?.message || 'Failed to save driver');
       }
     } catch (err) {
-      toast.error('Error saving driver');
+      toast.error(err.response?.data?.message || 'Error saving driver');
     } finally {
       setSubmitting(false);
     }
@@ -153,19 +159,15 @@ const FleetOperations = () => {
   const handleDeleteDriver = async (id) => {
     if (!window.confirm('Are you sure you want to remove this driver?')) return;
     try {
-      const res = await fetch(`/api/logistics/fleet/drivers/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      const json = await res.json();
-      if (json.success) {
+      const res = await deleteDriver(id);
+      if (res.data?.success) {
         toast.success('Driver record removed!');
         fetchData();
       } else {
-        toast.error(json.message || 'Failed to delete driver');
+        toast.error(res.data?.message || 'Failed to delete driver');
       }
     } catch (err) {
-      toast.error('Error removing driver');
+      toast.error(err.response?.data?.message || 'Error removing driver');
     }
   };
 
@@ -173,25 +175,17 @@ const FleetOperations = () => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      const res = await fetch('/api/logistics/fleet/trips', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(tripForm)
-      });
-      const json = await res.json();
-      if (json.success) {
+      const res = await createTrip(tripForm);
+      if (res.data?.success) {
         toast.success('Trip logged successfully!');
         setIsTripModal(false);
         setTripForm({ vehicle_id: '', driver_name: user?.full_name || '', referring_physician: '', destination: '', patient_name: '', start_km: '', auth_by: 'Logistics Desk', trip_type: 'Operational' });
         fetchData();
       } else {
-        toast.error(json.message || 'Failed to log trip');
+        toast.error(res.data?.message || 'Failed to log trip');
       }
     } catch (err) {
-      toast.error('Network error');
+      toast.error(err.response?.data?.message || 'Network error');
     } finally {
       setSubmitting(false);
     }
@@ -201,25 +195,17 @@ const FleetOperations = () => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      const res = await fetch(`/api/logistics/fleet/trips/${endTripForm.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(endTripForm)
-      });
-      const json = await res.json();
-      if (json.success) {
+      const res = await updateTrip(endTripForm.id, endTripForm);
+      if (res.data?.success) {
         toast.success('Trip completed successfully!');
         setIsEndTripModal(false);
         setEndTripForm({ id: null, vehicle_id: null, end_km: '' });
         fetchData();
       } else {
-        toast.error(json.message || 'Failed to complete trip');
+        toast.error(res.data?.message || 'Failed to complete trip');
       }
     } catch (err) {
-      toast.error('Network error');
+      toast.error(err.response?.data?.message || 'Network error');
     } finally {
       setSubmitting(false);
     }
@@ -229,24 +215,16 @@ const FleetOperations = () => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      const res = await fetch('/api/logistics/fleet/checklists', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(checklistForm)
-      });
-      const json = await res.json();
-      if (json.success) {
+      const res = await createChecklist(checklistForm);
+      if (res.data?.success) {
         toast.success('Pre-trip mechanical check recorded!');
         setIsChecklistModal(false);
         fetchData();
       } else {
-        toast.error(json.message || 'Failed to submit checklist');
+        toast.error(res.data?.message || 'Failed to submit checklist');
       }
     } catch (err) {
-      toast.error('Network error');
+      toast.error(err.response?.data?.message || 'Network error');
     } finally {
       setSubmitting(false);
     }
@@ -256,18 +234,10 @@ const FleetOperations = () => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      const method = vehicleForm.id ? 'PUT' : 'POST';
-      const url = vehicleForm.id ? `/api/logistics/fleet/vehicles/${vehicleForm.id}` : '/api/logistics/fleet/vehicles';
-      const res = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(vehicleForm)
-      });
-      const json = await res.json();
-      if (json.success) {
+      const res = vehicleForm.id
+        ? await updateVehicle(vehicleForm.id, vehicleForm)
+        : await createVehicle(vehicleForm);
+      if (res.data?.success) {
         toast.success(vehicleForm.id ? 'Vehicle updated successfully!' : 'Vehicle registered successfully!');
         setIsVehicleModal(false);
         setVehicleForm({
@@ -284,10 +254,10 @@ const FleetOperations = () => {
         });
         fetchData();
       } else {
-        toast.error(json.message || 'Failed to save vehicle');
+        toast.error(res.data?.message || 'Failed to save vehicle');
       }
     } catch (err) {
-      toast.error('Error saving vehicle');
+      toast.error(err.response?.data?.message || 'Error saving vehicle');
     } finally {
       setSubmitting(false);
     }
@@ -312,20 +282,108 @@ const FleetOperations = () => {
   const handleDeleteVehicle = async (id, plate) => {
     if (!window.confirm(`Are you sure you want to remove vehicle ${plate || ''}?`)) return;
     try {
-      const res = await fetch(`/api/logistics/fleet/vehicles/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      const json = await res.json();
-      if (json.success) {
+      const res = await deleteVehicle(id);
+      if (res.data?.success) {
         toast.success('Vehicle removed');
         fetchData();
       } else {
-        toast.error(json.message || 'Failed to remove vehicle');
+        toast.error(res.data?.message || 'Failed to remove vehicle');
       }
     } catch (err) {
-      toast.error('Error removing vehicle');
+      toast.error(err.response?.data?.message || 'Error removing vehicle');
     }
+  };
+
+  const handleExportTripsExcel = async () => {
+    if (!trips || trips.length === 0) {
+      toast.error('No trip logs available to export');
+      return;
+    }
+
+    const totalDistance = trips.reduce((acc, t) => {
+      const dist = t.end_km && t.start_km ? Number(t.end_km) - Number(t.start_km) : 0;
+      return acc + (dist > 0 ? dist : 0);
+    }, 0);
+    const totalFuel = trips.reduce((acc, t) => acc + (Number(t.fuel_consumed) || 0), 0);
+
+    await exportToLegacyExcel({
+      title: 'Legacy Clinics — Fleet & Ambulance Dispatch Log',
+      subtitle: 'Vehicle Trip Logs, Mileage, Fuel Consumption & Operational Status',
+      filename: 'Legacy_Clinics_Fleet_Trips',
+      sheetName: 'Trip Logs',
+      user,
+      metadata: [
+        ['Fleet Operations Head', 'Logistics & Dispatch Office'],
+        ['Total Fleet Trips', `${trips.length} Dispatches`],
+        ['Total Cumulative KM', `${totalDistance.toLocaleString()} KM`],
+        ['Total Fuel Consumed', `${totalFuel.toFixed(1)} Liters`],
+      ],
+      summaryMetrics: [
+        { label: 'TOTAL TRIPS', value: trips.length },
+        { label: 'TOTAL DISTANCE', value: `${totalDistance.toLocaleString()} KM` },
+        { label: 'TOTAL FUEL', value: `${totalFuel.toFixed(1)} L` },
+        { label: 'AVG DISTANCE / TRIP', value: trips.length ? `${(totalDistance / trips.length).toFixed(1)} KM` : '0 KM' },
+      ],
+      columns: [
+        { key: 'id', header: 'TRIP ID', width: 12, alignment: 'center' },
+        { key: 'plate_number', header: 'VEHICLE PLATE', width: 16, alignment: 'center' },
+        { key: 'driver_name', header: 'ASSIGNED DRIVER', width: 22 },
+        { key: 'destination', header: 'DESTINATION / MISSION', width: 28 },
+        { key: 'trip_type', header: 'TRIP TYPE', width: 16 },
+        { key: 'start_km', header: 'START KM', width: 14, numFmt: '#,##0', alignment: 'right' },
+        { key: 'end_km', header: 'END KM', width: 14, numFmt: '#,##0', alignment: 'right' },
+        { 
+          key: 'distance_km', 
+          header: 'DISTANCE (KM)', 
+          width: 16, 
+          numFmt: '#,##0', 
+          alignment: 'right',
+          render: t => (t.end_km && t.start_km ? Number(t.end_km) - Number(t.start_km) : 0)
+        },
+        { key: 'fuel_consumed', header: 'FUEL (L)', width: 14, numFmt: '#,##0.0', alignment: 'right' },
+        { key: 'start_time', header: 'START TIME', width: 18, alignment: 'center' },
+        { key: 'end_time', header: 'END TIME', width: 18, alignment: 'center' },
+        { key: 'status', header: 'STATUS', width: 14, isStatus: true, alignment: 'center' },
+      ],
+      data: trips,
+    });
+  };
+
+  const handleExportVehiclesExcel = async () => {
+    if (!vehicles || vehicles.length === 0) {
+      toast.error('No vehicles available to export');
+      return;
+    }
+
+    await exportToLegacyExcel({
+      title: 'Legacy Clinics — Fleet Vehicle & Ambulance Registry',
+      subtitle: 'Vehicle Asset Inventory, Odometers & Regulatory Compliance Audit',
+      filename: 'Legacy_Clinics_Vehicle_Registry',
+      sheetName: 'Vehicle Registry',
+      user,
+      metadata: [
+        ['Total Fleet Count', `${vehicles.length} Vehicles`],
+        ['Department', 'Logistics, Transport & Emergency Services'],
+      ],
+      summaryMetrics: [
+        { label: 'ACTIVE FLEET', value: vehicles.filter(v => v.status === 'Available' || v.status === 'In Use').length },
+        { label: 'IN MAINTENANCE', value: vehicles.filter(v => v.status === 'Maintenance').length },
+        { label: 'TOTAL VEHICLES', value: vehicles.length },
+      ],
+      columns: [
+        { key: 'plate_number', header: 'PLATE NUMBER', width: 16, alignment: 'center' },
+        { key: 'make', header: 'MAKE', width: 16 },
+        { key: 'model', header: 'MODEL', width: 16 },
+        { key: 'type', header: 'VEHICLE TYPE', width: 16 },
+        { key: 'current_km', header: 'CURRENT ODOMETER', width: 18, numFmt: '#,##0 "KM"', alignment: 'right' },
+        { key: 'fuel_type', header: 'FUEL TYPE', width: 14, alignment: 'center' },
+        { key: 'insurance_expiry', header: 'INSURANCE EXPIRY', width: 18, alignment: 'center' },
+        { key: 'control_technique_expiry', header: 'TECH CONTROL EXPIRY', width: 20, alignment: 'center' },
+        { key: 'rema_expiry', header: 'REMA EMISSION EXPIRY', width: 20, alignment: 'center' },
+        { key: 'status', header: 'STATUS', width: 14, isStatus: true, alignment: 'center' },
+      ],
+      data: vehicles,
+    });
   };
 
   // Helper for expiry dates
@@ -374,9 +432,18 @@ const FleetOperations = () => {
           <button onClick={() => { setDriverForm({ id: null, full_name: '', license_number: '', phone: '', status: 'Active', notes: '' }); setIsDriverModal(true); }} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#334155', fontWeight: 600, fontSize: '0.85rem', padding: '8px 14px' }}>
             <User size={15} /> Register Driver
           </button>
-          <button onClick={() => setIsTripModal(true)} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#0f172a', color: '#ffffff', borderRadius: '8px', fontWeight: 600, fontSize: '0.85rem', padding: '8px 14px', border: 'none' }}>
+          <button onClick={() => setIsTripModal(true)} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#1B669E', color: '#ffffff', borderRadius: '8px', fontWeight: 600, fontSize: '0.85rem', padding: '8px 14px', border: 'none' }}>
             <Truck size={15} /> Log New Trip
           </button>
+          {activeTab === 'trips' ? (
+            <button onClick={handleExportTripsExcel} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#1B669E', fontWeight: 600, fontSize: '0.85rem', padding: '8px 14px' }}>
+              <FileSpreadsheet size={15} color="#1B669E" /> Export Trips Excel
+            </button>
+          ) : (
+            <button onClick={handleExportVehiclesExcel} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#1B669E', fontWeight: 600, fontSize: '0.85rem', padding: '8px 14px' }}>
+              <FileSpreadsheet size={15} color="#1B669E" /> Export Fleet Excel
+            </button>
+          )}
           <button onClick={() => setIsChecklistModal(true)} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#334155', fontWeight: 600, fontSize: '0.85rem', padding: '8px 14px' }}>
             <CheckSquare size={15} /> Pre-Trip Check
           </button>
@@ -396,8 +463,8 @@ const FleetOperations = () => {
             background: 'none',
             fontWeight: 600,
             fontSize: '0.85rem',
-            color: activeTab === 'compliance' ? '#0f172a' : '#64748b',
-            borderBottom: activeTab === 'compliance' ? '2px solid #0f172a' : '2px solid transparent',
+            color: activeTab === 'compliance' ? '#1B669E' : '#64748b',
+            borderBottom: activeTab === 'compliance' ? '2px solid #1B669E' : '2px solid transparent',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -417,8 +484,8 @@ const FleetOperations = () => {
             background: 'none',
             fontWeight: 600,
             fontSize: '0.85rem',
-            color: activeTab === 'drivers' ? '#0f172a' : '#64748b',
-            borderBottom: activeTab === 'drivers' ? '2px solid #0f172a' : '2px solid transparent',
+            color: activeTab === 'drivers' ? '#1B669E' : '#64748b',
+            borderBottom: activeTab === 'drivers' ? '2px solid #1B669E' : '2px solid transparent',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -438,8 +505,8 @@ const FleetOperations = () => {
             background: 'none',
             fontWeight: 600,
             fontSize: '0.85rem',
-            color: activeTab === 'trips' ? '#0f172a' : '#64748b',
-            borderBottom: activeTab === 'trips' ? '2px solid #0f172a' : '2px solid transparent',
+            color: activeTab === 'trips' ? '#1B669E' : '#64748b',
+            borderBottom: activeTab === 'trips' ? '2px solid #1B669E' : '2px solid transparent',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -459,8 +526,8 @@ const FleetOperations = () => {
             background: 'none',
             fontWeight: 600,
             fontSize: '0.85rem',
-            color: activeTab === 'checklists' ? '#0f172a' : '#64748b',
-            borderBottom: activeTab === 'checklists' ? '2px solid #0f172a' : '2px solid transparent',
+            color: activeTab === 'checklists' ? '#1B669E' : '#64748b',
+            borderBottom: activeTab === 'checklists' ? '2px solid #1B669E' : '2px solid transparent',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',

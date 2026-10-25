@@ -91,6 +91,9 @@ exports.getReportById = async (req, res, next) => {
   try {
     const report = await Incident.findById(req.params.id);
     if (!report) return res.status(404).json({ success: false, message: 'Report not found' });
+    if (!Incident.canUserViewIncident(req.user, report)) {
+      return res.status(403).json({ success: false, message: 'Access denied. You can only view incident reports from your department or reports you created.' });
+    }
     res.json({ success: true, data: report });
   } catch (err) {
     next(err);
@@ -101,6 +104,9 @@ exports.getPDF = async (req, res, next) => {
   try {
     const report = await Incident.findById(req.params.id);
     if (!report) return res.status(404).json({ success: false, message: 'Report not found' });
+    if (!Incident.canUserViewIncident(req.user, report)) {
+      return res.status(403).json({ success: false, message: 'Access denied. You can only view incident reports from your department or reports you created.' });
+    }
     
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="Incident_${report.id}.pdf"`);
@@ -117,7 +123,8 @@ exports.deleteReport = async (req, res, next) => {
     if (!existing) return res.status(404).json({ success: false, message: 'Report not found.' });
     if (existing.status !== 'pending') return res.status(400).json({ success: false, message: 'Only pending reports can be deleted.' });
 
-    if (req.user.role !== 'admin' && Number(existing.created_by) !== Number(req.user.id)) {
+    const isPrivileged = ['admin', 'hsfp'].includes((req.user?.role || '').toLowerCase());
+    if (!isPrivileged && Number(existing.created_by) !== Number(req.user.id)) {
       return res.status(403).json({ success: false, message: 'Access denied. You can only delete your own reports.' });
     }
 
