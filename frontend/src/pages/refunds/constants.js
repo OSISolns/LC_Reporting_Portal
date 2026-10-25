@@ -77,3 +77,34 @@ export const INSURANCES = [
   "VINE PHARMACY",
   "Other / Not Listed"
 ];
+
+export const CLINICAL_SERVICES = [
+  // ── Primary High-Frequency Clinical Services ─────────────────────────
+  { value: "GP", label: "GP (General Practitioner / General Medicine)" },
+  { value: "Gyno", label: "Gyno (Gynecology & Obstetrics)" },
+  { value: "Cardio", label: "Cardio (Cardiology)" },
+  { value: "Dental", label: "Dental (Dentistry & Orthodontics)" },
+  { value: "Imaging", label: "Imaging (Radiology, CT, MRI, Ultrasound, X-Ray)" },
+  { value: "Internal Medicine", label: "Internal Medicine (Internal Medecine)" },
+  { value: "ENT", label: "ENT (Ear, Nose & Throat)" },
+  { value: "Orthopedy", label: "Orthopedy (Orthopedics)" },
+  { value: "Pediatrics", label: "Pediatrics" },
+  { value: "Physio", label: "Physio (Physiotherapy & Rehabilitation)" },
+
+  // ── Specialized Clinical Departments & Services ─────────────────────
+  { value: "Dermatology", label: "Dermatology" },
+  { value: "Ophthalmology", label: "Ophthalmology (Eye Clinic)" },
+  { value: "General Surgery", label: "General Surgery" },
+  { value: "Neurology", label: "Neurology & Neurosurgery" },
+  { value: "Urology", label: "Urology" },
+  { value: "Gastroenterology", label: "Gastroenterology" },
+  { value: "Nephrology", label: "Nephrology" },
+  { value: "Pulmonology", label: "Pulmonology" },
+  { value: "Oncology", label: "Oncology" },
+  { value: "Endocrinology", label: "Endocrinology" },
+  { value: "Rheumatology", label: "Rheumatology" },
+  { value: "Clinical Psychology", label: "Clinical Psychology & Mental Health" },
+  { value: "Laboratory", label: "Laboratory & Pathology" },
+  { value: "Inpatient / Ward", label: "Inpatient / Ward / Hospitalization" },
+  { value: "Other", label: "Other / Specialized Service" }
+];

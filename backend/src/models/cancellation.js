@@ -8,8 +8,10 @@ class Cancellation {
       telephoneNumber, insurancePayer, totalAmountCancelled,
       originalReceiptNumber, rectifiedReceiptNumber,
       originalReceiptAmount, rectifiedReceiptAmount,
-      initialTransactionDate, rectifiedDate, reasonForCancellation, billedBy
+      initialTransactionDate, rectifiedDate, reasonForCancellation, billedBy,
+      serviceName, service_name, service
     } = data;
+    const selectedService = serviceName || service_name || service || null;
 
     // Check for duplicate active cancellation on the same old SID if provided
     if (oldSidNumber && oldSidNumber.trim() !== '') {
@@ -44,8 +46,8 @@ class Cancellation {
         original_receipt_number, rectified_receipt_number,
         original_receipt_amount, rectified_receipt_amount,
         initial_transaction_date, rectified_date, reason_for_cancellation,
-        created_by, status, billed_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+        created_by, status, billed_by, service_name
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
       RETURNING *`,
       [
         patientFullName, pidNumber, oldSidNumber ? oldSidNumber.trim() : null, newSidNumber ? newSidNumber.trim() : null,
@@ -53,7 +55,7 @@ class Cancellation {
         originalReceiptNumber, rectifiedReceiptNumber,
         cleanAmount(originalReceiptAmount), cleanAmount(rectifiedReceiptAmount),
         cleanDate(initialTransactionDate), cleanDate(rectifiedDate), reasonForCancellation,
-        userId, initialStatus, billedBy || null
+        userId, initialStatus, billedBy || null, selectedService
       ]
     );
     return rows[0];
@@ -65,8 +67,10 @@ class Cancellation {
       telephoneNumber, insurancePayer, totalAmountCancelled,
       originalReceiptNumber, rectifiedReceiptNumber,
       originalReceiptAmount, rectifiedReceiptAmount,
-      initialTransactionDate, rectifiedDate, reasonForCancellation, billedBy
+      initialTransactionDate, rectifiedDate, reasonForCancellation, billedBy,
+      serviceName, service_name, service
     } = data;
+    const selectedService = serviceName !== undefined ? serviceName : (service_name !== undefined ? service_name : (service !== undefined ? service : null));
 
     if (oldSidNumber && oldSidNumber.trim() !== '') {
       const existing = await db.query(
@@ -107,8 +111,9 @@ class Cancellation {
         reason_for_cancellation = $14,
         billed_by = $15,
         status = COALESCE($16, status),
+        service_name = COALESCE($17, service_name),
         updated_at = NOW()
-      WHERE id = $17 AND (status = 'pending' OR status = 'draft')
+      WHERE id = $18 AND (status = 'pending' OR status = 'draft')
       RETURNING *`,
       [
         patientFullName, pidNumber, oldSidNumber, newSidNumber,
@@ -116,7 +121,7 @@ class Cancellation {
         originalReceiptNumber, rectifiedReceiptNumber,
         cleanAmount(originalReceiptAmount), cleanAmount(rectifiedReceiptAmount),
         cleanDate(initialTransactionDate), cleanDate(rectifiedDate), reasonForCancellation,
-        billedBy || null, data.status || null, id
+        billedBy || null, data.status || null, selectedService, id
       ]
     );
     return rows[0];
@@ -158,6 +163,11 @@ class Cancellation {
       query += ` AND c.status != 'draft'`;
     }
 
+    if (filters.service || filters.serviceName) {
+      params.push(filters.service || filters.serviceName);
+      query += ` AND c.service_name = $${params.length}`;
+    }
+
     if (filters.search && filters.search.trim()) {
       const term = `%${filters.search.trim()}%`;
       params.push(term);
@@ -170,6 +180,7 @@ class Cancellation {
         c.original_receipt_number ILIKE ${p} OR 
         c.rectified_receipt_number ILIKE ${p} OR
         c.reason_for_cancellation ILIKE ${p} OR
+        c.service_name ILIKE ${p} OR
         u1.full_name ILIKE ${p}
       )`;
     } else {

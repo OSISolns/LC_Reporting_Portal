@@ -2562,7 +2562,8 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       { name: 'supporting_document_base64', type: 'TEXT' },
       { name: 'supporting_document_name', type: 'TEXT' },
       { name: 'supporting_document_uploaded_by', type: 'INTEGER REFERENCES users(id) ON DELETE SET NULL' },
-      { name: 'supporting_document_uploaded_at', type: 'DATETIME' }
+      { name: 'supporting_document_uploaded_at', type: 'DATETIME' },
+      { name: 'service_name', type: 'TEXT' }
     ];
 
     for (const table of ['cancellation_requests', 'refund_requests']) {

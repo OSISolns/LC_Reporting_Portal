@@ -9,7 +9,7 @@ import { useFormAutoSave } from '../../hooks/useFormAutoSave';
 
 const EMPTY_FORM = {
   patientFullName: '', pidNumber: '', sidNumber: '',
-  telephoneNumber: '', insurancePayer: '',
+  telephoneNumber: '', insurancePayer: '', serviceName: '',
   momoCode: '', totalAmountPaid: '', amountToBeRefunded: '',
   amountPaidBy: '', originalReceiptNumber: '',
   initialTransactionDate: '', reasonForRefund: '',

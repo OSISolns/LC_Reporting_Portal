@@ -222,6 +222,7 @@ exports.exportExcel = async (req, res, next) => {
       { header: 'ID',             key: 'id' },
       { header: 'Patient Name',   key: 'patient_full_name' },
       { header: 'PID',            key: 'pid_number' },
+      { header: 'Service',        key: 'service_name' },
       { header: 'MOMO Code',      key: 'momo_code' },
       { header: 'Total Paid',     key: 'total_amount_paid' },
       { header: 'Refund Amount',  key: 'amount_to_be_refunded' },

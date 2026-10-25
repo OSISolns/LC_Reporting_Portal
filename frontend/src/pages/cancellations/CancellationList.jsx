@@ -24,7 +24,7 @@ import { getStaffList } from '../../api/users';
 
 const EMPTY_CANCELLATION_FORM = {
   patientFullName: '', pidNumber: '', oldSidNumber: '', newSidNumber: '',
-  telephoneNumber: '', insurancePayer: '', totalAmountCancelled: '',
+  telephoneNumber: '', insurancePayer: '', serviceName: '', totalAmountCancelled: '',
   originalReceiptNumber: '', rectifiedReceiptNumber: '',
   originalReceiptAmount: '', rectifiedReceiptAmount: '',
   initialTransactionDate: '', rectifiedDate: '', reasonForCancellation: '', billedBy: ''
@@ -156,7 +156,7 @@ const CancellationList = () => {
   const resetForm = () => {
     setFormData({
       patientFullName: '', pidNumber: '', oldSidNumber: '', newSidNumber: '',
-      telephoneNumber: '', insurancePayer: '', totalAmountCancelled: '',
+      telephoneNumber: '', insurancePayer: '', serviceName: '', totalAmountCancelled: '',
       originalReceiptNumber: '', rectifiedReceiptNumber: '',
       originalReceiptAmount: '', rectifiedReceiptAmount: '',
       initialTransactionDate: '', rectifiedDate: '', reasonForCancellation: '', billedBy: ''
@@ -178,6 +178,7 @@ const CancellationList = () => {
       newSidNumber: r.new_sid_number || '',
       telephoneNumber: r.telephone_number || '',
       insurancePayer: r.insurance_payer || '',
+      serviceName: r.service_name || '',
       totalAmountCancelled: r.total_amount_cancelled || '',
       originalReceiptNumber: r.original_receipt_number || '',
       rectifiedReceiptNumber: r.rectified_receipt_number || '',
@@ -405,6 +406,11 @@ const CancellationList = () => {
                   <td style={{ padding: '1.25rem 1.5rem', fontWeight: 700, color: 'var(--text-secondary)' }}>#{r.id}</td>
                   <td style={{ padding: '1.25rem 1.5rem' }}>
                     <div style={{ fontWeight: 600, color: 'var(--primary-dark)', fontSize: '0.95rem' }}>{r.patient_full_name}</div>
+                    {r.service_name && (
+                      <span style={{ display: 'inline-block', marginTop: '4px', fontSize: '0.72rem', fontWeight: 600, padding: '2px 8px', borderRadius: '4px', backgroundColor: '#e0f2fe', color: '#0369a1' }}>
+                        {r.service_name}
+                      </span>
+                    )}
                   </td>
                   <td style={{ padding: '1.25rem 1.5rem', color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: '0.9rem' }}>{r.pid_number}</td>
                   <td style={{ padding: '1.25rem 1.5rem', fontWeight: 700, color: 'var(--primary-dark)' }}>RWF {Number(r.total_amount_cancelled).toLocaleString()}</td>

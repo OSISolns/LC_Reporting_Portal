@@ -1,5 +1,5 @@
 import { Info, Receipt, Save, Phone, Calendar } from 'lucide-react';
-import { INSURANCES } from '../../refunds/constants';
+import { INSURANCES, CLINICAL_SERVICES } from '../../refunds/constants';
 import PatientAutocomplete from '../../../components/PatientAutocomplete';
 
 const inputStyle = {
@@ -132,6 +132,16 @@ const CancellationFormFields = ({ formData, handleChange, handleSubmit, onSaveDr
             <select name="insurancePayer" required value={formData.insurancePayer} onChange={handleChange} style={selectStyle}>
               <option value="">Select Insurance / Payer</option>
               {INSURANCES.map(ins => <option key={ins} value={ins}>{ins}</option>)}
+            </select>
+          </div>
+
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Service / Clinical Specialty *</label>
+            <select name="serviceName" required value={formData.serviceName} onChange={handleChange} style={selectStyle}>
+              <option value="">Select Service / Specialty</option>
+              {CLINICAL_SERVICES.map(s => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
             </select>
           </div>
 

@@ -24,7 +24,7 @@ import { getStaffList } from '../../api/users';
 
 const EMPTY_FORM = {
   patientFullName: '', pidNumber: '', sidNumber: '',
-  telephoneNumber: '', insurancePayer: '',
+  telephoneNumber: '', insurancePayer: '', serviceName: '',
   momoCode: '', totalAmountPaid: '', amountToBeRefunded: '',
   amountPaidBy: '', originalReceiptNumber: '',
   initialTransactionDate: '', reasonForRefund: '', billedBy: ''
@@ -159,6 +159,7 @@ const RefundList = () => {
       sidNumber: r.sid_number || '',
       telephoneNumber: r.telephone_number || '',
       insurancePayer: r.insurance_payer || '',
+      serviceName: r.service_name || '',
       momoCode: r.momo_code || '',
       totalAmountPaid: r.total_amount_paid || '',
       amountToBeRefunded: r.amount_to_be_refunded || '',
@@ -350,6 +351,11 @@ const RefundList = () => {
                   <td style={{ padding: '1.25rem 1.5rem', fontWeight: 700, color: 'var(--text-secondary)' }}>#{r.id}</td>
                   <td style={{ padding: '1.25rem 1.5rem' }}>
                     <div style={{ fontWeight: 600, color: 'var(--primary-dark)', fontSize: '0.95rem' }}>{r.patient_full_name}</div>
+                    {r.service_name && (
+                      <span style={{ display: 'inline-block', marginTop: '4px', fontSize: '0.72rem', fontWeight: 600, padding: '2px 8px', borderRadius: '4px', backgroundColor: '#e0f2fe', color: '#0369a1' }}>
+                        {r.service_name}
+                      </span>
+                    )}
                   </td>
                   <td style={{ padding: '1.25rem 1.5rem', color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: '0.9rem' }}>{r.pid_number}</td>
                   <td style={{ padding: '1.25rem 1.5rem', fontWeight: 700, color: 'var(--primary-dark)' }}>RWF {Number(r.amount_to_be_refunded).toLocaleString()}</td>

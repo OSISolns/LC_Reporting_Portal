@@ -1,5 +1,5 @@
 import { useState as useLocalState } from 'react';
-import { INSURANCES } from '../constants';
+import { INSURANCES, CLINICAL_SERVICES } from '../constants';
 import { Info, Receipt, Save, Phone, Calendar, Users, X as XIcon } from 'lucide-react';
 import PatientAutocomplete from '../../../components/PatientAutocomplete';
 
@@ -149,12 +149,22 @@ const RefundFormFields = ({ formData, handleChange, handleSubmit, onSaveDraft, l
             </div>
           </div>
 
-          <div style={{ ...fieldStyle, gridColumn: 'span 2' }}>
+          <div style={fieldStyle}>
             <label style={labelStyle}>Insurance / Payer *</label>
             <select name="insurancePayer" required value={formData.insurancePayer} onChange={handleChange} style={selectStyle}>
               <option value="">Select Insurance / Payer</option>
               {INSURANCES.map(insurance => (
                 <option key={insurance} value={insurance}>{insurance}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Service / Clinical Specialty *</label>
+            <select name="serviceName" required value={formData.serviceName} onChange={handleChange} style={selectStyle}>
+              <option value="">Select Service / Specialty</option>
+              {CLINICAL_SERVICES.map(s => (
+                <option key={s.value} value={s.value}>{s.label}</option>
               ))}
             </select>
           </div>

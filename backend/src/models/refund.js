@@ -8,8 +8,10 @@ class Refund {
       telephoneNumber, insurancePayer,
       momoCode, totalAmountPaid, amountToBeRefunded,
       amountPaidBy, originalReceiptNumber,
-      initialTransactionDate, reasonForRefund, billedBy
+      initialTransactionDate, reasonForRefund, billedBy,
+      serviceName, service_name, service
     } = data;
+    const selectedService = serviceName || service_name || service || null;
 
     // Prevent duplicate: Check for existing active/approved request for this SID
     if (sidNumber && sidNumber.trim() !== '') {
@@ -42,8 +44,8 @@ class Refund {
         momo_code, total_amount_paid, amount_to_be_refunded,
         amount_paid_by, original_receipt_number,
         initial_transaction_date, reason_for_refund,
-        created_by, status, billed_by
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+        created_by, status, billed_by, service_name
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
       RETURNING *`,
       [
         patientFullName, pidNumber, sidNumber,
@@ -51,7 +53,7 @@ class Refund {
         momoCode, cleanAmount(totalAmountPaid), cleanAmount(amountToBeRefunded),
         amountPaidBy, originalReceiptNumber,
         cleanDate(initialTransactionDate), reasonForRefund,
-        userId, initialStatus, billedBy || null
+        userId, initialStatus, billedBy || null, selectedService
       ]
     );
     return rows[0];
@@ -63,8 +65,10 @@ class Refund {
       telephoneNumber, insurancePayer,
       momoCode, totalAmountPaid, amountToBeRefunded,
       amountPaidBy, originalReceiptNumber,
-      initialTransactionDate, reasonForRefund, billedBy
+      initialTransactionDate, reasonForRefund, billedBy,
+      serviceName, service_name, service
     } = data;
+    const selectedService = serviceName !== undefined ? serviceName : (service_name !== undefined ? service_name : (service !== undefined ? service : null));
 
     if (sidNumber && sidNumber.trim() !== '') {
       const existing = await db.query(
@@ -103,8 +107,9 @@ class Refund {
         reason_for_refund = $12,
         billed_by = $13,
         status = COALESCE($14, status),
+        service_name = COALESCE($15, service_name),
         updated_at = NOW()
-      WHERE id = $15 AND (status = 'pending' OR status = 'draft')
+      WHERE id = $16 AND (status = 'pending' OR status = 'draft')
       RETURNING *`,
       [
         patientFullName, pidNumber, sidNumber,
@@ -112,7 +117,7 @@ class Refund {
         momoCode, cleanAmount(totalAmountPaid), cleanAmount(amountToBeRefunded),
         amountPaidBy, originalReceiptNumber,
         cleanDate(initialTransactionDate), reasonForRefund,
-        billedBy || null, data.status || null, id
+        billedBy || null, data.status || null, selectedService, id
       ]
     );
     return rows[0];
@@ -152,13 +157,35 @@ class Refund {
     } else {
       query += ` AND r.status != 'draft'`;
     }
-    if (filters.pid) {
-      params.push(`%${filters.pid}%`);
-      query += ` AND r.pid_number ILIKE $${params.length}`;
+
+    if (filters.service || filters.serviceName) {
+      params.push(filters.service || filters.serviceName);
+      query += ` AND r.service_name = $${params.length}`;
     }
-    if (filters.patientName) {
-      params.push(`%${filters.patientName}%`);
-      query += ` AND r.patient_full_name ILIKE $${params.length}`;
+
+    if (filters.search && filters.search.trim()) {
+      const term = `%${filters.search.trim()}%`;
+      params.push(term);
+      const p = `$${params.length}`;
+      query += ` AND (
+        r.patient_full_name ILIKE ${p} OR 
+        r.pid_number ILIKE ${p} OR 
+        r.sid_number ILIKE ${p} OR 
+        r.momo_code ILIKE ${p} OR 
+        r.original_receipt_number ILIKE ${p} OR 
+        r.reason_for_refund ILIKE ${p} OR
+        r.service_name ILIKE ${p} OR
+        u1.full_name ILIKE ${p}
+      )`;
+    } else {
+      if (filters.pid) {
+        params.push(`%${filters.pid}%`);
+        query += ` AND r.pid_number ILIKE $${params.length}`;
+      }
+      if (filters.patientName) {
+        params.push(`%${filters.patientName}%`);
+        query += ` AND r.patient_full_name ILIKE $${params.length}`;
+      }
     }
 
     query += ` ORDER BY r.created_at DESC LIMIT 100`;
