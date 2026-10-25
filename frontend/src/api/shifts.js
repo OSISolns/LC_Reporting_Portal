@@ -17,10 +17,19 @@ export const getMyActiveShift = () => api.get('/shifts/my-active');
 export const getMyHistory = () => api.get('/shifts/my-history');
 
 /**
- * Get the latest handover notes for a shift role.
+ * Get the latest handover notes for a shift role and optional workstation.
  * @param {string} shiftRole
+ * @param {string} [workstation]
  */
-export const getLatestHandover = (shiftRole) => api.get('/shifts/latest-handover', { params: { shift_role: shiftRole } });
+export const getLatestHandover = (shiftRole, workstation) => 
+  api.get('/shifts/latest-handover', { params: { shift_role: shiftRole, workstation: workstation || undefined } });
+
+/**
+ * Get a list of handover briefings filtered by mission and/or workstation.
+ * @param {object} [params]
+ */
+export const getHandoversList = (params = {}) =>
+  api.get('/shifts/latest-handover', { params: { ...params, list: 'true' } });
 
 /**
  * Auto-save draft of closing data.

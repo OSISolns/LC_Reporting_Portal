@@ -102,15 +102,16 @@ export default function NurseShiftDashboard() {
   useEffect(() => {
     async function init() {
       try {
-        const [shiftRes, obsRes, handoverRes, histRes] = await Promise.all([
-          getMyActiveShift(),
-          api.get('/clinical/observations/recent'),
-          getLatestHandover('nurse').catch(() => ({ data: { data: null } })),
+        const shiftRes = await getMyActiveShift();
+        const shiftData = shiftRes.data?.data || null;
+        setActiveShift(shiftData);
+
+        const [obsRes, handoverRes, histRes] = await Promise.all([
+          api.get('/clinical/observations/recent').catch(() => ({ data: { data: [] } })),
+          getLatestHandover('nurse', shiftData?.nursing_ward).catch(() => ({ data: { data: null } })),
           getMyHistory().catch(() => ({ data: { data: [] } }))
         ]);
 
-        const shiftData = shiftRes.data?.data || null;
-        setActiveShift(shiftData);
         setRecentObservations(obsRes.data?.data || []);
         setLatestHandover(handoverRes.data?.data || null);
         setMyHistory(histRes.data?.data || []);
@@ -334,7 +335,14 @@ export default function NurseShiftDashboard() {
       {latestHandover && (
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#007B8A]">Previous Shift Handover Briefing</span>
+            <span className="text-xs font-semibold text-[#007B8A] flex items-center gap-1.5">
+              <span>Previous Shift Handover Briefing</span>
+              {(latestHandover.workstation || latestHandover.nursing_ward) && (
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-teal-50 text-teal-800 border border-teal-200">
+                  {latestHandover.workstation || latestHandover.nursing_ward}
+                </span>
+              )}
+            </span>
             <span className="text-[11px] text-slate-400">By {latestHandover.user_name}</span>
           </div>
           <p className="text-xs text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100 italic">

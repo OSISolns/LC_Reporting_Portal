@@ -1002,15 +1002,21 @@ exports.getShiftById = async (req, res, next) => {
 exports.getLatestHandover = async (req, res, next) => {
   try {
     const shiftRole = req.query.shift_role || req.user.role;
-    
+    const workstation = req.query.workstation || req.query.nursing_ward;
+    const isList = req.query.list === 'true' || req.query.all === 'true';
+
     // Authorization check
-    const isSupervisor = ['admin', 'coo', 'deputy_coo', 'chef-nurse', 'medical_director'].includes(req.user.role);
-    const clinicalRoles = ['nurse', 'rn_midwife', 'chef-nurse', 'doctor', 'consultant', 'pa', 'medical_director'];
+    const isSupervisor = ['admin', 'coo', 'deputy_coo', 'chef-nurse', 'medical_director', ...CHEF_NURSE_ROLES].includes(req.user.role);
+    const clinicalRoles = ['nurse', 'rn_midwife', 'chef-nurse', 'doctor', 'consultant', 'pa', 'medical_director', ...CHEF_NURSE_ROLES];
+    const frontOfficeRoles = ['customer_care', 'vip_lounge', 'helpdesk', 'call_center', 'cashier', 'rama_rssb'];
+
     let isAuthorized = isSupervisor;
     if (!isAuthorized) {
       if (req.user.role === shiftRole || ((shiftRole === 'nurse' || shiftRole === 'rn_midwife') && clinicalRoles.includes(req.user.role))) {
         isAuthorized = true;
-      } else if (['customer_care', 'cashier'].includes(req.user.role) && ['customer_care', 'vip_lounge', 'helpdesk', 'call_center', 'cashier', 'rama_rssb'].includes(shiftRole)) {
+      } else if (frontOfficeRoles.includes(req.user.role) && (frontOfficeRoles.includes(shiftRole) || shiftRole === 'all')) {
+        isAuthorized = true;
+      } else if (clinicalRoles.includes(req.user.role) && shiftRole === 'all') {
         isAuthorized = true;
       }
     }
@@ -1019,17 +1025,93 @@ exports.getLatestHandover = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'You are not authorized to view handover notes for this category.' });
     }
 
-    const shift = await q1(
-      `SELECT s.id, s.handover_notes, s.closed_at, u.full_name AS user_name, s.shift_role
-       FROM shift_sessions s
-       JOIN users u ON s.user_id = u.id
-       WHERE s.shift_role = ? AND s.status = 'closed' AND s.handover_notes IS NOT NULL AND s.handover_notes != ''
-       ORDER BY s.closed_at DESC
-       LIMIT 1`,
-      [shiftRole]
-    );
+    // List mode: return recent handovers matching mission and/or workstation
+    if (isList) {
+      const whereClauses = ["s.status = 'closed'", "s.handover_notes IS NOT NULL", "s.handover_notes != ''"];
+      const params = [];
 
-    res.json({ success: true, data: shift || null });
+      if (shiftRole && shiftRole !== 'all') {
+        whereClauses.push('s.shift_role = ?');
+        params.push(shiftRole);
+      } else if (!isSupervisor) {
+        if (clinicalRoles.includes(req.user.role)) {
+          whereClauses.push("s.shift_role IN ('nurse', 'rn_midwife')");
+        } else if (frontOfficeRoles.includes(req.user.role)) {
+          whereClauses.push("s.shift_role IN ('customer_care', 'vip_lounge', 'helpdesk', 'call_center', 'cashier', 'rama_rssb')");
+        }
+      }
+
+      if (workstation && workstation !== 'all') {
+        whereClauses.push('s.nursing_ward = ?');
+        params.push(workstation);
+      }
+
+      const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
+      const shifts = await q(
+        `SELECT s.id, s.handover_notes, s.closed_at, s.opened_at, u.full_name AS user_name,
+                s.shift_role, s.nursing_ward, s.nursing_ward AS workstation, s.wave, s.start_hour, s.is_flagged
+         FROM shift_sessions s
+         JOIN users u ON s.user_id = u.id
+         WHERE ${whereClauses.join(' AND ')}
+         ORDER BY s.closed_at DESC
+         LIMIT ?`,
+        [...params, limit]
+      );
+
+      return res.json({ success: true, data: shifts });
+    }
+
+    // Single handover mode: prioritize exact match on workstation if provided
+    let shift = null;
+    if (workstation && workstation !== 'all' && shiftRole && shiftRole !== 'all') {
+      shift = await q1(
+        `SELECT s.id, s.handover_notes, s.closed_at, s.opened_at, u.full_name AS user_name,
+                s.shift_role, s.nursing_ward, s.nursing_ward AS workstation, s.wave, s.start_hour, s.is_flagged
+         FROM shift_sessions s
+         JOIN users u ON s.user_id = u.id
+         WHERE s.shift_role = ? AND s.nursing_ward = ? AND s.status = 'closed' AND s.handover_notes IS NOT NULL AND s.handover_notes != ''
+         ORDER BY s.closed_at DESC
+         LIMIT 1`,
+        [shiftRole, workstation]
+      );
+    }
+
+    // Fallback to latest for shift_role if not found with workstation
+    if (!shift && shiftRole && shiftRole !== 'all') {
+      shift = await q1(
+        `SELECT s.id, s.handover_notes, s.closed_at, s.opened_at, u.full_name AS user_name,
+                s.shift_role, s.nursing_ward, s.nursing_ward AS workstation, s.wave, s.start_hour, s.is_flagged
+         FROM shift_sessions s
+         JOIN users u ON s.user_id = u.id
+         WHERE s.shift_role = ? AND s.status = 'closed' AND s.handover_notes IS NOT NULL AND s.handover_notes != ''
+         ORDER BY s.closed_at DESC
+         LIMIT 1`,
+        [shiftRole]
+      );
+    }
+
+    // Fallback if shiftRole is 'all'
+    if (!shift) {
+      const fallbackWhere = ["s.status = 'closed'", "s.handover_notes IS NOT NULL", "s.handover_notes != ''"];
+      if (!isSupervisor) {
+        if (clinicalRoles.includes(req.user.role)) {
+          fallbackWhere.push("s.shift_role IN ('nurse', 'rn_midwife')");
+        } else if (frontOfficeRoles.includes(req.user.role)) {
+          fallbackWhere.push("s.shift_role IN ('customer_care', 'vip_lounge', 'helpdesk', 'call_center', 'cashier', 'rama_rssb')");
+        }
+      }
+      shift = await q1(
+        `SELECT s.id, s.handover_notes, s.closed_at, s.opened_at, u.full_name AS user_name,
+                s.shift_role, s.nursing_ward, s.nursing_ward AS workstation, s.wave, s.start_hour, s.is_flagged
+         FROM shift_sessions s
+         JOIN users u ON s.user_id = u.id
+         WHERE ${fallbackWhere.join(' AND ')}
+         ORDER BY s.closed_at DESC
+         LIMIT 1`
+      );
+    }
+
+    return res.json({ success: true, data: shift || null });
   } catch (err) {
     next(err);
   }

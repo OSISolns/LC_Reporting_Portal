@@ -18,10 +18,14 @@ import {
   Stethoscope,
   Crown,
   AlertTriangle,
-  StickyNote
+  StickyNote,
+  MapPin,
+  RotateCcw,
+  Filter,
+  Inbox
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { getMyActiveShift, getLatestHandover, getMyHistory } from '../../api/shifts';
+import { getMyActiveShift, getLatestHandover, getHandoversList, getMyHistory } from '../../api/shifts';
 import { Button, Card, Badge } from '../../components/ui/index.jsx';
 import toast from 'react-hot-toast';
 
@@ -104,6 +108,72 @@ const ROLE_DETAILS = {
   }
 };
 
+const MISSION_OPTIONS = [
+  { value: 'all', label: 'All Missions & Roles' },
+  { value: 'cashier', label: 'Cashier (Billing)' },
+  { value: 'customer_care', label: 'Customer Care' },
+  { value: 'helpdesk', label: 'Helpdesk & Triage' },
+  { value: 'call_center', label: 'Call Center' },
+  { value: 'vip_lounge', label: 'VIP Lounge' },
+  { value: 'rama_rssb', label: 'RAMA / RSSB Desk' },
+  { value: 'nurse', label: 'Registered Nurse' },
+  { value: 'rn_midwife', label: 'RN / Midwife' },
+];
+
+const WORKSTATIONS_BY_MISSION = {
+  all: [
+    { value: 'all', label: 'All Workstations' },
+    { value: 'Ground-Floor', label: 'Ground-Floor' },
+    { value: 'First-Floor', label: 'First-Floor' },
+    { value: 'Paediatrics', label: 'Paediatrics' },
+    { value: 'STATION 1', label: 'Station 1 (Vitals)' },
+    { value: 'STATION 2', label: 'Station 2 (Cardiology)' },
+    { value: 'MINOR SURGERY', label: 'Minor Surgery' },
+  ],
+  cashier: [
+    { value: 'all', label: 'All Cashier Stations' },
+    { value: 'Ground-Floor', label: 'Ground-Floor Cashier Counter' },
+    { value: 'First-Floor', label: 'First-Floor Specialist Cashier' },
+    { value: 'Paediatrics', label: 'Paediatrics Ward Cashier' },
+  ],
+  customer_care: [
+    { value: 'all', label: 'All Customer Care Desks' },
+    { value: 'Ground-Floor', label: 'Ground-Floor Main Desk' },
+    { value: 'First-Floor', label: 'First-Floor Specialist Clinic' },
+  ],
+  helpdesk: [
+    { value: 'all', label: 'All Helpdesk Stations' },
+    { value: 'Ground-Floor', label: 'Ground-Floor Main Helpdesk' },
+    { value: 'First-Floor', label: 'First-Floor Specialist Helpdesk' },
+  ],
+  call_center: [
+    { value: 'all', label: 'All Desks' },
+    { value: 'Call-Center', label: 'Call Center Suite' },
+  ],
+  vip_lounge: [
+    { value: 'all', label: 'All Desks' },
+    { value: 'VIP-Lounge', label: 'VIP Executive Lounge Counter' },
+  ],
+  rama_rssb: [
+    { value: 'all', label: 'All Desks' },
+    { value: 'RAMA-Desk', label: 'RAMA / RSSB Billing Station' },
+  ],
+  nurse: [
+    { value: 'all', label: 'All Nursing Wards' },
+    { value: 'STATION 1', label: 'STATION 1 (Vital Signs & Orientation)' },
+    { value: 'STATION 2', label: 'STATION 2 (Cardiology)' },
+    { value: 'MINOR SURGERY', label: 'MINOR SURGERY' },
+    { value: 'PAEDIATRICS', label: 'PAEDIATRICS (Vitals & Vaccinations)' },
+  ],
+  rn_midwife: [
+    { value: 'all', label: 'All Wards' },
+    { value: 'STATION 1', label: 'STATION 1 (Vital Signs & Orientation)' },
+    { value: 'STATION 2', label: 'STATION 2 (Cardiology)' },
+    { value: 'MINOR SURGERY', label: 'MINOR SURGERY' },
+    { value: 'PAEDIATRICS', label: 'PAEDIATRICS (Vitals & Vaccinations)' },
+  ],
+};
+
 function getGreeting() {
   const h = new Date().getHours();
   if (h < 12) return { text: 'Good Morning', icon: <Sunrise size={20} className="text-amber-500" /> };
@@ -118,7 +188,10 @@ export default function StaffShiftDashboard() {
   const [loading, setLoading] = useState(true);
   const [isWaveExpired, setIsWaveExpired] = useState(false);
   const [nearingExpiration, setNearingExpiration] = useState(false);
-  const [latestHandovers, setLatestHandovers] = useState(null);
+  const [handoversList, setHandoversList] = useState([]);
+  const [handoversLoading, setHandoversLoading] = useState(false);
+  const [selectedMission, setSelectedMission] = useState('all');
+  const [selectedWorkstation, setSelectedWorkstation] = useState('all');
   const [myHistory, setMyHistory] = useState([]);
 
   const greeting = getGreeting();
@@ -127,6 +200,48 @@ export default function StaffShiftDashboard() {
     : (ROLE_DETAILS[user?.role] || ROLE_DETAILS.customer_care);
   const firstName = user?.fullName?.split(' ')[0] || 'Agent';
 
+  const fetchHandovers = async (mission, workstation) => {
+    setHandoversLoading(true);
+    try {
+      const params = {};
+      if (mission && mission !== 'all') params.shift_role = mission;
+      if (workstation && workstation !== 'all') params.workstation = workstation;
+      params.limit = 12;
+
+      const res = await getHandoversList(params);
+      const data = res.data?.data || [];
+      setHandoversList(Array.isArray(data) ? data : (data ? [data] : []));
+    } catch (err) {
+      console.error('Failed to fetch handovers', err);
+      setHandoversList([]);
+    } finally {
+      setHandoversLoading(false);
+    }
+  };
+
+  const handleMissionChange = (newMission) => {
+    setSelectedMission(newMission);
+    const validStations = WORKSTATIONS_BY_MISSION[newMission] || WORKSTATIONS_BY_MISSION.all;
+    const isStationValid = validStations.some(s => s.value === selectedWorkstation);
+    const nextStation = isStationValid ? selectedWorkstation : 'all';
+    setSelectedWorkstation(nextStation);
+    fetchHandovers(newMission, nextStation);
+  };
+
+  const handleWorkstationChange = (newStation) => {
+    setSelectedWorkstation(newStation);
+    fetchHandovers(selectedMission, newStation);
+  };
+
+  const handleSnapToActive = () => {
+    if (!activeShift) return;
+    const mission = activeShift.shift_role;
+    const station = activeShift.nursing_ward || 'all';
+    setSelectedMission(mission);
+    setSelectedWorkstation(station);
+    fetchHandovers(mission, station);
+  };
+
   useEffect(() => {
     async function init() {
       try {
@@ -134,31 +249,30 @@ export default function StaffShiftDashboard() {
         const active = res.data?.data || null;
         setActiveShift(active);
 
-        // Fetch latest handover notes
-        const rolesToFetch = [];
+        // Determine initial mission & workstation
+        let initMission = 'all';
+        let initWorkstation = 'all';
+
         if (active) {
-          rolesToFetch.push(active.shift_role);
-        } else {
-          if (user?.role === 'cashier') {
-            rolesToFetch.push('cashier');
-          } else if (user?.role === 'customer_care') {
-            rolesToFetch.push('customer_care', 'helpdesk', 'call_center', 'vip_lounge');
-          }
+          initMission = active.shift_role;
+          initWorkstation = active.nursing_ward || 'all';
+        } else if (user?.role === 'cashier') {
+          initMission = 'cashier';
+          initWorkstation = 'Ground-Floor';
+        } else if (user?.role === 'customer_care') {
+          initMission = 'customer_care';
+          initWorkstation = 'Ground-Floor';
+        } else if (user?.role === 'helpdesk') {
+          initMission = 'helpdesk';
+          initWorkstation = 'Ground-Floor';
+        } else if (user?.role === 'nurse' || user?.role === 'rn_midwife') {
+          initMission = 'nurse';
+          initWorkstation = 'STATION 1';
         }
 
-        const uniqueRoles = [...new Set(rolesToFetch)];
-        const handovers = {};
-        for (const role of uniqueRoles) {
-          try {
-            const handoverRes = await getLatestHandover(role);
-            if (handoverRes.data?.data) {
-              handovers[role] = handoverRes.data.data;
-            }
-          } catch (err) {
-            console.error(`Failed to fetch handover for role ${role}`, err);
-          }
-        }
-        setLatestHandovers(handovers);
+        setSelectedMission(initMission);
+        setSelectedWorkstation(initWorkstation);
+        await fetchHandovers(initMission, initWorkstation);
 
         // Fetch My History
         try {
@@ -460,34 +574,170 @@ export default function StaffShiftDashboard() {
         </Card>
       </div>
 
-      {/* ── Previous Handover Notes ── */}
-      {latestHandovers && Object.keys(latestHandovers).length > 0 && (
-        <Card className="p-8 space-y-6">
-          <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
-            <StickyNote size={20} className="text-[#1b669d]" /> Previous Shift Handover Briefings
-          </h3>
+      {/* ── Previous Handover Notes (Mission & Workstation Aware) ── */}
+      <Card className="p-8 space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+          <div>
+            <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
+              <StickyNote size={22} className="text-[#1b669d]" /> Previous Shift Handover Briefings
+            </h3>
+            <p className="text-xs text-slate-500 mt-1">
+              Outgoing shift reports tailored to specific clinical missions and workstations
+            </p>
+          </div>
+
+          {/* Mission & Workstation Filter Bar */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+              <Filter size={13} className="text-slate-400" />
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Mission:</label>
+              <select
+                value={selectedMission}
+                onChange={(e) => handleMissionChange(e.target.value)}
+                className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+              >
+                {MISSION_OPTIONS.map((m) => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+              <MapPin size={13} className="text-slate-400" />
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Workstation:</label>
+              <select
+                value={selectedWorkstation}
+                onChange={(e) => handleWorkstationChange(e.target.value)}
+                className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+              >
+                {(WORKSTATIONS_BY_MISSION[selectedMission] || WORKSTATIONS_BY_MISSION.all).map((w) => (
+                  <option key={w.value} value={w.value}>{w.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              onClick={() => fetchHandovers(selectedMission, selectedWorkstation)}
+              disabled={handoversLoading}
+              title="Refresh briefings"
+              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer border border-slate-200"
+            >
+              <RotateCcw size={14} className={handoversLoading ? 'animate-spin' : ''} />
+            </button>
+          </div>
+        </div>
+
+        {/* Active shift context tag / snap button */}
+        {activeShift && (
+          <div className="p-3.5 bg-blue-50/70 border border-blue-200/80 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-blue-900 font-semibold">
+              <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+              <span>Your Active Session: <strong className="uppercase">{activeShift.shift_role?.replace(/_/g, ' ')}</strong></span>
+              {activeShift.nursing_ward && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white text-blue-800 font-bold border border-blue-200">
+                  <MapPin size={11} className="text-blue-600" />
+                  {activeShift.nursing_ward}
+                </span>
+              )}
+            </div>
+
+            {(selectedMission !== activeShift.shift_role || (activeShift.nursing_ward && selectedWorkstation !== activeShift.nursing_ward)) && (
+              <button
+                onClick={handleSnapToActive}
+                className="text-[11px] font-bold px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+              >
+                🎯 Show My Station Handover
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Handover Cards Grid */}
+        {handoversLoading ? (
+          <div className="py-12 text-center text-slate-400 text-xs font-semibold">
+            Loading previous shift briefings...
+          </div>
+        ) : handoversList && handoversList.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {Object.entries(latestHandovers).map(([role, handover]) => (
-              <div key={role} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 space-y-3">
-                <div className="flex items-center justify-between">
-                  <Badge variant="info" className="uppercase tracking-widest text-[9px] font-black">
-                    {role.replace(/_/g, ' ')}
-                  </Badge>
+            {handoversList.map((handover) => (
+              <div key={handover.id} className="p-6 bg-slate-50 hover:bg-slate-50/90 rounded-2xl border border-slate-200/80 space-y-3.5 transition-all shadow-xs">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/60 pb-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="info" className="uppercase tracking-widest text-[9px] font-black">
+                      {handover.shift_role?.replace(/_/g, ' ')}
+                    </Badge>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700 shadow-2xs">
+                      <MapPin size={11} className="text-[#1b669d]" />
+                      {handover.workstation || handover.nursing_ward || 'General Station'}
+                    </span>
+                    {handover.wave && (
+                      <span className="text-[10px] font-semibold text-slate-500">
+                        • {handover.wave} {handover.start_hour ? `(${handover.start_hour})` : ''}
+                      </span>
+                    )}
+                  </div>
                   <span className="text-[10px] text-slate-400 font-bold">
                     Closed on {new Date(handover.closed_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 font-black uppercase tracking-wider">
-                  Outgoing: {handover.user_name}
-                </p>
-                <div className="text-sm font-semibold text-slate-700 bg-white p-4 rounded-xl border border-slate-100 shadow-sm italic">
-                  "{handover.handover_notes}"
+
+                <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
+                  <span className="text-slate-500 uppercase tracking-wider text-[10px] font-black flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#1b669d]" />
+                    Outgoing: <span className="text-slate-800 font-bold">{handover.user_name}</span>
+                  </span>
+                </div>
+
+                <div className="text-sm font-semibold text-slate-700 bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs space-y-2">
+                  {handover.handover_notes?.includes('AUTO-CLOSED') && (
+                    <div className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 inline-flex items-center gap-1.5">
+                      <AlertTriangle size={12} className="text-amber-600" />
+                      Auto-Closed Shift (Exceeded 8-Hour Limit)
+                    </div>
+                  )}
+                  <div className="italic text-slate-700 leading-relaxed whitespace-pre-line text-xs sm:text-sm">
+                    "{handover.handover_notes}"
+                  </div>
                 </div>
               </div>
             ))}
           </div>
-        </Card>
-      )}
+        ) : (
+          <div className="py-10 px-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center space-y-3">
+            <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
+              <Inbox size={20} />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-700">No Handover Briefings Found</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                No recent closed shift briefings recorded for{' '}
+                <strong className="text-slate-700">{selectedMission === 'all' ? 'All Missions' : selectedMission.replace(/_/g, ' ')}</strong>
+                {selectedWorkstation !== 'all' && (
+                  <span> at <strong className="text-slate-700">{selectedWorkstation}</strong></span>
+                )}.
+              </p>
+            </div>
+            <div className="flex justify-center gap-2 pt-2">
+              {selectedWorkstation !== 'all' && (
+                <button
+                  onClick={() => handleWorkstationChange('all')}
+                  className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
+                >
+                  View All Stations for this Mission
+                </button>
+              )}
+              {selectedMission !== 'all' && (
+                <button
+                  onClick={() => handleMissionChange('all')}
+                  className="px-3 py-1.5 rounded-lg bg-[#1b669d] text-white text-xs font-semibold hover:bg-[#15527f] transition-colors shadow-2xs cursor-pointer"
+                >
+                  Show All Missions
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </Card>
 
       {/* ── My Past Sessions History ── */}
       {myHistory && myHistory.length > 0 && (
