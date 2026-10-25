@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -22,7 +22,9 @@ import {
   MapPin,
   RotateCcw,
   Filter,
-  Inbox
+  Inbox,
+  ArrowUpDown,
+  Calendar
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getMyActiveShift, getLatestHandover, getHandoversList, getMyHistory } from '../../api/shifts';
@@ -109,15 +111,13 @@ const ROLE_DETAILS = {
 };
 
 const MISSION_OPTIONS = [
-  { value: 'all', label: 'All Missions & Roles' },
+  { value: 'all', label: 'All Operations Missions' },
   { value: 'cashier', label: 'Cashier (Billing)' },
   { value: 'customer_care', label: 'Customer Care' },
   { value: 'helpdesk', label: 'Helpdesk & Triage' },
   { value: 'call_center', label: 'Call Center' },
   { value: 'vip_lounge', label: 'VIP Lounge' },
   { value: 'rama_rssb', label: 'RAMA / RSSB Desk' },
-  { value: 'nurse', label: 'Registered Nurse' },
-  { value: 'rn_midwife', label: 'RN / Midwife' },
 ];
 
 const WORKSTATIONS_BY_MISSION = {
@@ -125,10 +125,10 @@ const WORKSTATIONS_BY_MISSION = {
     { value: 'all', label: 'All Workstations' },
     { value: 'Ground-Floor', label: 'Ground-Floor' },
     { value: 'First-Floor', label: 'First-Floor' },
-    { value: 'Paediatrics', label: 'Paediatrics' },
-    { value: 'STATION 1', label: 'Station 1 (Vitals)' },
-    { value: 'STATION 2', label: 'Station 2 (Cardiology)' },
-    { value: 'MINOR SURGERY', label: 'Minor Surgery' },
+    { value: 'Paediatrics', label: 'Paediatrics (Cashier)' },
+    { value: 'Call-Center', label: 'Call Center Suite' },
+    { value: 'VIP-Lounge', label: 'VIP Executive Lounge' },
+    { value: 'RAMA-Desk', label: 'RAMA / RSSB Desk' },
   ],
   cashier: [
     { value: 'all', label: 'All Cashier Stations' },
@@ -158,20 +158,6 @@ const WORKSTATIONS_BY_MISSION = {
     { value: 'all', label: 'All Desks' },
     { value: 'RAMA-Desk', label: 'RAMA / RSSB Billing Station' },
   ],
-  nurse: [
-    { value: 'all', label: 'All Nursing Wards' },
-    { value: 'STATION 1', label: 'STATION 1 (Vital Signs & Orientation)' },
-    { value: 'STATION 2', label: 'STATION 2 (Cardiology)' },
-    { value: 'MINOR SURGERY', label: 'MINOR SURGERY' },
-    { value: 'PAEDIATRICS', label: 'PAEDIATRICS (Vitals & Vaccinations)' },
-  ],
-  rn_midwife: [
-    { value: 'all', label: 'All Wards' },
-    { value: 'STATION 1', label: 'STATION 1 (Vital Signs & Orientation)' },
-    { value: 'STATION 2', label: 'STATION 2 (Cardiology)' },
-    { value: 'MINOR SURGERY', label: 'MINOR SURGERY' },
-    { value: 'PAEDIATRICS', label: 'PAEDIATRICS (Vitals & Vaccinations)' },
-  ],
 };
 
 function getGreeting() {
@@ -192,6 +178,7 @@ export default function StaffShiftDashboard() {
   const [handoversLoading, setHandoversLoading] = useState(false);
   const [selectedMission, setSelectedMission] = useState('all');
   const [selectedWorkstation, setSelectedWorkstation] = useState('all');
+  const [dateSort, setDateSort] = useState('desc');
   const [myHistory, setMyHistory] = useState([]);
 
   const greeting = getGreeting();
@@ -200,13 +187,14 @@ export default function StaffShiftDashboard() {
     : (ROLE_DETAILS[user?.role] || ROLE_DETAILS.customer_care);
   const firstName = user?.fullName?.split(' ')[0] || 'Agent';
 
-  const fetchHandovers = async (mission, workstation) => {
+  const fetchHandovers = async (mission, workstation, sortOrder = dateSort) => {
     setHandoversLoading(true);
     try {
       const params = {};
       if (mission && mission !== 'all') params.shift_role = mission;
       if (workstation && workstation !== 'all') params.workstation = workstation;
-      params.limit = 12;
+      params.sort_order = sortOrder;
+      params.limit = 20;
 
       const res = await getHandoversList(params);
       const data = res.data?.data || [];
@@ -219,18 +207,32 @@ export default function StaffShiftDashboard() {
     }
   };
 
+  const sortedHandovers = useMemo(() => {
+    if (!Array.isArray(handoversList)) return [];
+    return [...handoversList].sort((a, b) => {
+      const timeA = new Date(a.closed_at || a.created_at || a.opened_at || 0).getTime();
+      const timeB = new Date(b.closed_at || b.created_at || b.opened_at || 0).getTime();
+      return dateSort === 'asc' ? timeA - timeB : timeB - timeA;
+    });
+  }, [handoversList, dateSort]);
+
+  const handleDateSortChange = (newSort) => {
+    setDateSort(newSort);
+    fetchHandovers(selectedMission, selectedWorkstation, newSort);
+  };
+
   const handleMissionChange = (newMission) => {
     setSelectedMission(newMission);
     const validStations = WORKSTATIONS_BY_MISSION[newMission] || WORKSTATIONS_BY_MISSION.all;
     const isStationValid = validStations.some(s => s.value === selectedWorkstation);
     const nextStation = isStationValid ? selectedWorkstation : 'all';
     setSelectedWorkstation(nextStation);
-    fetchHandovers(newMission, nextStation);
+    fetchHandovers(newMission, nextStation, dateSort);
   };
 
   const handleWorkstationChange = (newStation) => {
     setSelectedWorkstation(newStation);
-    fetchHandovers(selectedMission, newStation);
+    fetchHandovers(selectedMission, newStation, dateSort);
   };
 
   const handleSnapToActive = () => {
@@ -239,7 +241,7 @@ export default function StaffShiftDashboard() {
     const station = activeShift.nursing_ward || 'all';
     setSelectedMission(mission);
     setSelectedWorkstation(station);
-    fetchHandovers(mission, station);
+    fetchHandovers(mission, station, dateSort);
   };
 
   useEffect(() => {
@@ -265,14 +267,11 @@ export default function StaffShiftDashboard() {
         } else if (user?.role === 'helpdesk') {
           initMission = 'helpdesk';
           initWorkstation = 'Ground-Floor';
-        } else if (user?.role === 'nurse' || user?.role === 'rn_midwife') {
-          initMission = 'nurse';
-          initWorkstation = 'STATION 1';
         }
 
         setSelectedMission(initMission);
         setSelectedWorkstation(initWorkstation);
-        await fetchHandovers(initMission, initWorkstation);
+        await fetchHandovers(initMission, initWorkstation, dateSort);
 
         // Fetch My History
         try {
@@ -616,8 +615,22 @@ export default function StaffShiftDashboard() {
               </select>
             </div>
 
+            {/* Date Sorting Control */}
+            <div className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+              <ArrowUpDown size={13} className="text-slate-400" />
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Date Sort:</label>
+              <select
+                value={dateSort}
+                onChange={(e) => handleDateSortChange(e.target.value)}
+                className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+              >
+                <option value="desc">Newest First</option>
+                <option value="asc">Oldest First</option>
+              </select>
+            </div>
+
             <button
-              onClick={() => fetchHandovers(selectedMission, selectedWorkstation)}
+              onClick={() => fetchHandovers(selectedMission, selectedWorkstation, dateSort)}
               disabled={handoversLoading}
               title="Refresh briefings"
               className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer border border-slate-200"
@@ -657,9 +670,9 @@ export default function StaffShiftDashboard() {
           <div className="py-12 text-center text-slate-400 text-xs font-semibold">
             Loading previous shift briefings...
           </div>
-        ) : handoversList && handoversList.length > 0 ? (
+        ) : sortedHandovers && sortedHandovers.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {handoversList.map((handover) => (
+            {sortedHandovers.map((handover) => (
               <div key={handover.id} className="p-6 bg-slate-50 hover:bg-slate-50/90 rounded-2xl border border-slate-200/80 space-y-3.5 transition-all shadow-xs">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/60 pb-3">
                   <div className="flex flex-wrap items-center gap-2">
@@ -676,8 +689,16 @@ export default function StaffShiftDashboard() {
                       </span>
                     )}
                   </div>
-                  <span className="text-[10px] text-slate-400 font-bold">
-                    Closed on {new Date(handover.closed_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-600 bg-white px-2.5 py-1 rounded-lg border border-slate-200/90 shadow-2xs">
+                    <Calendar size={12} className="text-[#1b669d]" />
+                    {new Date(handover.closed_at || handover.opened_at).toLocaleDateString([], { 
+                      month: 'short', 
+                      day: 'numeric',
+                      year: 'numeric'
+                    })} • {new Date(handover.closed_at || handover.opened_at).toLocaleTimeString([], { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    })}
                   </span>
                 </div>
 

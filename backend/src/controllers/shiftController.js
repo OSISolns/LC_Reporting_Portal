@@ -1046,6 +1046,7 @@ exports.getLatestHandover = async (req, res, next) => {
         params.push(workstation);
       }
 
+      const sortOrder = (req.query.sort_order || req.query.order || 'desc').toLowerCase() === 'asc' ? 'ASC' : 'DESC';
       const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
       const shifts = await q(
         `SELECT s.id, s.handover_notes, s.closed_at, s.opened_at, u.full_name AS user_name,
@@ -1053,7 +1054,7 @@ exports.getLatestHandover = async (req, res, next) => {
          FROM shift_sessions s
          JOIN users u ON s.user_id = u.id
          WHERE ${whereClauses.join(' AND ')}
-         ORDER BY s.closed_at DESC
+         ORDER BY COALESCE(s.closed_at, s.created_at, s.opened_at) ${sortOrder}, s.id ${sortOrder}
          LIMIT ?`,
         [...params, limit]
       );
