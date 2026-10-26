@@ -9,9 +9,42 @@ class Refund {
       momoCode, totalAmountPaid, amountToBeRefunded,
       amountPaidBy, originalReceiptNumber,
       initialTransactionDate, reasonForRefund, billedBy,
-      serviceName, service_name, service
+      serviceName, service_name, service,
+      providerId, provider_id, providerName, provider_name, provider
     } = data;
     const selectedService = serviceName || service_name || service || null;
+    let selectedProviderId = providerId || provider_id || null;
+    let selectedProviderName = providerName || provider_name || provider || null;
+
+    if (selectedProviderId && !selectedProviderName) {
+      try {
+        const { rows: provRows } = await db.query('SELECT name FROM providers WHERE id = ?', [selectedProviderId]);
+        if (provRows.length > 0) selectedProviderName = provRows[0].name;
+      } catch (pErr) { /* fallback */ }
+    } else if (!selectedProviderId && selectedProviderName && typeof selectedProviderName === 'string') {
+      try {
+        const { rows: provRows } = await db.query('SELECT id, name FROM providers WHERE LOWER(name) = LOWER(?) LIMIT 1', [selectedProviderName.trim()]);
+        if (provRows.length > 0) {
+          selectedProviderId = provRows[0].id;
+          selectedProviderName = provRows[0].name;
+        }
+      } catch (pErr) { /* fallback */ }
+    }
+
+    const initialStatus = (data.status === 'draft' || data.isDraft) ? 'draft' : 'pending';
+
+    if (initialStatus !== 'draft') {
+      if (!selectedService || !selectedService.trim()) {
+        const error = new Error('Service / Clinical Specialty is mandatory.');
+        error.status = 400;
+        throw error;
+      }
+      if (!selectedProviderName || !selectedProviderName.trim()) {
+        const error = new Error('Attending Provider is mandatory for refund requests.');
+        error.status = 400;
+        throw error;
+      }
+    }
 
     // Prevent duplicate: Check for existing active/approved request for this SID
     if (sidNumber && sidNumber.trim() !== '') {
@@ -35,8 +68,6 @@ class Refund {
     };
     const cleanAmount = (a) => (a !== undefined && a !== null && a.toString().trim() !== '' ? a : null);
 
-    const initialStatus = (data.status === 'draft' || data.isDraft) ? 'draft' : 'pending';
-
     const { rows } = await db.query(
       `INSERT INTO refund_requests (
         patient_full_name, pid_number, sid_number,
@@ -44,8 +75,8 @@ class Refund {
         momo_code, total_amount_paid, amount_to_be_refunded,
         amount_paid_by, original_receipt_number,
         initial_transaction_date, reason_for_refund,
-        created_by, status, billed_by, service_name
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+        created_by, status, billed_by, service_name, provider_id, provider_name
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
       RETURNING *`,
       [
         patientFullName, pidNumber, sidNumber,
@@ -53,7 +84,8 @@ class Refund {
         momoCode, cleanAmount(totalAmountPaid), cleanAmount(amountToBeRefunded),
         amountPaidBy, originalReceiptNumber,
         cleanDate(initialTransactionDate), reasonForRefund,
-        userId, initialStatus, billedBy || null, selectedService
+        userId, initialStatus, billedBy || null, selectedService,
+        selectedProviderId ? parseInt(selectedProviderId, 10) : null, selectedProviderName
       ]
     );
     return rows[0];
@@ -66,9 +98,19 @@ class Refund {
       momoCode, totalAmountPaid, amountToBeRefunded,
       amountPaidBy, originalReceiptNumber,
       initialTransactionDate, reasonForRefund, billedBy,
-      serviceName, service_name, service
+      serviceName, service_name, service,
+      providerId, provider_id, providerName, provider_name, provider
     } = data;
     const selectedService = serviceName !== undefined ? serviceName : (service_name !== undefined ? service_name : (service !== undefined ? service : null));
+    let selectedProviderId = providerId !== undefined ? providerId : (provider_id !== undefined ? provider_id : null);
+    let selectedProviderName = providerName !== undefined ? providerName : (provider_name !== undefined ? provider_name : (provider !== undefined ? provider : null));
+
+    if (selectedProviderId && !selectedProviderName) {
+      try {
+        const { rows: provRows } = await db.query('SELECT name FROM providers WHERE id = ?', [selectedProviderId]);
+        if (provRows.length > 0) selectedProviderName = provRows[0].name;
+      } catch (pErr) { /* fallback */ }
+    }
 
     if (sidNumber && sidNumber.trim() !== '') {
       const existing = await db.query(
@@ -108,8 +150,10 @@ class Refund {
         billed_by = $13,
         status = COALESCE($14, status),
         service_name = COALESCE($15, service_name),
+        provider_id = COALESCE($16, provider_id),
+        provider_name = COALESCE($17, provider_name),
         updated_at = NOW()
-      WHERE id = $16 AND (status = 'pending' OR status = 'draft')
+      WHERE id = $18 AND (status = 'pending' OR status = 'draft')
       RETURNING *`,
       [
         patientFullName, pidNumber, sidNumber,
@@ -117,7 +161,8 @@ class Refund {
         momoCode, cleanAmount(totalAmountPaid), cleanAmount(amountToBeRefunded),
         amountPaidBy, originalReceiptNumber,
         cleanDate(initialTransactionDate), reasonForRefund,
-        billedBy || null, data.status || null, selectedService, id
+        billedBy || null, data.status || null, selectedService,
+        selectedProviderId ? parseInt(selectedProviderId, 10) : null, selectedProviderName, id
       ]
     );
     return rows[0];
@@ -163,6 +208,16 @@ class Refund {
       query += ` AND r.service_name = $${params.length}`;
     }
 
+    if (filters.provider || filters.providerName || filters.providerId) {
+      if (filters.providerId) {
+        params.push(parseInt(filters.providerId, 10));
+        query += ` AND r.provider_id = $${params.length}`;
+      } else {
+        params.push(`%${(filters.provider || filters.providerName).trim()}%`);
+        query += ` AND r.provider_name ILIKE $${params.length}`;
+      }
+    }
+
     if (filters.search && filters.search.trim()) {
       const term = `%${filters.search.trim()}%`;
       params.push(term);
@@ -175,6 +230,7 @@ class Refund {
         r.original_receipt_number ILIKE ${p} OR 
         r.reason_for_refund ILIKE ${p} OR
         r.service_name ILIKE ${p} OR
+        r.provider_name ILIKE ${p} OR
         u1.full_name ILIKE ${p}
       )`;
     } else {

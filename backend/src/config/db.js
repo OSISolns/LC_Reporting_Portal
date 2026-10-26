@@ -2563,7 +2563,9 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       { name: 'supporting_document_name', type: 'TEXT' },
       { name: 'supporting_document_uploaded_by', type: 'INTEGER REFERENCES users(id) ON DELETE SET NULL' },
       { name: 'supporting_document_uploaded_at', type: 'DATETIME' },
-      { name: 'service_name', type: 'TEXT' }
+      { name: 'service_name', type: 'TEXT' },
+      { name: 'provider_id', type: 'INTEGER REFERENCES providers(id) ON DELETE SET NULL' },
+      { name: 'provider_name', type: 'TEXT' }
     ];
 
     for (const table of ['cancellation_requests', 'refund_requests']) {
@@ -2665,6 +2667,64 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       console.log('✅ SQLite Schema Migration: created providers table');
     } catch (err) {
       console.warn('⚠️ SQLite Schema Migration Notice for providers:', err.message);
+    }
+
+    try {
+      await client.execute(`
+      CREATE TABLE IF NOT EXISTS services (
+        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+        code                TEXT UNIQUE,
+        name                TEXT NOT NULL,
+        department          TEXT,
+        category            TEXT,
+        default_provider_id INTEGER REFERENCES providers(id) ON DELETE SET NULL,
+        is_active           INTEGER DEFAULT 1,
+        created_at          DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      )
+    `);
+      console.log('✅ SQLite Schema Migration: created services table');
+
+      const defaultServices = [
+        ['GP', 'GP (General Practitioner / General Medicine)', 'OPD', 'Clinical'],
+        ['Gyno', 'Gyno (Gynecology & Obstetrics)', 'Gynecology', 'Clinical'],
+        ['Cardio', 'Cardio (Cardiology)', 'Cardiology', 'Clinical'],
+        ['Dental', 'Dental (Dentistry & Orthodontics)', 'Dental', 'Clinical'],
+        ['Imaging', 'Imaging (Radiology, CT, MRI, Ultrasound, X-Ray)', 'Imaging', 'Diagnostic'],
+        ['Internal Medicine', 'Internal Medicine (Internal Medecine)', 'Internal Medicine', 'Clinical'],
+        ['ENT', 'ENT (Ear, Nose & Throat)', 'ENT', 'Clinical'],
+        ['Orthopedy', 'Orthopedy (Orthopedics)', 'Orthopedics', 'Clinical'],
+        ['Pediatrics', 'Pediatrics', 'Pediatrics', 'Clinical'],
+        ['Physio', 'Physio (Physiotherapy & Rehabilitation)', 'Physiotherapy', 'Rehabilitation'],
+        ['Dermatology', 'Dermatology', 'Dermatology', 'Clinical'],
+        ['Ophthalmology', 'Ophthalmology (Eye Clinic)', 'Ophthalmology', 'Clinical'],
+        ['General Surgery', 'General Surgery', 'Surgery', 'Surgical'],
+        ['Neurology', 'Neurology & Neurosurgery', 'Neurology', 'Clinical'],
+        ['Urology', 'Urology', 'Urology', 'Clinical'],
+        ['Gastroenterology', 'Gastroenterology', 'Gastroenterology', 'Clinical'],
+        ['Laboratory', 'Laboratory (Clinical Biology & Pathology)', 'Laboratory', 'Diagnostic'],
+        ['Pharmacy', 'Pharmacy (Dispensary & Medications)', 'Pharmacy', 'Pharmaceutical'],
+        ['Nursing', 'Nursing / Triage / Minor Procedures', 'Nursing', 'Clinical'],
+        ['Oncology', 'Oncology', 'Oncology', 'Clinical'],
+        ['Nutrition', 'Nutrition & Dietetics', 'Nutrition', 'Clinical'],
+        ['Psychology', 'Psychology & Mental Health', 'Mental Health', 'Clinical']
+      ];
+
+      for (const [code, name, dept, cat] of defaultServices) {
+        try {
+          await client.execute({
+            sql: `
+              INSERT INTO services (code, name, department, category, is_active)
+              VALUES (?, ?, ?, ?, 1)
+              ON CONFLICT(code) DO UPDATE SET name = excluded.name, department = excluded.department, category = excluded.category
+            `,
+            args: [code, name, dept, cat]
+          });
+        } catch (sErr) {
+          // ignore conflict
+        }
+      }
+    } catch (err) {
+      console.warn('⚠️ SQLite Schema Migration Notice for services:', err.message);
     }
 
     try {

@@ -21,10 +21,12 @@ import {
   uploadRefundDocument
 } from '../../api/refunds';
 import { getStaffList } from '../../api/users';
+import { getProviders } from '../../api/providers';
 
 const EMPTY_FORM = {
   patientFullName: '', pidNumber: '', sidNumber: '',
   telephoneNumber: '', insurancePayer: '', serviceName: '',
+  providerId: '', providerName: '',
   momoCode: '', totalAmountPaid: '', amountToBeRefunded: '',
   amountPaidBy: '', originalReceiptNumber: '',
   initialTransactionDate: '', reasonForRefund: '', billedBy: ''
@@ -46,6 +48,7 @@ const RefundList = () => {
   const [submitting,      setSubmitting]      = useState(false);
   const [detailLoading,   setDetailLoading]   = useState(false);
   const [staff,           setStaff]           = useState([]);
+  const [providers,       setProviders]       = useState([]);
 
   const { hasRestoredDraft, clearDraft } = useFormAutoSave(
     'refund',
@@ -123,6 +126,7 @@ const RefundList = () => {
   useEffect(() => { 
     fetchRequests(); 
     fetchStaff();
+    fetchProviders();
   }, [filters]);
 
   const fetchStaff = async () => {
@@ -131,6 +135,16 @@ const RefundList = () => {
       setStaff(res.data.data || []);
     } catch (err) {
       console.error('Failed to fetch staff');
+    }
+  };
+
+  const fetchProviders = async () => {
+    try {
+      const res = await getProviders({ activeOnly: true });
+      const list = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+      setProviders(list);
+    } catch (err) {
+      console.error('Failed to fetch providers', err);
     }
   };
 
@@ -160,6 +174,8 @@ const RefundList = () => {
       telephoneNumber: r.telephone_number || '',
       insurancePayer: r.insurance_payer || '',
       serviceName: r.service_name || '',
+      providerId: r.provider_id || '',
+      providerName: r.provider_name || '',
       momoCode: r.momo_code || '',
       totalAmountPaid: r.total_amount_paid || '',
       amountToBeRefunded: r.amount_to_be_refunded || '',
@@ -188,6 +204,14 @@ const RefundList = () => {
 
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.serviceName) {
+      alert('Service / Clinical Specialty is mandatory.');
+      return;
+    }
+    if (!formData.providerId && !formData.providerName) {
+      alert('Attending Provider is mandatory for refund requests.');
+      return;
+    }
     setSubmitting(true);
     try {
       const payload = { ...formData, status: 'pending' };
@@ -351,11 +375,18 @@ const RefundList = () => {
                   <td style={{ padding: '1.25rem 1.5rem', fontWeight: 700, color: 'var(--text-secondary)' }}>#{r.id}</td>
                   <td style={{ padding: '1.25rem 1.5rem' }}>
                     <div style={{ fontWeight: 600, color: 'var(--primary-dark)', fontSize: '0.95rem' }}>{r.patient_full_name}</div>
-                    {r.service_name && (
-                      <span style={{ display: 'inline-block', marginTop: '4px', fontSize: '0.72rem', fontWeight: 600, padding: '2px 8px', borderRadius: '4px', backgroundColor: '#e0f2fe', color: '#0369a1' }}>
-                        {r.service_name}
-                      </span>
-                    )}
+                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '4px' }}>
+                      {r.service_name && (
+                        <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '2px 8px', borderRadius: '4px', backgroundColor: '#e0f2fe', color: '#0369a1' }}>
+                          {r.service_name}
+                        </span>
+                      )}
+                      {r.provider_name && (
+                        <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '2px 8px', borderRadius: '4px', backgroundColor: '#f0fdf4', color: '#15803d' }}>
+                          🩺 {r.provider_name}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td style={{ padding: '1.25rem 1.5rem', color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: '0.9rem' }}>{r.pid_number}</td>
                   <td style={{ padding: '1.25rem 1.5rem', fontWeight: 700, color: 'var(--primary-dark)' }}>RWF {Number(r.amount_to_be_refunded).toLocaleString()}</td>
@@ -540,11 +571,13 @@ const RefundList = () => {
         <RefundFormFields
           formData={formData}
           handleChange={(e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }))}
+          setFormData={setFormData}
           handleSubmit={handleCreateSubmit}
           onSaveDraft={handleSaveDraft}
           loading={submitting}
           onCancel={() => setShowCreateModal(false)}
           staff={staff}
+          providers={providers}
           hasRestoredDraft={hasRestoredDraft}
           onClearDraft={clearDraft}
         />

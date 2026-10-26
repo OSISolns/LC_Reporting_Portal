@@ -4,12 +4,14 @@ import { createRefund } from '../../api/refunds';
 import { ChevronLeft } from 'lucide-react';
 import RefundFormFields from './components/RefundFormFields';
 import { getStaffList } from '../../api/users';
+import { getProviders } from '../../api/providers';
 import { useAuth } from '../../context/AuthContext';
 import { useFormAutoSave } from '../../hooks/useFormAutoSave';
 
 const EMPTY_FORM = {
   patientFullName: '', pidNumber: '', sidNumber: '',
   telephoneNumber: '', insurancePayer: '', serviceName: '',
+  providerId: '', providerName: '',
   momoCode: '', totalAmountPaid: '', amountToBeRefunded: '',
   amountPaidBy: '', originalReceiptNumber: '',
   initialTransactionDate: '', reasonForRefund: '',
@@ -21,6 +23,7 @@ const RefundForm = () => {
   const [loading, setLoading]   = useState(false);
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [staff, setStaff] = useState([]);
+  const [providers, setProviders] = useState([]);
 
   const { user } = useAuth();
   const { hasRestoredDraft, clearDraft } = useFormAutoSave(
@@ -41,7 +44,16 @@ const RefundForm = () => {
         console.error('Failed to fetch staff list');
       }
     };
+    const fetchProviders = async () => {
+      try {
+        const res = await getProviders({ activeOnly: true });
+        setProviders(res.data.data || []);
+      } catch (err) {
+        console.error('Failed to fetch providers');
+      }
+    };
     fetchStaff();
+    fetchProviders();
   }, []);
 
   // Auto-set billedBy for cashiers
@@ -53,13 +65,21 @@ const RefundForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.serviceName) {
+      alert('Service / Clinical Specialty is mandatory.');
+      return;
+    }
+    if (!formData.providerId && !formData.providerName) {
+      alert('Attending Provider is mandatory for refund requests.');
+      return;
+    }
     setLoading(true);
     try {
       await createRefund(formData);
       clearDraft();
       navigate('/refunds');
     } catch (err) {
-      alert('Failed to submit refund request');
+      alert(err.response?.data?.message || 'Failed to submit refund request');
     } finally {
       setLoading(false);
     }
@@ -84,10 +104,12 @@ const RefundForm = () => {
       <RefundFormFields
         formData={formData}
         handleChange={handleChange}
+        setFormData={setFormData}
         handleSubmit={handleSubmit}
         loading={loading}
         onCancel={() => navigate(-1)}
         staff={staff}
+        providers={providers}
         hasRestoredDraft={hasRestoredDraft}
         onClearDraft={clearDraft}
       />

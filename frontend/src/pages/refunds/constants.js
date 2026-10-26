@@ -90,6 +90,7 @@ export const CLINICAL_SERVICES = [
   { value: "Orthopedy", label: "Orthopedy (Orthopedics)" },
   { value: "Pediatrics", label: "Pediatrics" },
   { value: "Physio", label: "Physio (Physiotherapy & Rehabilitation)" },
+  { value: "Chiropractic", label: "Chiropractic" },
 
   // ── Specialized Clinical Departments & Services ─────────────────────
   { value: "Dermatology", label: "Dermatology" },

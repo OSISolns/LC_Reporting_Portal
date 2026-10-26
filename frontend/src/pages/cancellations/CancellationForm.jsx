@@ -4,6 +4,7 @@ import { createCancellation } from '../../api/cancellations';
 import { ChevronLeft } from 'lucide-react';
 import CancellationFormFields from './components/CancellationFormFields';
 import { getStaffList } from '../../api/users';
+import { getProviders } from '../../api/providers';
 import { useAuth } from '../../context/AuthContext';
 import { useFormAutoSave } from '../../hooks/useFormAutoSave';
 
@@ -15,6 +16,8 @@ const EMPTY_FORM = {
   telephoneNumber: '', 
   insurancePayer: '', 
   serviceName: '',
+  providerId: '',
+  providerName: '',
   totalAmountCancelled: '',
   originalReceiptNumber: '', 
   rectifiedReceiptNumber: '',
@@ -30,6 +33,7 @@ const CancellationForm = () => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [staff, setStaff] = useState([]);
+  const [providers, setProviders] = useState([]);
 
   const { user } = useAuth();
   const { hasRestoredDraft, clearDraft } = useFormAutoSave(
@@ -50,11 +54,28 @@ const CancellationForm = () => {
         console.error('Failed to fetch staff list');
       }
     };
+    const fetchProviders = async () => {
+      try {
+        const res = await getProviders({ activeOnly: true });
+        setProviders(res.data.data || []);
+      } catch (err) {
+        console.error('Failed to fetch providers');
+      }
+    };
     fetchStaff();
+    fetchProviders();
   }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.serviceName) {
+      alert('Service / Clinical Specialty is mandatory.');
+      return;
+    }
+    if (!formData.providerId && !formData.providerName) {
+      alert('Attending Provider is mandatory for cancellation requests.');
+      return;
+    }
     setLoading(true);
     try {
       await createCancellation(formData);
@@ -86,10 +107,12 @@ const CancellationForm = () => {
       <CancellationFormFields 
         formData={formData}
         handleChange={handleChange}
+        setFormData={setFormData}
         handleSubmit={handleSubmit}
         loading={loading}
         onCancel={() => navigate(-1)}
         staff={staff}
+        providers={providers}
         hasRestoredDraft={hasRestoredDraft}
         onClearDraft={clearDraft}
       />

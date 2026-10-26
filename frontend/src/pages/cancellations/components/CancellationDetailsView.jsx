@@ -79,6 +79,10 @@ const CancellationDetailsView = ({ data, onExport, onVerify, onApprove, onReject
               <th>Clinical Service</th>
               <td>{data.service_name || 'N/A'}</td>
             </tr>
+            <tr>
+              <th>Attending Provider</th>
+              <td style={{ fontWeight: 600, color: 'var(--primary-dark)' }}>{data.provider_name || 'N/A'}</td>
+            </tr>
           </tbody>
         </table>
 

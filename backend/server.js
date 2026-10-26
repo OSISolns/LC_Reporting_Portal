@@ -102,6 +102,7 @@ app.use(express.urlencoded({ extended: true }));
 const logisticsRoutes = require('./src/routes/logistics');
 
 const providerRoutes = require('./src/routes/providers');
+const serviceRoutes = require('./src/routes/services');
 
 const executiveDirectivesRoutes = require('./src/routes/executiveDirectives');
 
@@ -111,6 +112,7 @@ app.use('/api/refunds', refundRoutes);
 app.use('/api/incidents', incidentRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/providers', providerRoutes);
+app.use('/api/services', serviceRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/results-transfer', resultTransferRoutes);

@@ -9,9 +9,42 @@ class Cancellation {
       originalReceiptNumber, rectifiedReceiptNumber,
       originalReceiptAmount, rectifiedReceiptAmount,
       initialTransactionDate, rectifiedDate, reasonForCancellation, billedBy,
-      serviceName, service_name, service
+      serviceName, service_name, service,
+      providerId, provider_id, providerName, provider_name, provider
     } = data;
     const selectedService = serviceName || service_name || service || null;
+    let selectedProviderId = providerId || provider_id || null;
+    let selectedProviderName = providerName || provider_name || provider || null;
+
+    if (selectedProviderId && !selectedProviderName) {
+      try {
+        const { rows: provRows } = await db.query('SELECT name FROM providers WHERE id = ?', [selectedProviderId]);
+        if (provRows.length > 0) selectedProviderName = provRows[0].name;
+      } catch (pErr) { /* fallback */ }
+    } else if (!selectedProviderId && selectedProviderName && typeof selectedProviderName === 'string') {
+      try {
+        const { rows: provRows } = await db.query('SELECT id, name FROM providers WHERE LOWER(name) = LOWER(?) LIMIT 1', [selectedProviderName.trim()]);
+        if (provRows.length > 0) {
+          selectedProviderId = provRows[0].id;
+          selectedProviderName = provRows[0].name;
+        }
+      } catch (pErr) { /* fallback */ }
+    }
+
+    const initialStatus = (data.status === 'draft' || data.isDraft) ? 'draft' : 'pending';
+
+    if (initialStatus !== 'draft') {
+      if (!selectedService || !selectedService.trim()) {
+        const error = new Error('Service / Clinical Specialty is mandatory.');
+        error.status = 400;
+        throw error;
+      }
+      if (!selectedProviderName || !selectedProviderName.trim()) {
+        const error = new Error('Attending Provider is mandatory for cancellation requests.');
+        error.status = 400;
+        throw error;
+      }
+    }
 
     // Check for duplicate active cancellation on the same old SID if provided
     if (oldSidNumber && oldSidNumber.trim() !== '') {
@@ -37,8 +70,6 @@ class Cancellation {
     };
     const cleanAmount = (a) => (a !== undefined && a !== null && a.toString().trim() !== '' ? a : null);
 
-    const initialStatus = (data.status === 'draft' || data.isDraft) ? 'draft' : 'pending';
-
     const { rows } = await db.query(
       `INSERT INTO cancellation_requests (
         patient_full_name, pid_number, old_sid_number, new_sid_number,
@@ -46,8 +77,8 @@ class Cancellation {
         original_receipt_number, rectified_receipt_number,
         original_receipt_amount, rectified_receipt_amount,
         initial_transaction_date, rectified_date, reason_for_cancellation,
-        created_by, status, billed_by, service_name
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+        created_by, status, billed_by, service_name, provider_id, provider_name
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
       RETURNING *`,
       [
         patientFullName, pidNumber, oldSidNumber ? oldSidNumber.trim() : null, newSidNumber ? newSidNumber.trim() : null,
@@ -55,7 +86,8 @@ class Cancellation {
         originalReceiptNumber, rectifiedReceiptNumber,
         cleanAmount(originalReceiptAmount), cleanAmount(rectifiedReceiptAmount),
         cleanDate(initialTransactionDate), cleanDate(rectifiedDate), reasonForCancellation,
-        userId, initialStatus, billedBy || null, selectedService
+        userId, initialStatus, billedBy || null, selectedService,
+        selectedProviderId ? parseInt(selectedProviderId, 10) : null, selectedProviderName
       ]
     );
     return rows[0];
@@ -68,9 +100,19 @@ class Cancellation {
       originalReceiptNumber, rectifiedReceiptNumber,
       originalReceiptAmount, rectifiedReceiptAmount,
       initialTransactionDate, rectifiedDate, reasonForCancellation, billedBy,
-      serviceName, service_name, service
+      serviceName, service_name, service,
+      providerId, provider_id, providerName, provider_name, provider
     } = data;
     const selectedService = serviceName !== undefined ? serviceName : (service_name !== undefined ? service_name : (service !== undefined ? service : null));
+    let selectedProviderId = providerId !== undefined ? providerId : (provider_id !== undefined ? provider_id : null);
+    let selectedProviderName = providerName !== undefined ? providerName : (provider_name !== undefined ? provider_name : (provider !== undefined ? provider : null));
+
+    if (selectedProviderId && !selectedProviderName) {
+      try {
+        const { rows: provRows } = await db.query('SELECT name FROM providers WHERE id = ?', [selectedProviderId]);
+        if (provRows.length > 0) selectedProviderName = provRows[0].name;
+      } catch (pErr) { /* fallback */ }
+    }
 
     if (oldSidNumber && oldSidNumber.trim() !== '') {
       const existing = await db.query(
@@ -112,8 +154,10 @@ class Cancellation {
         billed_by = $15,
         status = COALESCE($16, status),
         service_name = COALESCE($17, service_name),
+        provider_id = COALESCE($18, provider_id),
+        provider_name = COALESCE($19, provider_name),
         updated_at = NOW()
-      WHERE id = $18 AND (status = 'pending' OR status = 'draft')
+      WHERE id = $20 AND (status = 'pending' OR status = 'draft')
       RETURNING *`,
       [
         patientFullName, pidNumber, oldSidNumber, newSidNumber,
@@ -121,7 +165,8 @@ class Cancellation {
         originalReceiptNumber, rectifiedReceiptNumber,
         cleanAmount(originalReceiptAmount), cleanAmount(rectifiedReceiptAmount),
         cleanDate(initialTransactionDate), cleanDate(rectifiedDate), reasonForCancellation,
-        billedBy || null, data.status || null, selectedService, id
+        billedBy || null, data.status || null, selectedService,
+        selectedProviderId ? parseInt(selectedProviderId, 10) : null, selectedProviderName, id
       ]
     );
     return rows[0];
@@ -168,6 +213,16 @@ class Cancellation {
       query += ` AND c.service_name = $${params.length}`;
     }
 
+    if (filters.provider || filters.providerName || filters.providerId) {
+      if (filters.providerId) {
+        params.push(parseInt(filters.providerId, 10));
+        query += ` AND c.provider_id = $${params.length}`;
+      } else {
+        params.push(`%${(filters.provider || filters.providerName).trim()}%`);
+        query += ` AND c.provider_name ILIKE $${params.length}`;
+      }
+    }
+
     if (filters.search && filters.search.trim()) {
       const term = `%${filters.search.trim()}%`;
       params.push(term);
@@ -181,6 +236,7 @@ class Cancellation {
         c.rectified_receipt_number ILIKE ${p} OR
         c.reason_for_cancellation ILIKE ${p} OR
         c.service_name ILIKE ${p} OR
+        c.provider_name ILIKE ${p} OR
         u1.full_name ILIKE ${p}
       )`;
     } else {
