@@ -83,6 +83,31 @@ class ImagingArchive {
     const assignedFolder = folderPath || generateFolderPath(patientId, normModality, seriesName);
     const metaStr = metadataJson ? (typeof metadataJson === 'string' ? metadataJson : JSON.stringify(metadataJson)) : null;
 
+    // Verify foreign keys to prevent SQLite code 787 FOREIGN KEY constraint failed
+    let validStudyId = null;
+    if (studyId && Number.isInteger(Number(studyId)) && Number(studyId) > 0) {
+      try {
+        const checkStudy = await db.query('SELECT id FROM imaging_studies WHERE id = ?', [Number(studyId)]);
+        if (checkStudy.rows && checkStudy.rows.length > 0) {
+          validStudyId = checkStudy.rows[0].id;
+        }
+      } catch (e) {
+        validStudyId = null;
+      }
+    }
+
+    let validUploadedBy = null;
+    if (uploadedBy && Number.isInteger(Number(uploadedBy)) && Number(uploadedBy) > 0) {
+      try {
+        const checkUser = await db.query('SELECT id FROM users WHERE id = ?', [Number(uploadedBy)]);
+        if (checkUser.rows && checkUser.rows.length > 0) {
+          validUploadedBy = checkUser.rows[0].id;
+        }
+      } catch (e) {
+        validUploadedBy = null;
+      }
+    }
+
     const { rows } = await db.query(
       `INSERT INTO imaging_archives (
         study_id, accession_number, patient_id, patient_name, modality,
@@ -92,7 +117,7 @@ class ImagingArchive {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       RETURNING *`,
       [
-        studyId,
+        validStudyId,
         accessionNumber,
         patientId,
         patientName,
@@ -109,7 +134,7 @@ class ImagingArchive {
         thumbnailBase64,
         clinicalNotes,
         metaStr,
-        uploadedBy,
+        validUploadedBy,
         uploadedByName,
       ]
     );

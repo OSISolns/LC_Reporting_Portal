@@ -703,36 +703,64 @@ exports.uploadArchiveFiles = async (req, res, next) => {
 
     const normModality = ImagingStudy.normalizeModality(modality);
 
+    // Parse relative paths if provided for folder uploads
+    let relativePaths = [];
+    if (req.body.relative_paths) {
+      if (Array.isArray(req.body.relative_paths)) {
+        relativePaths = req.body.relative_paths;
+      } else if (typeof req.body.relative_paths === 'string') {
+        try {
+          const parsed = JSON.parse(req.body.relative_paths);
+          if (Array.isArray(parsed)) relativePaths = parsed;
+          else relativePaths = [req.body.relative_paths];
+        } catch (e) {
+          relativePaths = [req.body.relative_paths];
+        }
+      }
+    }
+
     // Support both multipart file upload and base64 body payload
     const rawFiles = [];
     if (req.files && Array.isArray(req.files) && req.files.length > 0) {
-      for (const f of req.files) {
+      for (let idx = 0; idx < req.files.length; idx++) {
+        const f = req.files[idx];
+        const rel = relativePaths[idx] || f.originalname || 'image.png';
+        const cleanName = rel.includes('/') ? rel.substring(rel.lastIndexOf('/') + 1) : (f.originalname || 'image.png');
         rawFiles.push({
-          fileName: f.originalname || 'image.png',
+          fileName: cleanName,
+          relativePath: rel,
           fileType: f.mimetype || 'image/png',
           fileSizeBytes: f.size || 0,
           fileBase64: f.buffer.toString('base64'),
         });
       }
     } else if (req.file) {
+      const rel = relativePaths[0] || req.file.originalname || 'image.png';
+      const cleanName = rel.includes('/') ? rel.substring(rel.lastIndexOf('/') + 1) : (req.file.originalname || 'image.png');
       rawFiles.push({
-        fileName: req.file.originalname || 'image.png',
+        fileName: cleanName,
+        relativePath: rel,
         fileType: req.file.mimetype || 'image/png',
         fileSizeBytes: req.file.size || 0,
         fileBase64: req.file.buffer.toString('base64'),
       });
     } else if (req.body.files && Array.isArray(req.body.files)) {
-      for (const item of req.body.files) {
+      for (let idx = 0; idx < req.body.files.length; idx++) {
+        const item = req.body.files[idx];
+        const rel = relativePaths[idx] || (item && item.relativePath) || (item && item.name) || 'image.png';
+        const cleanName = rel.includes('/') ? rel.substring(rel.lastIndexOf('/') + 1) : rel;
         if (typeof item === 'string') {
           rawFiles.push({
-            fileName: 'image.png',
+            fileName: cleanName,
+            relativePath: rel,
             fileType: 'image/png',
             fileSizeBytes: Math.round(item.length * 0.75),
             fileBase64: item,
           });
         } else if (item && item.base64) {
           rawFiles.push({
-            fileName: item.name || 'image.png',
+            fileName: cleanName,
+            relativePath: rel,
             fileType: item.type || 'image/png',
             fileSizeBytes: item.size || Math.round(item.base64.length * 0.75),
             fileBase64: item.base64,
@@ -740,8 +768,11 @@ exports.uploadArchiveFiles = async (req, res, next) => {
         }
       }
     } else if (req.body.fileBase64) {
+      const rel = relativePaths[0] || req.body.relativePath || req.body.fileName || 'image.png';
+      const cleanName = rel.includes('/') ? rel.substring(rel.lastIndexOf('/') + 1) : rel;
       rawFiles.push({
-        fileName: req.body.fileName || 'image.png',
+        fileName: cleanName,
+        relativePath: rel,
         fileType: req.body.fileType || 'image/png',
         fileSizeBytes: req.body.fileSizeBytes || Math.round(req.body.fileBase64.length * 0.75),
         fileBase64: req.body.fileBase64,
@@ -755,7 +786,14 @@ exports.uploadArchiveFiles = async (req, res, next) => {
     const createdArchives = [];
     let sliceCounter = 1;
 
-    for (const f of rawFiles) {
+    for (let i = 0; i < rawFiles.length; i++) {
+      const f = rawFiles[i];
+      let fileFolderPath = folderPath;
+      if (f.relativePath && f.relativePath.includes('/')) {
+        const subFolder = f.relativePath.substring(0, f.relativePath.lastIndexOf('/'));
+        fileFolderPath = folderPath ? `${folderPath}/${subFolder}` : subFolder;
+      }
+
       const created = await ImagingArchive.create({
         studyId,
         accessionNumber,
@@ -764,7 +802,7 @@ exports.uploadArchiveFiles = async (req, res, next) => {
         modality: normModality,
         bodyRegion,
         category,
-        folderPath,
+        folderPath: fileFolderPath,
         seriesName,
         sliceIndex: sliceCounter++,
         fileName: f.fileName,

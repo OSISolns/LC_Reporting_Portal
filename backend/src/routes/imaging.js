@@ -51,7 +51,7 @@ router.get('/studies/:id/dicom', checkPermission('imaging', 'view'), imagingCont
 router.get('/archives', checkPermission('imaging', 'view'), imagingController.listArchives);
 router.get('/archives/:id', checkPermission('imaging', 'view'), imagingController.getArchiveById);
 router.get('/archives/study/:studyId', checkPermission('imaging', 'view'), imagingController.getArchivesByStudy);
-router.post('/archives/upload', checkPermission('imaging', 'create'), imagingController.archiveUpload.array('files', 20), imagingController.uploadArchiveFiles);
+router.post('/archives/upload', checkPermission('imaging', 'create'), imagingController.archiveUpload.array('files', 500), imagingController.uploadArchiveFiles);
 router.delete('/archives/:id', checkPermission('imaging', 'edit'), imagingController.deleteArchive);
 
 // ── Provider Sharing (CT, MRI, OPG, X-Ray, Mammography, Ultrasound, CBCT, CEPHALOGRAM) ──

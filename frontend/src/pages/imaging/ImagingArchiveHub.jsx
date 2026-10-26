@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Archive,
   Upload,
@@ -176,17 +176,131 @@ export default function ImagingArchiveHub() {
     }
   };
 
-  const handleFileSelect = (e) => {
+  const filesInputRef = useRef(null);
+  const folderInputRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleFilesSelect = (e) => {
     if (e.target.files) {
       const filesArr = Array.from(e.target.files);
+      setUploadFiles((prev) => [...prev, ...filesArr]);
+      if (filesInputRef.current) filesInputRef.current.value = '';
+    }
+  };
+
+  const handleFolderSelect = (e) => {
+    if (e.target.files) {
+      const filesArr = Array.from(e.target.files);
+      if (filesArr.length > 0) {
+        const firstRel = filesArr[0].webkitRelativePath || '';
+        if (firstRel && firstRel.includes('/')) {
+          const topFolder = firstRel.split('/')[0];
+          if (!uploadSeriesName || uploadSeriesName === 'Diagnostic Series') {
+            setUploadSeriesName(topFolder.replace(/[_-]/g, ' '));
+          }
+        }
+        setUploadFiles((prev) => [...prev, ...filesArr]);
+        toast.success(`Loaded ${filesArr.length} file(s) from folder.`);
+      }
+      if (folderInputRef.current) folderInputRef.current.value = '';
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const items = e.dataTransfer.items;
+    if (items && items.length > 0) {
+      const collectedFiles = [];
+
+      const readEntry = async (entry, path = '') => {
+        if (entry.isFile) {
+          return new Promise((resolve) => {
+            entry.file((file) => {
+              Object.defineProperty(file, 'relativePath', {
+                value: path + file.name,
+                writable: true,
+              });
+              collectedFiles.push(file);
+              resolve();
+            });
+          });
+        } else if (entry.isDirectory) {
+          const dirReader = entry.createReader();
+          return new Promise((resolve) => {
+            const readEntries = () => {
+              dirReader.readEntries(async (entries) => {
+                if (entries.length === 0) {
+                  resolve();
+                } else {
+                  for (const ent of entries) {
+                    await readEntry(ent, path + entry.name + '/');
+                  }
+                  readEntries();
+                }
+              });
+            };
+            readEntries();
+          });
+        }
+      };
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.webkitGetAsEntry) {
+          const entry = item.webkitGetAsEntry();
+          if (entry) await readEntry(entry);
+        } else {
+          const file = item.getAsFile();
+          if (file) collectedFiles.push(file);
+        }
+      }
+
+      if (collectedFiles.length > 0) {
+        setUploadFiles((prev) => [...prev, ...collectedFiles]);
+        toast.success(`Added ${collectedFiles.length} file(s) from drop.`);
+      }
+    } else if (e.dataTransfer.files) {
+      const filesArr = Array.from(e.dataTransfer.files);
       setUploadFiles((prev) => [...prev, ...filesArr]);
     }
   };
 
+  const uploadStats = useMemo(() => {
+    const totalBytes = uploadFiles.reduce((acc, f) => acc + (f.size || 0), 0);
+    const folderSet = new Set();
+    uploadFiles.forEach((f) => {
+      const rel = f.webkitRelativePath || f.relativePath || '';
+      if (rel && rel.includes('/')) {
+        folderSet.add(rel.substring(0, rel.lastIndexOf('/')));
+      }
+    });
+    return {
+      count: uploadFiles.length,
+      totalBytes,
+      folderCount: folderSet.size,
+      folders: Array.from(folderSet),
+    };
+  }, [uploadFiles]);
+
   const handleUploadSubmit = async (e) => {
     e.preventDefault();
     if (uploadFiles.length === 0) {
-      toast.error('Please select at least one image file.');
+      toast.error('Please select at least one image file or folder.');
       return;
     }
     if (!uploadPatientId.trim() || !uploadPatientName.trim()) {
@@ -209,11 +323,15 @@ export default function ImagingArchiveHub() {
         formData.append('files', f);
       });
 
+      const relativePaths = uploadFiles.map((f) => f.webkitRelativePath || f.relativePath || f.name);
+      formData.append('relative_paths', JSON.stringify(relativePaths));
+
       const res = await uploadArchiveFiles(formData);
       toast.success(res.data.message || 'Archived successfully!');
       setUploadModalOpen(false);
       setUploadFiles([]);
       setUploadNotes('');
+      setSukraaPatient(null);
       fetchArchives();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Upload failed.');
@@ -1152,51 +1270,150 @@ export default function ImagingArchiveHub() {
                 />
               </div>
 
-              {/* File Dropzone */}
+              {/* File & Folder Dropzone */}
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">
-                  Image Series Files <span className="text-rose-500">*</span>
-                </label>
-                <div className="border-2 border-dashed border-slate-300 rounded-xl p-5 text-center bg-slate-50 hover:bg-slate-100 transition-colors">
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*,.dcm,.dicom"
-                    id="archive-file-input"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                  />
-                  <label htmlFor="archive-file-input" className="cursor-pointer block space-y-1.5">
-                    <Upload size={24} className="mx-auto text-[#1C69A0]" />
-                    <div className="text-slate-800 font-semibold">
-                      Click to select or drag & drop diagnostic images
-                    </div>
-                    <div className="text-[11px] text-slate-400">
-                      PNG, JPEG, WebP, DICOM files up to 50MB
-                    </div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="font-semibold text-slate-700">
+                    Diagnostic Images & Folders <span className="text-rose-500">*</span>
                   </label>
+                  <span className="text-[11px] text-slate-400">
+                    Supports individual files, multiple files, & full folder trees
+                  </span>
                 </div>
 
-                {uploadFiles.length > 0 && (
-                  <div className="mt-3 space-y-1.5 max-h-32 overflow-y-auto border border-slate-200 rounded-lg p-2 bg-white">
-                    <div className="text-[11px] font-bold text-slate-500 mb-1">
-                      Selected Files ({uploadFiles.length}):
+                {/* Hidden Inputs */}
+                <input
+                  ref={filesInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*,.dcm,.dicom"
+                  id="archive-files-input"
+                  onChange={handleFilesSelect}
+                  className="hidden"
+                />
+                <input
+                  ref={folderInputRef}
+                  type="file"
+                  webkitdirectory=""
+                  directory=""
+                  multiple
+                  id="archive-folder-input"
+                  onChange={handleFolderSelect}
+                  className="hidden"
+                />
+
+                {/* Dropzone Container */}
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`border-2 border-dashed rounded-xl p-5 text-center transition-all ${
+                    isDragging
+                      ? 'border-[#1C69A0] bg-[#1C69A0]/10 ring-4 ring-[#1C69A0]/20 scale-[1.01]'
+                      : 'border-slate-300 bg-slate-50 hover:bg-slate-100/80'
+                  }`}
+                >
+                  <div className="space-y-2">
+                    <div className="w-11 h-11 rounded-full bg-[#1C69A0]/10 text-[#1C69A0] flex items-center justify-center mx-auto shadow-sm">
+                      <Upload size={22} />
                     </div>
-                    {uploadFiles.map((f, i) => (
-                      <div key={i} className="flex items-center justify-between text-xs py-1 px-2 bg-slate-50 rounded">
-                        <span className="font-mono text-slate-700 truncate max-w-[300px]">{f.name}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-slate-400">{(f.size / 1024).toFixed(0)} KB</span>
-                          <button
-                            type="button"
-                            onClick={() => setUploadFiles((prev) => prev.filter((_, idx) => idx !== i))}
-                            className="text-rose-500 hover:text-rose-700"
-                          >
-                            <X size={12} />
-                          </button>
-                        </div>
+                    <div>
+                      <div className="text-slate-800 font-bold text-xs sm:text-sm">
+                        Drag & drop files or full folders here
                       </div>
-                    ))}
+                      <div className="text-[11px] text-slate-400 mt-0.5">
+                        PNG, JPEG, WebP, and DICOM series up to 50MB per file
+                      </div>
+                    </div>
+
+                    {/* Dual Action Buttons */}
+                    <div className="flex items-center justify-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => filesInputRef.current?.click()}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 hover:border-slate-400 shadow-sm transition-colors"
+                      >
+                        <FileText size={13} className="text-[#1C69A0]" />
+                        Select Files
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => folderInputRef.current?.click()}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#1C69A0]/10 border border-[#1C69A0]/30 text-[#1C69A0] hover:bg-[#1C69A0]/20 shadow-sm transition-colors"
+                      >
+                        <FolderOpen size={13} className="text-[#1C69A0]" />
+                        Select Entire Folder
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Selected Files & Folders Summary */}
+                {uploadFiles.length > 0 && (
+                  <div className="mt-3 border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                    {/* Stats Header */}
+                    <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-b border-slate-200 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-800">
+                          {uploadStats.count} {uploadStats.count === 1 ? 'file' : 'files'} selected
+                        </span>
+                        {uploadStats.folderCount > 0 && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#1C69A0]/10 text-[#1C69A0] border border-[#1C69A0]/20 flex items-center gap-1">
+                            <Folder size={10} />
+                            {uploadStats.folderCount} {uploadStats.folderCount === 1 ? 'folder' : 'folders'}
+                          </span>
+                        )}
+                        <span className="text-slate-400 text-[11px]">
+                          ({(uploadStats.totalBytes / (1024 * 1024)).toFixed(2)} MB)
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setUploadFiles([])}
+                        className="text-rose-600 hover:text-rose-800 text-[11px] font-semibold"
+                      >
+                        Clear All
+                      </button>
+                    </div>
+
+                    {/* Scrollable File List */}
+                    <div className="max-h-40 overflow-y-auto divide-y divide-slate-100 p-1">
+                      {uploadFiles.map((f, i) => {
+                        const rel = f.webkitRelativePath || f.relativePath || '';
+                        const hasFolder = rel && rel.includes('/');
+                        const folderName = hasFolder ? rel.substring(0, rel.lastIndexOf('/')) : null;
+
+                        return (
+                          <div key={i} className="flex items-center justify-between text-xs py-1.5 px-2 hover:bg-slate-50 rounded transition-colors">
+                            <div className="flex items-center gap-2 min-w-0 pr-2">
+                              {hasFolder ? (
+                                <span className="shrink-0 px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-mono text-[10px] truncate max-w-[120px]" title={folderName}>
+                                  📁 {folderName}
+                                </span>
+                              ) : (
+                                <FileText size={13} className="text-slate-400 shrink-0" />
+                              )}
+                              <span className="font-mono text-slate-800 truncate" title={f.name}>
+                                {f.name}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-[10px] text-slate-400 font-mono">
+                                {(f.size / 1024).toFixed(0)} KB
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setUploadFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                                className="text-slate-400 hover:text-rose-600 p-0.5 rounded"
+                                title="Remove file"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>

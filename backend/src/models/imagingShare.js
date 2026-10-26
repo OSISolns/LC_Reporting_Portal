@@ -34,6 +34,31 @@ class ImagingShare {
       expiresAt = exp.toISOString();
     }
 
+    // Verify foreign keys to prevent SQLite code 787 FOREIGN KEY constraint failed
+    let validStudyId = null;
+    if (studyId && Number.isInteger(Number(studyId)) && Number(studyId) > 0) {
+      try {
+        const checkStudy = await db.query('SELECT id FROM imaging_studies WHERE id = ?', [Number(studyId)]);
+        if (checkStudy.rows && checkStudy.rows.length > 0) validStudyId = checkStudy.rows[0].id;
+      } catch (e) { validStudyId = null; }
+    }
+
+    let validArchiveId = null;
+    if (archiveId && Number.isInteger(Number(archiveId)) && Number(archiveId) > 0) {
+      try {
+        const checkArchive = await db.query('SELECT id FROM imaging_archives WHERE id = ?', [Number(archiveId)]);
+        if (checkArchive.rows && checkArchive.rows.length > 0) validArchiveId = checkArchive.rows[0].id;
+      } catch (e) { validArchiveId = null; }
+    }
+
+    let validSharedByUserId = null;
+    if (sharedByUserId && Number.isInteger(Number(sharedByUserId)) && Number(sharedByUserId) > 0) {
+      try {
+        const checkUser = await db.query('SELECT id FROM users WHERE id = ?', [Number(sharedByUserId)]);
+        if (checkUser.rows && checkUser.rows.length > 0) validSharedByUserId = checkUser.rows[0].id;
+      } catch (e) { validSharedByUserId = null; }
+    }
+
     const { rows } = await db.query(
       `INSERT INTO imaging_shares (
         study_id, archive_id, patient_id, patient_name, modality,
@@ -45,15 +70,15 @@ class ImagingShare {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'shared', 0, ?)
       RETURNING *`,
       [
-        studyId,
-        archiveId,
+        validStudyId,
+        validArchiveId,
         patientId,
         patientName,
         modality,
         providerId,
         providerName,
         providerEmail,
-        sharedByUserId,
+        validSharedByUserId,
         sharedByName,
         shareToken,
         urgency,
