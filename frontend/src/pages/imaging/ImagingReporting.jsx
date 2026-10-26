@@ -128,7 +128,7 @@ const ImagingReporting = () => {
       <div className="space-y-1.5">
         {items.map((s) => (
           <button key={s.id} onClick={() => openStudy(s)}
-            className={`w-full text-left p-2.5 rounded-lg border transition-colors ${selected?.id === s.id ? 'border-indigo-400 bg-indigo-50' : 'border-slate-200 hover:bg-slate-50'}`}>
+            className={`w-full text-left p-2.5 rounded-lg border transition-colors ${selected?.id === s.id ? 'border-[#1C69A0] bg-[#1C69A0]/5' : 'border-slate-200 hover:bg-slate-50'}`}>
             <div className="flex items-center justify-between">
               <span className="font-mono text-[11px] text-slate-500">{s.accession_number}</span>
               <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${tone}`}>{s.modality}</span>

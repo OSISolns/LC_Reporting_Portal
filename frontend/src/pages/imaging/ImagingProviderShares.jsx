@@ -26,13 +26,13 @@ import { toast } from 'react-hot-toast';
 
 const MODALITY_BADGES = {
   'CT': 'bg-amber-100 text-amber-800 border-amber-300',
-  'MRI': 'bg-purple-100 text-purple-800 border-purple-300',
+  'MRI': 'bg-sky-100 text-sky-800 border-sky-300',
   'OPG': 'bg-cyan-100 text-cyan-800 border-cyan-300',
   'X-Ray': 'bg-blue-100 text-blue-800 border-blue-300',
-  'Mammography': 'bg-pink-100 text-pink-800 border-pink-300',
+  'Mammography': 'bg-rose-100 text-rose-800 border-rose-300',
   'Ultrasound': 'bg-emerald-100 text-emerald-800 border-emerald-300',
   'CBCT': 'bg-teal-100 text-teal-800 border-teal-300',
-  'CEPHALOGRAM': 'bg-indigo-100 text-indigo-800 border-indigo-300',
+  'CEPHALOGRAM': 'bg-[#1C69A0]/10 text-[#1C69A0] border-[#1C69A0]/30',
 };
 
 const URGENCY_BADGES = {
@@ -129,7 +129,7 @@ export default function ImagingProviderShares({ initialToken = null }) {
             <div className="text-2xl font-bold text-slate-800 mt-1">{stats.total_shares || total}</div>
             <div className="text-[11px] text-slate-400 mt-0.5">With requesting doctors & dentists</div>
           </div>
-          <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
+          <div className="p-3 bg-[#1C69A0]/10 text-[#1C69A0] rounded-xl">
             <Share2 size={22} />
           </div>
         </div>
@@ -176,7 +176,7 @@ export default function ImagingProviderShares({ initialToken = null }) {
             <button
               onClick={() => setTab('all')}
               className={`px-3 py-1.5 rounded-md transition-colors ${
-                tab === 'all' ? 'bg-white shadow-sm text-indigo-700' : 'text-slate-600 hover:text-slate-900'
+                tab === 'all' ? 'bg-white shadow-sm text-[#1C69A0] font-bold' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               All Shared Studies
@@ -184,7 +184,7 @@ export default function ImagingProviderShares({ initialToken = null }) {
             <button
               onClick={() => setTab('my')}
               className={`px-3 py-1.5 rounded-md transition-colors ${
-                tab === 'my' ? 'bg-white shadow-sm text-indigo-700' : 'text-slate-600 hover:text-slate-900'
+                tab === 'my' ? 'bg-white shadow-sm text-[#1C69A0] font-bold' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               Shared with Me (My Consultations)
@@ -202,7 +202,7 @@ export default function ImagingProviderShares({ initialToken = null }) {
             </button>
             <button
               onClick={() => setShareStudyModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors shadow-sm"
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#1C69A0] hover:bg-[#16527D] rounded-lg transition-colors shadow-sm"
             >
               <Plus size={14} /> Share Study
             </button>
@@ -218,7 +218,7 @@ export default function ImagingProviderShares({ initialToken = null }) {
               placeholder="Search provider, patient, PID, clinical notes..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1C69A0]"
             />
           </div>
 
@@ -256,7 +256,7 @@ export default function ImagingProviderShares({ initialToken = null }) {
       {/* ── Table of Shares ──────────────────────────────────────────────── */}
       {loading ? (
         <div className="p-12 text-center text-slate-400 bg-white rounded-xl border border-slate-200">
-          <RefreshCw size={24} className="animate-spin text-indigo-500 mx-auto mb-2" />
+          <RefreshCw size={24} className="animate-spin text-[#1C69A0] mx-auto mb-2" />
           <p className="text-xs">Loading shared studies...</p>
         </div>
       ) : filteredShares.length === 0 ? (
@@ -270,7 +270,7 @@ export default function ImagingProviderShares({ initialToken = null }) {
           </p>
           <button
             onClick={() => setShareStudyModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-[#1C69A0] bg-[#1C69A0]/10 hover:bg-[#1C69A0]/20 rounded-lg"
           >
             <Plus size={14} /> Share Study Now
           </button>
@@ -318,11 +318,11 @@ export default function ImagingProviderShares({ initialToken = null }) {
                     </td>
                     <td className="py-3 px-4">
                       <div className="font-bold text-slate-800 flex items-center gap-1">
-                        <User size={13} className="text-indigo-600" />
+                        <User size={13} className="text-[#1C69A0]" />
                         {item.provider_name}
                       </div>
                       {item.consultation_notes && (
-                        <div className="text-[11px] text-indigo-700 font-medium mt-0.5 line-clamp-1" title={item.consultation_notes}>
+                        <div className="text-[11px] text-[#1C69A0] font-medium mt-0.5 line-clamp-1" title={item.consultation_notes}>
                           "{item.consultation_notes}"
                         </div>
                       )}
@@ -354,7 +354,7 @@ export default function ImagingProviderShares({ initialToken = null }) {
                       <div className="inline-flex items-center gap-1.5">
                         <button
                           onClick={() => setViewerToken(item.share_token)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors shadow-sm"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#1C69A0] hover:bg-[#16527D] text-white transition-colors shadow-sm"
                           title="Open in Lumina Diagnostic Viewer"
                         >
                           <Eye size={13} /> View Images

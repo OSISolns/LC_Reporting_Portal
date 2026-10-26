@@ -6,7 +6,7 @@ import ImagingStudyViewer from './ImagingStudyViewer';
 
 const STATUS_STYLE = {
   checked_in:  'bg-sky-100 text-sky-700',
-  in_progress: 'bg-indigo-100 text-indigo-700',
+  in_progress: 'bg-amber-100 text-amber-800',
   acquired:    'bg-blue-100 text-blue-700',
 };
 
@@ -35,6 +35,30 @@ const PARAM_FIELDS = {
     { key: 'frequency_mhz', label: 'Frequency (MHz)', type: 'text', width: 'sm' },
     { key: 'doppler_used', label: 'Doppler used', type: 'checkbox' },
   ],
+  OPG: [
+    { key: 'views', label: 'Program / Views', type: 'chips', options: ['Standard Panoramic', 'Pediatric Panoramic', 'TMJ Open/Closed', 'Maxillary Sinus'] },
+    { key: 'exposure_kv', label: 'kV', type: 'text', width: 'sm' },
+    { key: 'exposure_ma', label: 'mA', type: 'text', width: 'sm' },
+    { key: 'exposure_sec', label: 'Exposure (s)', type: 'text', width: 'sm' },
+  ],
+  Mammography: [
+    { key: 'views', label: 'Views', type: 'chips', options: ['CC Left', 'CC Right', 'MLO Left', 'MLO Right', 'Spot Compression', 'Magnification'] },
+    { key: 'target_filter', label: 'Target / Filter', type: 'select', options: ['Mo/Mo', 'Mo/Rh', 'Rh/Rh', 'W/Rh', 'W/Ag'] },
+    { key: 'compression_force_n', label: 'Compression (N)', type: 'text', width: 'sm' },
+    { key: 'average_glandular_dose_mgy', label: 'AGD (mGy)', type: 'text', width: 'sm' },
+  ],
+  CBCT: [
+    { key: 'fov', label: 'Field of View (FOV)', type: 'select', options: ['Small (5x5 cm)', 'Medium (8x8 cm)', 'Large (10x10 cm)', 'Full Maxillofacial (17x12 cm)'] },
+    { key: 'voxel_size_um', label: 'Voxel Size', type: 'select', options: ['75 µm (Endodontic)', '150 µm (Standard)', '200 µm (Low Dose)'] },
+    { key: 'exposure_kv', label: 'kV', type: 'text', width: 'sm' },
+    { key: 'exposure_mas', label: 'mAs', type: 'text', width: 'sm' },
+  ],
+  CEPHALOGRAM: [
+    { key: 'views', label: 'Projections', type: 'chips', options: ['Lateral Ceph', 'PA Ceph', 'Submentovertex (SMV)', 'Waters'] },
+    { key: 'magnification_ratio', label: 'Magnification (%)', type: 'text', width: 'sm' },
+    { key: 'exposure_kv', label: 'kV', type: 'text', width: 'sm' },
+    { key: 'exposure_mas', label: 'mAs', type: 'text', width: 'sm' },
+  ],
 };
 
 const AcquisitionParamsForm = ({ modality, values, onChange }) => {
@@ -59,7 +83,7 @@ const AcquisitionParamsForm = ({ modality, values, onChange }) => {
                   const active = (values[f.key] || []).includes(opt);
                   return (
                     <button key={opt} type="button" onClick={() => toggleChip(f.key, opt)}
-                      className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-300'}`}>
+                      className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors ${active ? 'bg-[#1C69A0] text-white border-[#1C69A0]' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`}>
                       {opt}
                     </button>
                   );
@@ -185,7 +209,7 @@ const ModalityConsole = () => {
               </div>
               <div className="flex items-center gap-2">
                 {s.status === 'checked_in' && (
-                  <button onClick={() => doStart(s.id)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700">
+                  <button onClick={() => doStart(s.id)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-[#1C69A0] text-white hover:bg-[#16527D] transition-colors">
                     <Play size={15} /> Start
                   </button>
                 )}

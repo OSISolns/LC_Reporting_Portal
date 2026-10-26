@@ -16,12 +16,12 @@ import {
 } from '../../api/imaging';
 
 const STATUS_STYLE = {
-  scheduled:   'bg-amber-100 text-amber-700',
-  checked_in:  'bg-sky-100 text-sky-700',
-  in_progress: 'bg-indigo-100 text-indigo-700',
-  acquired:    'bg-blue-100 text-blue-700',
-  reported:    'bg-violet-100 text-violet-700',
-  verified:    'bg-emerald-100 text-emerald-700',
+  scheduled:   'bg-amber-100 text-amber-800',
+  checked_in:  'bg-sky-100 text-sky-800',
+  in_progress: 'bg-[#1C69A0]/10 text-[#1C69A0]',
+  acquired:    'bg-blue-100 text-blue-800',
+  reported:    'bg-teal-100 text-teal-800',
+  verified:    'bg-emerald-100 text-emerald-800',
   cancelled:   'bg-slate-100 text-slate-500',
 };
 
@@ -32,7 +32,11 @@ const StatusBadge = ({ status }) => (
 );
 
 // Common imaging body-region shorthands (as used in the unit logbooks).
-const EXAM_REGIONS = ['C-S', 'T-S', 'L-S', 'Brain', 'Neck', 'Knee', 'Femur', 'Shoulder', 'Hip', 'Ankle', 'Wrist', 'Abdomen', 'Pelvis', 'Chest', 'Whole Spine'];
+const EXAM_REGIONS = [
+  'C-S', 'T-S', 'L-S', 'Brain', 'Neck', 'Knee', 'Femur', 'Shoulder', 'Hip',
+  'Ankle', 'Wrist', 'Abdomen', 'Pelvis', 'Chest', 'Whole Spine',
+  'Mandible', 'Maxilla', 'Dental Arch / Teeth', 'TMJ', 'Breast', 'Skull / Maxillofacial'
+];
 
 const emptyForm = {
   patient_id: '', patient_name: '', modality: '', scheduled_at: '',
@@ -152,7 +156,7 @@ const ImagingWorklist = () => {
           <button onClick={load} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200">
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} /> Refresh
           </button>
-          <button onClick={() => setShowForm((v) => !v)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700">
+          <button onClick={() => setShowForm((v) => !v)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-[#1C69A0] text-white hover:bg-[#16527D] transition-colors">
             <Plus size={15} /> Schedule
           </button>
         </div>
@@ -268,9 +272,9 @@ const ImagingWorklist = () => {
                 type="button"
                 onClick={handleLuminaIndication}
                 disabled={aiGenerating}
-                className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2 py-0.5 rounded-md transition-all disabled:opacity-50"
+                className="inline-flex items-center gap-1 text-xs font-bold text-[#1C69A0] hover:text-[#16527D] bg-[#1C69A0]/10 hover:bg-[#1C69A0]/20 border border-[#1C69A0]/20 px-2 py-0.5 rounded-md transition-all disabled:opacity-50"
               >
-                <Sparkles size={13} className={aiGenerating ? 'animate-spin' : 'text-indigo-500'} />
+                <Sparkles size={13} className={aiGenerating ? 'animate-spin' : 'text-[#1C69A0]'} />
                 {aiGenerating ? 'Lumina AI Thinking…' : 'Lumina AI Auto-Fill'}
               </button>
             </div>
@@ -279,12 +283,12 @@ const ImagingWorklist = () => {
               onChange={(e) => setForm((f) => ({ ...f, clinical_indication: e.target.value }))}
               rows={2}
               placeholder="Type or click 'Lumina AI Auto-Fill' to generate indication..."
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1C69A0] focus:border-[#1C69A0]"
             />
           </div>
           <div className="md:col-span-2 flex justify-end gap-2">
-            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg text-sm font-semibold bg-slate-100 text-slate-700">Cancel</button>
-            <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg text-sm font-semibold bg-indigo-600 text-white disabled:opacity-60">
+            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg text-sm font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors">Cancel</button>
+            <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg text-sm font-semibold bg-[#1C69A0] text-white hover:bg-[#16527D] disabled:opacity-60 transition-colors">
               {saving ? 'Scheduling…' : 'Schedule study'}
             </button>
           </div>
@@ -320,7 +324,7 @@ const ImagingWorklist = () => {
                   <div className="flex items-center justify-end gap-2">
                     <button
                       onClick={() => setSelectedStudyForViewer(s)}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-[#1C69A0] hover:text-[#16527D]"
                       title="View in Lumina Diagnostic Viewer"
                     >
                       <Eye size={14} /> View

@@ -30,13 +30,13 @@ import { toast } from 'react-hot-toast';
 
 const MODALITY_COLORS = {
   'CT': 'bg-amber-500/20 text-amber-400 border-amber-500/40',
-  'MRI': 'bg-purple-500/20 text-purple-400 border-purple-500/40',
+  'MRI': 'bg-sky-500/20 text-sky-400 border-sky-500/40',
   'OPG': 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40',
   'X-Ray': 'bg-blue-500/20 text-blue-400 border-blue-500/40',
-  'Mammography': 'bg-pink-500/20 text-pink-400 border-pink-500/40',
+  'Mammography': 'bg-rose-500/20 text-rose-400 border-rose-500/40',
   'Ultrasound': 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40',
   'CBCT': 'bg-teal-500/20 text-teal-400 border-teal-500/40',
-  'CEPHALOGRAM': 'bg-indigo-500/20 text-indigo-400 border-indigo-500/40',
+  'CEPHALOGRAM': 'bg-[#1C69A0]/20 text-[#60A5FA] border-[#1C69A0]/40',
 };
 
 const WL_PRESETS = [
@@ -166,19 +166,6 @@ export default function DiagnosticViewerModal({
       });
     }
 
-    // Fallback if study exists but no images yet
-    if (list.length === 0 && data.study) {
-      list.push({
-        id: 'placeholder',
-        type: 'placeholder',
-        title: 'Diagnostic Frame Pending Acquisition',
-        series: 'Awaiting Upload',
-        sliceIndex: 1,
-        src: null,
-        modality: data.study.modality || 'X-Ray',
-      });
-    }
-
     return list;
   }, [data]);
 
@@ -288,10 +275,10 @@ export default function DiagnosticViewerModal({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-semibold text-white tracking-wide">
-                  {study.patient_name || 'Patient'}
+                  {study.patient_name || '—'}
                 </h2>
                 <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
-                  PID: {study.patient_id || 'N/A'}
+                  PID: {study.patient_id || '—'}
                 </span>
                 {study.accession_number && (
                   <span className="text-xs text-slate-400 font-mono hidden md:inline">
@@ -300,13 +287,13 @@ export default function DiagnosticViewerModal({
                 )}
               </div>
               <div className="text-xs text-slate-400 flex items-center gap-3 mt-0.5">
-                <span>Region: <strong className="text-slate-200">{study.body_part || 'General'}</strong></span>
+                <span>Region: <strong className="text-slate-200">{study.body_part || study.exam_region || 'General'}</strong></span>
                 <span>•</span>
-                <span>Study Date: {study.study_date ? new Date(study.study_date).toLocaleDateString() : 'Today'}</span>
+                <span>Study Date: {study.study_date ? new Date(study.study_date).toLocaleDateString() : '—'}</span>
                 {study.referring_physician && (
                   <>
                     <span>•</span>
-                    <span className="text-indigo-300">Ref: {study.referring_physician}</span>
+                    <span className="text-[#60A5FA]">Ref: {study.referring_physician}</span>
                   </>
                 )}
               </div>
@@ -326,7 +313,7 @@ export default function DiagnosticViewerModal({
             {onShare && (
               <button
                 onClick={() => onShare(study, currentSlice)}
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#1C69A0] hover:bg-[#16527D] text-white transition-colors"
                 title="Share this study with requesting provider"
               >
                 <Share2 size={14} /> Share Study
@@ -347,7 +334,7 @@ export default function DiagnosticViewerModal({
             <button
               onClick={() => setShowReport(!showReport)}
               className={`p-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${
-                showReport ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/40' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                showReport ? 'bg-[#1C69A0]/30 text-[#60A5FA] border border-[#1C69A0]/40' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
               }`}
               title="Toggle Clinical Report Drawer"
             >
@@ -386,7 +373,7 @@ export default function DiagnosticViewerModal({
                 onClick={() => applyPreset(p.id)}
                 className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
                   activePreset === p.id
-                    ? 'bg-indigo-600 text-white shadow-sm'
+                    ? 'bg-[#1C69A0] text-white shadow-sm'
                     : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700'
                 }`}
               >
@@ -447,14 +434,14 @@ export default function DiagnosticViewerModal({
             </button>
             <button
               onClick={() => setFlipH((f) => !f)}
-              className={`p-1.5 rounded text-slate-300 hover:bg-slate-700 hover:text-white ${flipH ? 'bg-indigo-600/40 text-indigo-300' : 'bg-slate-800'}`}
+              className={`p-1.5 rounded text-slate-300 hover:bg-slate-700 hover:text-white ${flipH ? 'bg-[#1C69A0]/40 text-[#60A5FA]' : 'bg-slate-800'}`}
               title="Flip Horizontal"
             >
               <FlipHorizontal size={14} />
             </button>
             <button
               onClick={() => setFlipV((f) => !f)}
-              className={`p-1.5 rounded text-slate-300 hover:bg-slate-700 hover:text-white ${flipV ? 'bg-indigo-600/40 text-indigo-300' : 'bg-slate-800'}`}
+              className={`p-1.5 rounded text-slate-300 hover:bg-slate-700 hover:text-white ${flipV ? 'bg-[#1C69A0]/40 text-[#60A5FA]' : 'bg-slate-800'}`}
               title="Flip Vertical"
             >
               <FlipVertical size={14} />
@@ -486,7 +473,7 @@ export default function DiagnosticViewerModal({
           >
             {loading ? (
               <div className="flex flex-col items-center gap-3 text-slate-400">
-                <RefreshCw size={32} className="animate-spin text-indigo-500" />
+                <RefreshCw size={32} className="animate-spin text-[#1C69A0]" />
                 <p className="text-sm">Loading diagnostic series & DICOM data...</p>
               </div>
             ) : currentSlice?.src ? (
@@ -566,9 +553,9 @@ export default function DiagnosticViewerModal({
 
             {/* Diagnostic HUD Info Overlays (Radiology Standard Corners) */}
             <div className="absolute top-3 left-3 pointer-events-none text-[11px] font-mono text-cyan-300/80 bg-slate-950/60 p-2 rounded backdrop-blur-sm border border-slate-800/40">
-              <div>PT: {study.patient_name || 'Anonymous'}</div>
-              <div>PID: {study.patient_id || 'N/A'}</div>
-              <div>MOD: {modality} | {study.body_part || 'General'}</div>
+              <div>PT: {study.patient_name || '—'}</div>
+              <div>PID: {study.patient_id || '—'}</div>
+              <div>MOD: {modality} | {study.body_part || study.exam_region || 'General'}</div>
             </div>
 
             <div className="absolute top-3 right-3 pointer-events-none text-[11px] font-mono text-cyan-300/80 bg-slate-950/60 p-2 rounded backdrop-blur-sm border border-slate-800/40 text-right">
@@ -586,7 +573,7 @@ export default function DiagnosticViewerModal({
                     setSelectedSliceIndex((i) => Math.max(0, i - 1));
                   }}
                   disabled={selectedSliceIndex === 0}
-                  className="p-1.5 rounded-full bg-slate-900/90 text-white hover:bg-indigo-600 disabled:opacity-40 border border-slate-700"
+                  className="p-1.5 rounded-full bg-slate-900/90 text-white hover:bg-[#1C69A0] disabled:opacity-40 border border-slate-700 transition-colors"
                 >
                   <ChevronLeft size={16} />
                 </button>
@@ -599,7 +586,7 @@ export default function DiagnosticViewerModal({
                     setSelectedSliceIndex((i) => Math.min(slices.length - 1, i + 1));
                   }}
                   disabled={selectedSliceIndex === slices.length - 1}
-                  className="p-1.5 rounded-full bg-slate-900/90 text-white hover:bg-indigo-600 disabled:opacity-40 border border-slate-700"
+                  className="p-1.5 rounded-full bg-slate-900/90 text-white hover:bg-[#1C69A0] disabled:opacity-40 border border-slate-700 transition-colors"
                 >
                   <ChevronRight size={16} />
                 </button>
@@ -612,7 +599,7 @@ export default function DiagnosticViewerModal({
             <div className="w-80 md:w-96 bg-slate-900 border-l border-slate-800 flex flex-col shrink-0 overflow-y-auto">
               <div className="p-4 border-b border-slate-800 bg-slate-900/90 sticky top-0 z-10 flex items-center justify-between">
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <FileText size={16} className="text-indigo-400" /> Diagnostic Report
+                  <FileText size={16} className="text-[#60A5FA]" /> Diagnostic Report
                 </h3>
                 {report && (
                   <span
@@ -630,13 +617,13 @@ export default function DiagnosticViewerModal({
               <div className="p-4 space-y-4 text-xs text-slate-300">
                 {/* Share consultation note alert if opened via share */}
                 {share && share.consultation_notes && (
-                  <div className="p-3 rounded-lg bg-indigo-950/60 border border-indigo-500/40 text-indigo-200">
-                    <div className="font-semibold text-indigo-300 mb-1 flex items-center gap-1">
+                  <div className="p-3 rounded-lg bg-[#1C69A0]/10 border border-[#1C69A0]/30 text-slate-200">
+                    <div className="font-semibold text-[#60A5FA] mb-1 flex items-center gap-1">
                       <Clock size={13} /> Consultation Note from Radiologist:
                     </div>
                     <p className="text-[11px] leading-relaxed">{share.consultation_notes}</p>
                     {share.clinical_indication && (
-                      <div className="mt-2 pt-2 border-t border-indigo-800/50 text-[11px]">
+                      <div className="mt-2 pt-2 border-t border-[#1C69A0]/20 text-[11px]">
                         <strong>Clinical Indication:</strong> {share.clinical_indication}
                       </div>
                     )}
@@ -732,7 +719,7 @@ export default function DiagnosticViewerModal({
                 onClick={() => setSelectedSliceIndex(idx)}
                 className={`group relative h-20 w-20 rounded-lg overflow-hidden border-2 shrink-0 transition-all ${
                   selectedSliceIndex === idx
-                    ? 'border-indigo-500 ring-2 ring-indigo-500/30 scale-105'
+                    ? 'border-[#1C69A0] ring-2 ring-[#1C69A0]/40 scale-105'
                     : 'border-slate-800 hover:border-slate-600 opacity-70 hover:opacity-100'
                 }`}
               >

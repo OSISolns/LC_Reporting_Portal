@@ -31,7 +31,6 @@ const CancellationDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, hasPermission } = useAuth();
-  const isDev = import.meta.env.DEV;
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [rejectModal, setRejectModal] = useState(false);
@@ -57,26 +56,7 @@ const CancellationDetail = () => {
       const res = await getCancellationById(id);
       setData(res.data.data);
     } catch (err) {
-      if (isDev) {
-        console.warn('Failed to fetch Cancellation Request Details, using mock fallback.');
-        setData({
-          id: id.startsWith('CAN-') ? id : 'CAN-1025',
-          patient_full_name: 'Robert Chen',
-          pid_number: 'P-99205',
-          old_sid_number: 'SID-8812',
-          new_sid_number: 'SID-8815',
-          insurance_payer: 'BlueCross Shield',
-          total_amount_cancelled: '450.00',
-          original_receipt_number: 'INV-44102',
-          rectified_receipt_number: 'INV-44115',
-          initial_transaction_date: new Date(Date.now() - 43200000).toISOString(),
-          rectified_date: new Date().toISOString(),
-          reason_for_cancellation: 'Patient was double charged for consultation fee. Requesting rectification of invoice #INV-44102.',
-          status: 'pending',
-          created_at: new Date(Date.now() - 43200000).toISOString(),
-          creator_name: 'John Cashier'
-        });
-      }
+      console.error('Failed to fetch cancellation request details:', err);
     } finally {
       setLoading(false);
     }

@@ -33,6 +33,8 @@ import {
   Download
 } from 'lucide-react';
 import { getArchives, uploadArchiveFiles, deleteArchive } from '../../api/imaging';
+import PatientAutocomplete from '../../components/PatientAutocomplete';
+import { getPatientByPid } from '../../api/patients';
 import DiagnosticViewerModal from './DiagnosticViewerModal';
 import ShareStudyModal from './ShareStudyModal';
 import { toast } from 'react-hot-toast';
@@ -46,7 +48,7 @@ const MODALITIES = [
   { code: 'Mammography', label: 'Mammography', color: 'bg-pink-500/10 text-pink-600 border-pink-300' },
   { code: 'Ultrasound', label: 'Ultrasound', color: 'bg-emerald-500/10 text-emerald-600 border-emerald-300' },
   { code: 'CBCT', label: 'CBCT (Dental 3D)', color: 'bg-teal-500/10 text-teal-600 border-teal-300' },
-  { code: 'CEPHALOGRAM', label: 'Cephalogram', color: 'bg-indigo-500/10 text-indigo-600 border-indigo-300' },
+  { code: 'CEPHALOGRAM', label: 'Cephalogram', color: 'bg-slate-500/10 text-slate-700 border-slate-300' },
 ];
 
 const MODALITY_BADGES = {
@@ -57,7 +59,7 @@ const MODALITY_BADGES = {
   'Mammography': 'bg-pink-100 text-pink-800 border-pink-300',
   'Ultrasound': 'bg-emerald-100 text-emerald-800 border-emerald-300',
   'CBCT': 'bg-teal-100 text-teal-800 border-teal-300',
-  'CEPHALOGRAM': 'bg-indigo-100 text-indigo-800 border-indigo-300',
+  'CEPHALOGRAM': 'bg-slate-100 text-slate-800 border-slate-300',
 };
 
 const CATEGORIES = [
@@ -101,6 +103,41 @@ export default function ImagingArchiveHub() {
   const [uploadSeriesName, setUploadSeriesName] = useState('Diagnostic Series');
   const [uploadNotes, setUploadNotes] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [sukraaPatient, setSukraaPatient] = useState(null);
+  const [pullingFromSukraa, setPullingFromSukraa] = useState(false);
+
+  const handleSukraaPatientSelect = (p) => {
+    if (!p) return;
+    setUploadPatientId(p.pid || p.patient_id || '');
+    setUploadPatientName(p.full_name || p.name || '');
+    setSukraaPatient(p);
+    toast.success(`Patient selected from Sukraa: ${p.full_name || p.pid}`);
+  };
+
+  const handlePullFromSukraa = async () => {
+    const pid = (uploadPatientId || '').trim();
+    if (!pid) {
+      toast.error('Enter a Patient ID (PID) to pull from Sukraa.');
+      return;
+    }
+    setPullingFromSukraa(true);
+    try {
+      const res = await getPatientByPid(pid);
+      if (res.data?.success && res.data?.data) {
+        const p = res.data.data;
+        setUploadPatientId(p.pid || pid);
+        setUploadPatientName(p.full_name || p.name || '');
+        setSukraaPatient(p);
+        toast.success(`Patient details pulled from Sukraa: ${p.full_name || pid}`);
+      } else {
+        toast.error(`Patient with PID "${pid}" not found in Sukraa.`);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || `Failed to pull PID "${pid}" from Sukraa.`);
+    } finally {
+      setPullingFromSukraa(false);
+    }
+  };
 
   const fetchArchives = useCallback(async () => {
     setLoading(true);
@@ -193,7 +230,7 @@ export default function ImagingArchiveHub() {
       if (!groups[pid]) {
         groups[pid] = {
           patientId: pid,
-          patientName: item.patient_name || 'Anonymous Patient',
+          patientName: item.patient_name || (pid !== 'UNKNOWN' ? pid : '—'),
           files: [],
           modalities: new Set(),
           categories: new Set(),
@@ -255,7 +292,7 @@ export default function ImagingArchiveHub() {
             <div className="text-2xl font-bold text-slate-800 mt-1">{total}</div>
             <div className="text-[11px] text-slate-400 mt-0.5">Organized in classified vaults</div>
           </div>
-          <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
+          <div className="p-3 bg-[#1C69A0]/10 text-[#1C69A0] rounded-xl">
             <Archive size={22} />
           </div>
         </div>
@@ -277,7 +314,7 @@ export default function ImagingArchiveHub() {
             <div className="text-2xl font-bold text-slate-800 mt-1">{CATEGORIES.length}</div>
             <div className="text-[11px] text-slate-400 mt-0.5">Specialties & anatomical domains</div>
           </div>
-          <div className="p-3 bg-purple-50 text-purple-600 rounded-xl">
+          <div className="p-3 bg-slate-100 text-slate-700 rounded-xl">
             <Tag size={22} />
           </div>
         </div>
@@ -302,7 +339,7 @@ export default function ImagingArchiveHub() {
             <button
               onClick={() => { setViewMode('folders'); setSelectedFolderPatientId(null); }}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
-                viewMode === 'folders' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                viewMode === 'folders' ? 'bg-white text-[#1C69A0] shadow-sm' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Folder size={14} /> Folders View
@@ -310,7 +347,7 @@ export default function ImagingArchiveHub() {
             <button
               onClick={() => { setViewMode('categories'); setSelectedFolderPatientId(null); }}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
-                viewMode === 'categories' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                viewMode === 'categories' ? 'bg-white text-[#1C69A0] shadow-sm' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Tag size={14} /> Categories View
@@ -318,7 +355,7 @@ export default function ImagingArchiveHub() {
             <button
               onClick={() => { setViewMode('modalities'); setSelectedFolderPatientId(null); }}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
-                viewMode === 'modalities' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                viewMode === 'modalities' ? 'bg-white text-[#1C69A0] shadow-sm' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Layers size={14} /> Modalities View
@@ -326,7 +363,7 @@ export default function ImagingArchiveHub() {
             <button
               onClick={() => setViewMode('list')}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
-                viewMode === 'list' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                viewMode === 'list' ? 'bg-white text-[#1C69A0] shadow-sm' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <List size={14} /> Detailed List View
@@ -334,7 +371,7 @@ export default function ImagingArchiveHub() {
             <button
               onClick={() => setViewMode('grid')}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
-                viewMode === 'grid' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                viewMode === 'grid' ? 'bg-white text-[#1C69A0] shadow-sm' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Grid size={14} /> Grid Cards
@@ -353,7 +390,7 @@ export default function ImagingArchiveHub() {
 
             <button
               onClick={() => setUploadModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors shadow-sm whitespace-nowrap"
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#1C69A0] hover:bg-[#16527D] rounded-lg transition-colors shadow-sm whitespace-nowrap"
             >
               <Upload size={14} /> Upload & Archive
             </button>
@@ -370,14 +407,14 @@ export default function ImagingArchiveHub() {
                 placeholder="Search by Patient PID, Name, Category, Modality, Body Region..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1C69A0]/20 focus:border-[#1C69A0]"
               />
             </div>
           </div>
 
           {/* Folder Breadcrumb when a folder is selected */}
           {selectedFolderPatientId && (
-            <div className="flex items-center gap-1.5 text-xs bg-indigo-50 text-indigo-800 px-3 py-1 rounded-lg border border-indigo-200">
+            <div className="flex items-center gap-1.5 text-xs bg-[#1C69A0]/10 text-[#1C69A0] px-3 py-1 rounded-lg border border-[#1C69A0]/20">
               <button
                 onClick={() => setSelectedFolderPatientId(null)}
                 className="font-semibold hover:underline"
@@ -388,7 +425,7 @@ export default function ImagingArchiveHub() {
               <span className="font-bold">Patient Folder: {selectedFolderPatientId}</span>
               <button
                 onClick={() => setSelectedFolderPatientId(null)}
-                className="ml-2 text-indigo-600 hover:text-indigo-900"
+                className="ml-2 text-[#1C69A0] hover:text-[#16527D]"
               >
                 <X size={13} />
               </button>
@@ -424,7 +461,7 @@ export default function ImagingArchiveHub() {
       {/* ── Main View Content ─────────────────────────────────────────────── */}
       {loading ? (
         <div className="p-12 text-center text-slate-400 bg-white rounded-xl border border-slate-200">
-          <RefreshCw size={24} className="animate-spin text-indigo-500 mx-auto mb-2" />
+          <RefreshCw size={24} className="animate-spin text-[#1C69A0] mx-auto mb-2" />
           <p className="text-xs">Loading classified medical imaging archives...</p>
         </div>
       ) : archives.length === 0 ? (
@@ -436,7 +473,7 @@ export default function ImagingArchiveHub() {
           </p>
           <button
             onClick={() => setUploadModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-[#1C69A0] bg-[#1C69A0]/10 hover:bg-[#1C69A0]/20 rounded-lg transition-colors"
           >
             <Plus size={14} /> Upload First Study
           </button>
@@ -452,15 +489,15 @@ export default function ImagingArchiveHub() {
                   key={folder.patientId}
                   className={`bg-white rounded-xl border transition-all p-4 flex flex-col justify-between cursor-pointer ${
                     isOpen
-                      ? 'border-indigo-600 ring-2 ring-indigo-500/20 shadow-md'
-                      : 'border-slate-200 hover:border-indigo-300 hover:shadow-sm'
+                      ? 'border-[#1C69A0] ring-2 ring-[#1C69A0]/20 shadow-md'
+                      : 'border-slate-200 hover:border-[#1C69A0] hover:shadow-sm'
                   }`}
                   onClick={() => setSelectedFolderPatientId(isOpen ? null : folder.patientId)}
                 >
                   <div>
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-xl bg-[#1C69A0]/10 text-[#1C69A0] flex items-center justify-center">
                           {isOpen ? <FolderOpen size={22} /> : <Folder size={22} />}
                         </div>
                         <div>
@@ -470,7 +507,7 @@ export default function ImagingArchiveHub() {
                           </span>
                         </div>
                       </div>
-                      <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                      <span className="text-xs font-bold text-[#1C69A0] bg-[#1C69A0]/10 px-2 py-0.5 rounded-full">
                         {folder.files.length} file(s)
                       </span>
                     </div>
@@ -501,7 +538,7 @@ export default function ImagingArchiveHub() {
 
                   <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
                     <span>Updated: {new Date(folder.lastUpdated).toLocaleDateString()}</span>
-                    <span className="text-indigo-600 font-semibold flex items-center gap-1">
+                    <span className="text-[#1C69A0] font-semibold flex items-center gap-1">
                       {isOpen ? 'Close Folder' : 'Open Folder'} <ChevronRight size={13} />
                     </span>
                   </div>
@@ -512,11 +549,11 @@ export default function ImagingArchiveHub() {
 
           {/* Expanded Selected Patient Folder's Files */}
           {selectedFolderPatientId && (
-            <div className="mt-6 bg-slate-50 p-4 rounded-xl border border-indigo-200 space-y-3">
+            <div className="mt-6 bg-slate-50 p-4 rounded-xl border border-[#1C69A0]/30 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold text-slate-800 flex items-center gap-2">
-                  <FolderOpen size={16} className="text-indigo-600" />
-                  Files inside folder: <span className="font-mono text-indigo-700">{selectedFolderPatientId}</span>
+                  <FolderOpen size={16} className="text-[#1C69A0]" />
+                  Files inside folder: <span className="font-mono text-[#1C69A0]">{selectedFolderPatientId}</span>
                 </h3>
                 <span className="text-xs text-slate-500">
                   {archives.length} diagnostic file(s) found
@@ -561,13 +598,13 @@ export default function ImagingArchiveHub() {
                           <div className="inline-flex items-center gap-1.5">
                             <button
                               onClick={() => setViewerItem(item)}
-                              className="px-2.5 py-1 text-xs font-semibold rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                              className="px-2.5 py-1 text-xs font-semibold rounded bg-[#1C69A0] text-white hover:bg-[#16527D] transition-colors"
                             >
                               View in Lumina
                             </button>
                             <button
                               onClick={() => setShareItem(item)}
-                              className="p-1 rounded text-slate-600 hover:text-indigo-600 hover:bg-slate-100"
+                              className="p-1 rounded text-slate-600 hover:text-[#1C69A0] hover:bg-slate-100 transition-colors"
                               title="Share"
                             >
                               <Share2 size={13} />
@@ -599,8 +636,8 @@ export default function ImagingArchiveHub() {
                 }}
                 className={`bg-white rounded-xl border p-4 cursor-pointer transition-all flex flex-col justify-between ${
                   isFilterActive
-                    ? 'border-indigo-600 ring-2 ring-indigo-500/20 shadow-md'
-                    : 'border-slate-200 hover:border-indigo-300 hover:shadow-sm'
+                    ? 'border-[#1C69A0] ring-2 ring-[#1C69A0]/20 shadow-md'
+                    : 'border-slate-200 hover:border-[#1C69A0] hover:shadow-sm'
                 }`}
               >
                 <div>
@@ -619,7 +656,7 @@ export default function ImagingArchiveHub() {
                   </p>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-indigo-600">
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-[#1C69A0]">
                   <span>Browse Category</span>
                   <ChevronRight size={14} />
                 </div>
@@ -644,8 +681,8 @@ export default function ImagingArchiveHub() {
                 }}
                 className={`bg-white rounded-xl border p-4 cursor-pointer transition-all flex flex-col justify-between ${
                   isFilterActive
-                    ? 'border-indigo-600 ring-2 ring-indigo-500/20 shadow-md'
-                    : 'border-slate-200 hover:border-indigo-300 hover:shadow-sm'
+                    ? 'border-[#1C69A0] ring-2 ring-[#1C69A0]/20 shadow-md'
+                    : 'border-slate-200 hover:border-[#1C69A0] hover:shadow-sm'
                 }`}
               >
                 <div>
@@ -664,7 +701,7 @@ export default function ImagingArchiveHub() {
                   </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-indigo-600">
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-[#1C69A0]">
                   <span>Open Modality Archive</span>
                   <ChevronRight size={14} />
                 </div>
@@ -716,7 +753,7 @@ export default function ImagingArchiveHub() {
                     </td>
                     <td className="py-2.5 px-4">
                       <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                        <Folder size={13} className="text-indigo-600 shrink-0" />
+                        <Folder size={13} className="text-[#1C69A0] shrink-0" />
                         {item.patient_name}
                       </div>
                       <div className="text-[11px] font-mono text-slate-400">
@@ -749,20 +786,20 @@ export default function ImagingArchiveHub() {
                       <div className="inline-flex items-center gap-1.5">
                         <button
                           onClick={() => setViewerItem(item)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors shadow-sm"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#1C69A0] hover:bg-[#16527D] text-white transition-colors shadow-sm"
                         >
                           <Eye size={13} /> View in Lumina
                         </button>
                         <button
                           onClick={() => setShareItem(item)}
-                          className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100"
+                          className="p-1.5 rounded-lg text-slate-600 hover:text-[#1C69A0] hover:bg-slate-100 transition-colors"
                           title="Share with Provider"
                         >
                           <Share2 size={14} />
                         </button>
                         <button
                           onClick={() => handleDelete(item.id, item.file_name)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                           title="Delete Archive"
                         >
                           <Trash2 size={14} />
@@ -787,7 +824,7 @@ export default function ImagingArchiveHub() {
             return (
               <div
                 key={item.id}
-                className="group bg-white rounded-xl border border-slate-200 hover:border-indigo-400 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col"
+                className="group bg-white rounded-xl border border-slate-200 hover:border-[#1C69A0] shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col"
               >
                 {/* Thumbnail Preview */}
                 <div
@@ -817,8 +854,8 @@ export default function ImagingArchiveHub() {
                     Slice #{item.slice_index || 1}
                   </span>
 
-                  <div className="absolute inset-0 bg-indigo-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white">
-                    <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 text-xs font-semibold shadow-lg">
+                  <div className="absolute inset-0 bg-slate-950/70 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white">
+                    <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#1C69A0] text-xs font-semibold shadow-lg">
                       <Eye size={14} /> View in Lumina
                     </span>
                   </div>
@@ -837,7 +874,7 @@ export default function ImagingArchiveHub() {
                     </div>
 
                     <div className="mt-1 text-[11px] text-slate-600 flex items-center gap-1">
-                      <Tag size={11} className="text-indigo-600" />
+                      <Tag size={11} className="text-[#1C69A0]" />
                       <span className="font-medium truncate">{item.category || 'General Clinical'}</span>
                     </div>
 
@@ -863,7 +900,7 @@ export default function ImagingArchiveHub() {
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => setShareItem(item)}
-                        className="p-1.5 rounded text-indigo-600 hover:bg-indigo-50 transition-colors"
+                        className="p-1.5 rounded text-[#1C69A0] hover:bg-[#1C69A0]/10 transition-colors"
                         title="Share with Requesting Provider"
                       >
                         <Share2 size={14} />
@@ -920,22 +957,25 @@ export default function ImagingArchiveHub() {
       {/* ── Upload & Archive Modal ────────────────────────────────────────── */}
       {uploadModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-slate-900 to-indigo-950 text-white shrink-0">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden flex flex-col max-h-[92vh]">
+            <div className="flex items-center justify-between px-6 py-4 bg-slate-900 border-b border-slate-800 text-white shrink-0">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/10 rounded-lg">
+                <div className="p-2 bg-[#1C69A0]/20 text-[#5C93BB] rounded-lg border border-[#1C69A0]/30">
                   <Upload size={20} />
                 </div>
                 <div>
                   <h2 className="text-lg font-bold">Archive Clinical Imaging</h2>
                   <p className="text-xs text-slate-300">
-                    Organize into Folders, Categories, and Modalities
+                    Pull patient details from Sukraa and classify by folders, categories, & modalities
                   </p>
                 </div>
               </div>
               <button
-                onClick={() => setUploadModalOpen(false)}
-                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white"
+                onClick={() => {
+                  setUploadModalOpen(false);
+                  setSukraaPatient(null);
+                }}
+                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
               >
                 <X size={18} />
               </button>
@@ -955,7 +995,7 @@ export default function ImagingArchiveHub() {
                       onClick={() => setUploadModality(m.code)}
                       className={`p-2 rounded-lg border text-center transition-all ${
                         uploadModality === m.code
-                          ? 'border-indigo-600 bg-indigo-50 text-indigo-700 font-bold ring-2 ring-indigo-500/20'
+                          ? 'border-[#1C69A0] bg-[#1C69A0]/10 text-[#1C69A0] font-bold ring-2 ring-[#1C69A0]/20'
                           : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                       }`}
                     >
@@ -973,7 +1013,7 @@ export default function ImagingArchiveHub() {
                 <select
                   value={uploadCategory}
                   onChange={(e) => setUploadCategory(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-medium text-slate-700"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1C69A0]/20 focus:border-[#1C69A0] text-xs font-medium text-slate-700"
                 >
                   {CATEGORIES.map((c) => (
                     <option key={c.id} value={c.id}>{c.label}</option>
@@ -981,33 +1021,92 @@ export default function ImagingArchiveHub() {
                 </select>
               </div>
 
-              {/* Patient Info */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    3. Patient ID (Folder PID) <span className="text-rose-500">*</span>
+              {/* Sukraa Patient Direct Pull & Search */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Search size={14} className="text-[#1C69A0]" />
+                    3. Patient Details (Search & Pull from Sukraa) <span className="text-rose-500">*</span>
                   </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. PID-10492"
-                    value={uploadPatientId}
-                    onChange={(e) => setUploadPatientId(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
-                  />
+                  <span className="text-[11px] font-medium text-[#1C69A0] bg-[#1C69A0]/10 px-2 py-0.5 rounded">
+                    Sukraa HIMS
+                  </span>
                 </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Patient Full Name <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. John Doe"
-                    value={uploadPatientName}
-                    onChange={(e) => setUploadPatientName(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
+
+                <PatientAutocomplete
+                  value={uploadPatientName}
+                  onChange={(val) => setUploadPatientName(val)}
+                  onPatientSelect={handleSukraaPatientSelect}
+                  placeholder="Search patient by name or PID in Sukraa HIMS..."
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1C69A0]/20 focus:border-[#1C69A0]"
+                  inputStyle={{ height: '38px' }}
+                />
+
+                {sukraaPatient && (
+                  <div className="flex items-center justify-between text-xs bg-emerald-50 border border-emerald-200 text-emerald-900 px-3 py-2 rounded-lg">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
+                      <span className="font-bold">{sukraaPatient.full_name}</span>
+                      <span className="font-mono text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded text-[11px]">
+                        PID: {sukraaPatient.pid || sukraaPatient.patient_id}
+                      </span>
+                      {sukraaPatient.gender && <span>• {sukraaPatient.gender}</span>}
+                      {sukraaPatient.age && <span>• {sukraaPatient.age} yrs</span>}
+                      {sukraaPatient.insurance && (
+                        <span className="text-emerald-700 bg-white px-1.5 py-0.5 rounded border border-emerald-200 text-[11px]">
+                          {sukraaPatient.insurance}
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSukraaPatient(null)}
+                      className="text-emerald-700 hover:text-emerald-900 font-semibold text-[11px] underline ml-2"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                      Patient ID (PID) <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="flex gap-1.5">
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. 24027899"
+                        value={uploadPatientId}
+                        onChange={(e) => setUploadPatientId(e.target.value)}
+                        className="flex-1 px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1C69A0]/20 focus:border-[#1C69A0] font-mono text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={handlePullFromSukraa}
+                        disabled={pullingFromSukraa || !uploadPatientId.trim()}
+                        className="px-3 py-2 rounded-lg bg-[#1C69A0] hover:bg-[#16527D] disabled:opacity-40 text-white text-xs font-semibold flex items-center gap-1 transition-colors whitespace-nowrap shadow-sm"
+                        title="Directly pull patient details from Sukraa using this PID"
+                      >
+                        <RefreshCw size={12} className={pullingFromSukraa ? 'animate-spin' : ''} />
+                        Pull
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                      Patient Full Name <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. John Doe"
+                      value={uploadPatientName}
+                      onChange={(e) => setUploadPatientName(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1C69A0]/20 focus:border-[#1C69A0] text-xs font-medium text-slate-800"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1022,7 +1121,7 @@ export default function ImagingArchiveHub() {
                     placeholder="e.g. Mandible, Brain, Chest, Knee"
                     value={uploadBodyRegion}
                     onChange={(e) => setUploadBodyRegion(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1C69A0]/20 focus:border-[#1C69A0]"
                   />
                 </div>
                 <div>
@@ -1034,7 +1133,7 @@ export default function ImagingArchiveHub() {
                     placeholder="e.g. Panoramic Arch, Axial C+"
                     value={uploadSeriesName}
                     onChange={(e) => setUploadSeriesName(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1C69A0]/20 focus:border-[#1C69A0]"
                   />
                 </div>
               </div>
@@ -1049,7 +1148,7 @@ export default function ImagingArchiveHub() {
                   placeholder="e.g. High resolution diagnostic acquisition..."
                   value={uploadNotes}
                   onChange={(e) => setUploadNotes(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1C69A0]/20 focus:border-[#1C69A0]"
                 />
               </div>
 
@@ -1068,7 +1167,7 @@ export default function ImagingArchiveHub() {
                     className="hidden"
                   />
                   <label htmlFor="archive-file-input" className="cursor-pointer block space-y-1.5">
-                    <Upload size={24} className="mx-auto text-indigo-600" />
+                    <Upload size={24} className="mx-auto text-[#1C69A0]" />
                     <div className="text-slate-800 font-semibold">
                       Click to select or drag & drop diagnostic images
                     </div>
@@ -1106,15 +1205,18 @@ export default function ImagingArchiveHub() {
               <div className="pt-3 flex items-center justify-end gap-2.5">
                 <button
                   type="button"
-                  onClick={() => setUploadModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-lg"
+                  onClick={() => {
+                    setUploadModalOpen(false);
+                    setSukraaPatient(null);
+                  }}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={uploading || uploadFiles.length === 0}
-                  className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg shadow-sm"
+                  className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-semibold text-white bg-[#1C69A0] hover:bg-[#16527D] disabled:opacity-50 rounded-lg shadow-sm transition-colors"
                 >
                   <Upload size={14} />
                   {uploading ? 'Archiving Files...' : `Archive ${uploadFiles.length} File(s)`}

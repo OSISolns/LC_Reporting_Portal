@@ -53,7 +53,7 @@ const ImagingHub = () => {
     <div className="p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-          <span className="text-indigo-600">LUMINA</span> Imaging Hub
+          <span className="text-[#1C69A0]">LUMINA</span> Imaging Hub
         </h1>
         <p className="text-sm text-slate-500">
           Radiology worklist, diagnostic storage vault, and provider sharing for CT, MRI, OPG, X-Ray, Mammography, Ultrasound, CBCT, & Cephalogram.
@@ -70,7 +70,7 @@ const ImagingHub = () => {
               key={t.key}
               onClick={() => setActive(t.key)}
               className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors whitespace-nowrap ${
-                on ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'
+                on ? 'border-[#1C69A0] text-[#1C69A0]' : 'border-transparent text-slate-500 hover:text-slate-700'
               }`}
             >
               <Icon size={16} /> {t.label}

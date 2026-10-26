@@ -4148,21 +4148,6 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
     `);
       console.log('✅ SQLite Schema Migration: created/verified it_tickets table');
 
-      // Seed initial dummy data if empty
-      const { rows: assetCheck } = await client.execute("SELECT COUNT(*) as cnt FROM it_assets");
-      if (Number(assetCheck[0].cnt) === 0) {
-        await client.execute("INSERT INTO it_assets (asset_tag, name, assigned_to, department, status) VALUES ('AST-LTP-01', 'Dell Latitude 5520', 'Dr. Alan', 'Clinical', 'Active')");
-        await client.execute("INSERT INTO it_assets (asset_tag, name, assigned_to, department, status) VALUES ('AST-PRN-05', 'HP LaserJet Pro', 'Reception Desk', 'Operations', 'Needs Repair')");
-        console.log('🌱 Seeded initial IT assets.');
-      }
-
-      const { rows: ticketCheck } = await client.execute("SELECT COUNT(*) as cnt FROM it_tickets");
-      if (Number(ticketCheck[0].cnt) === 0) {
-        await client.execute("INSERT INTO it_tickets (ticket_number, title, reporter, category, status, priority, created_at) VALUES ('TKT-901', 'Printer in Ward B not working', 'Nurse Alice', 'Hardware', 'Open', 'Medium', '2026-06-15')");
-        await client.execute("INSERT INTO it_tickets (ticket_number, title, reporter, category, status, priority, created_at) VALUES ('TKT-902', 'Cannot access E-Prescriptions module', 'Dr. Smith', 'Software', 'In Progress', 'High', '2026-06-15')");
-        await client.execute("INSERT INTO it_tickets (ticket_number, title, reporter, category, status, priority, created_at) VALUES ('TKT-903', 'New laptop setup for HR', 'HR Admin', 'Provisioning', 'Resolved', 'Low', '2026-06-13')");
-        console.log('🌱 Seeded initial IT tickets.');
-      }
     } catch (err) {
       console.error('❌ Failed to initialize IT Support Hub tables:', err);
     }
@@ -4469,25 +4454,6 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       `);
       console.log('✅ SQLite Schema Migration: created/verified Procurement Hub tables');
 
-      // Seed mock POs and GRNs if empty
-      const { rows: poCheck } = await client.execute("SELECT COUNT(*) as cnt FROM purchase_orders");
-      if (Number(poCheck[0].cnt) === 0) {
-        const { rows: vendors } = await client.execute("SELECT id FROM vendors LIMIT 1");
-        const vendorId = vendors.length > 0 ? vendors[0].id : 1;
-
-        await client.execute({
-          sql: "INSERT INTO purchase_orders (po_number, vendor_id, status, total_amount, notes) VALUES (?, ?, ?, ?, ?)",
-          args: ['PO-2026-0001', vendorId, 'Sent to Supplier', 450000, 'Urgent stock replacement for dental department']
-        });
-        const { rows: newPO } = await client.execute("SELECT id FROM purchase_orders ORDER BY id DESC LIMIT 1");
-        if (newPO.length > 0) {
-          await client.execute({
-            sql: "INSERT INTO purchase_order_items (po_id, item_name, sku, unit_of_measure, category, quantity, unit_price) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            args: [newPO[0].id, 'Vicryl 3/0', 'VCY-30', 'Box', 'medical_supplies', 50, 9000]
-          });
-        }
-        console.log('🌱 Seeded initial purchase orders');
-      }
 
       await client.execute(`
         CREATE TABLE IF NOT EXISTS supplier_returns (

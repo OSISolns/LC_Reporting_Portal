@@ -140,14 +140,14 @@ export default function ShareStudyModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-indigo-700 to-indigo-800 text-white shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 bg-slate-900 border-b border-slate-800 text-white shrink-0">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-white/10 rounded-lg">
+            <div className="p-2 bg-[#1C69A0]/20 text-[#60A5FA] rounded-lg">
               <Share2 size={20} />
             </div>
             <div>
               <h2 className="text-lg font-bold">Share Imaging Study</h2>
-              <p className="text-xs text-indigo-200">
+              <p className="text-xs text-slate-300">
                 Grant in-portal diagnostic viewing access to requesting doctor or consultant
               </p>
             </div>
@@ -169,7 +169,7 @@ export default function ShareStudyModal({
               <div className="text-slate-500 font-mono mt-0.5">PID: {patientId}</div>
             </div>
             <div className="text-right">
-              <span className="inline-block px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider bg-indigo-100 text-indigo-800 border border-indigo-200">
+              <span className="inline-block px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider bg-[#1C69A0]/10 text-[#1C69A0] border border-[#1C69A0]/20">
                 {modality}
               </span>
               <div className="text-slate-500 text-[11px] mt-1">
@@ -203,7 +203,7 @@ export default function ShareStudyModal({
                   />
                   <button
                     onClick={copyShareLink}
-                    className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors shadow-sm"
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-[#1C69A0] hover:bg-[#16527D] text-white text-xs font-semibold rounded-lg transition-colors shadow-sm"
                   >
                     {copied ? <Check size={14} /> : <Copy size={14} />}
                     {copied ? 'Copied' : 'Copy'}
@@ -230,14 +230,14 @@ export default function ShareStudyModal({
                 </label>
 
                 {selectedProvider ? (
-                  <div className="flex items-center justify-between p-3 bg-indigo-50 border border-indigo-200 rounded-xl">
+                  <div className="flex items-center justify-between p-3 bg-[#1C69A0]/5 border border-[#1C69A0]/20 rounded-xl">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs">
+                      <div className="w-8 h-8 rounded-full bg-[#1C69A0] text-white flex items-center justify-center font-bold text-xs">
                         {selectedProvider.name.charAt(0)}
                       </div>
                       <div>
                         <div className="text-xs font-bold text-slate-900">{selectedProvider.name}</div>
-                        <div className="text-[11px] text-indigo-700 font-medium">
+                        <div className="text-[11px] text-[#1C69A0] font-semibold">
                           {selectedProvider.specialization || selectedProvider.title || 'Clinician'}
                         </div>
                       </div>
@@ -259,7 +259,7 @@ export default function ShareStudyModal({
                         placeholder="Search doctor, consultant, or dentist..."
                         value={providerSearch}
                         onChange={(e) => setProviderSearch(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1C69A0]"
                       />
                     </div>
                     <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100 bg-white">
@@ -271,7 +271,7 @@ export default function ShareStudyModal({
                             key={p.id}
                             type="button"
                             onClick={() => setSelectedProvider(p)}
-                            className="w-full text-left px-3 py-2 text-xs hover:bg-indigo-50 transition-colors flex items-center justify-between"
+                            className="w-full text-left px-3 py-2 text-xs hover:bg-[#1C69A0]/5 transition-colors flex items-center justify-between"
                           >
                             <span className="font-semibold text-slate-800">{p.name}</span>
                             <span className="text-[10px] uppercase font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
@@ -298,7 +298,7 @@ export default function ShareStudyModal({
                       onClick={() => setUrgency(u.value)}
                       className={`py-2 text-xs font-semibold rounded-lg border text-center transition-all ${
                         urgency === u.value
-                          ? `${u.color} ring-2 ring-indigo-500/30 font-bold shadow-sm`
+                          ? `${u.color} ring-2 ring-[#1C69A0]/30 font-bold shadow-sm`
                           : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}
                     >
@@ -318,7 +318,7 @@ export default function ShareStudyModal({
                   placeholder="e.g., Acute chest pain, r/o pneumonia or fracture..."
                   value={clinicalIndication}
                   onChange={(e) => setClinicalIndication(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1C69A0]"
                 />
               </div>
 
@@ -332,7 +332,7 @@ export default function ShareStudyModal({
                   placeholder="e.g., Cross-sectional MRI series attached. Please inspect L4-L5 disc space for nerve impingement..."
                   value={consultationNotes}
                   onChange={(e) => setConsultationNotes(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1C69A0]"
                 />
               </div>
 
@@ -345,7 +345,7 @@ export default function ShareStudyModal({
                       type="checkbox"
                       checked={canViewImages}
                       onChange={(e) => setCanViewImages(e.target.checked)}
-                      className="rounded text-indigo-600 focus:ring-indigo-500"
+                      className="rounded text-[#1C69A0] focus:ring-[#1C69A0]"
                     />
                     <span className="text-slate-700">View Images</span>
                   </label>
@@ -354,7 +354,7 @@ export default function ShareStudyModal({
                       type="checkbox"
                       checked={canViewReport}
                       onChange={(e) => setCanViewReport(e.target.checked)}
-                      className="rounded text-indigo-600 focus:ring-indigo-500"
+                      className="rounded text-[#1C69A0] focus:ring-[#1C69A0]"
                     />
                     <span className="text-slate-700">View Report</span>
                   </label>
@@ -363,7 +363,7 @@ export default function ShareStudyModal({
                       type="checkbox"
                       checked={canDownload}
                       onChange={(e) => setCanDownload(e.target.checked)}
-                      className="rounded text-indigo-600 focus:ring-indigo-500"
+                      className="rounded text-[#1C69A0] focus:ring-[#1C69A0]"
                     />
                     <span className="text-slate-700">Download</span>
                   </label>
@@ -397,7 +397,7 @@ export default function ShareStudyModal({
                 <button
                   type="submit"
                   disabled={submitting || !selectedProvider}
-                  className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg transition-colors shadow-sm"
+                  className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-semibold text-white bg-[#1C69A0] hover:bg-[#16527D] disabled:opacity-50 rounded-lg transition-colors shadow-sm"
                 >
                   <Share2 size={14} />
                   {submitting ? 'Sharing...' : 'Share Study'}

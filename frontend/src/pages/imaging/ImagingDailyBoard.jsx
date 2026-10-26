@@ -1,14 +1,18 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { RefreshCw, Activity, ScanLine, Radiation, Waves, Brain, ListOrdered } from 'lucide-react';
+import { RefreshCw, Activity, ScanLine, Radiation, Waves, Brain, ListOrdered, Smile, Sparkles, Layers, Crosshair } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { getDailyBoard, getDailyRegister } from '../../api/imaging';
 
-// Icon per canonical modality code.
+// Icon per canonical modality code (8 modalities)
 const UNIT_ICON = {
   'X-Ray': <Radiation size={22} />,
   CT: <ScanLine size={22} />,
   MRI: <Brain size={22} />,
   Ultrasound: <Waves size={22} />,
+  OPG: <Smile size={22} />,
+  Mammography: <Sparkles size={22} />,
+  CBCT: <Layers size={22} />,
+  CEPHALOGRAM: <Crosshair size={22} />,
 };
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -45,7 +49,7 @@ const ImagingDailyBoard = () => {
       <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
         <div>
           <h2 className="text-lg font-bold text-slate-800">Daily Exam Log</h2>
-          <p className="text-sm text-slate-500">Exams logged per unit — X-Ray, CT, MRI, Ultrasound.</p>
+          <p className="text-sm text-slate-500">Exams logged per unit across all 8 clinical imaging modalities.</p>
         </div>
         <div className="flex items-center gap-2">
           <input
@@ -83,7 +87,7 @@ const ImagingDailyBoard = () => {
         {(data?.units || []).map((u) => (
           <div key={u.modality} className="bg-white rounded-xl border border-slate-200 p-5">
             <div className="flex items-center justify-between mb-3">
-              <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600">
+              <div className="p-2.5 rounded-xl bg-[#1C69A0]/10 text-[#1C69A0]">
                 {UNIT_ICON[u.modality] || <Activity size={22} />}
               </div>
               <span className="text-3xl font-bold text-slate-800">{u.total}</span>
