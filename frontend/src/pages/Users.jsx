@@ -101,7 +101,7 @@ const DEPARTMENT_CONFIG = [
     match: (u) => {
       const r = (u.role_key || '').toLowerCase();
       const n = (u.role_name || '').toLowerCase();
-      return ['doctor', 'consultant', 'medical_director'].some(k => r.includes(k) || n.includes(k));
+      return ['doctor', 'consultant', 'medical_director', 'clinical_director'].some(k => r.includes(k) || n.includes(k));
     }
   },
   {
@@ -275,8 +275,8 @@ const Users = () => {
     'dental'
   ];
 
-  const LOW_LEVEL_ROLES_DISPLAY = isITOfficer ? IT_OFFICER_ROLES_DISPLAY : ['Customer Care', 'Principal Cashier', 'Cashier', 'Operations Staff', 'Staff Member', 'Clinical Nurse', 'RN / Midwife', 'Chief Nurse Manager', 'Medical Doctor', 'Consultant', 'Medical Director', 'Procurement Manager', 'Physiotherapy Manager', 'Physiotherapist', 'Laboratory Manager', 'Lab Team Lead', 'Lab Lead', 'Lab Technologist', 'Laboratory Staff', 'Quality Manager', 'Quality & Accreditation Officer'];
-  const LOW_LEVEL_ROLES_KEY = isITOfficer ? IT_OFFICER_ROLES_KEY : ['customer_care', 'principal_cashier', 'cashier', 'operations_staff', 'staff', 'nurse', 'rn_midwife', 'chef-nurse', 'doctor', 'consultant', 'medical_director', 'procurement-manager', 'physio_manager', 'physio', 'lab_manager', 'lab_team_lead', 'lab_lead', 'lab_tech', 'lab', 'quality_manager', 'qm', 'quality_accreditation_officer'];
+  const LOW_LEVEL_ROLES_DISPLAY = isITOfficer ? IT_OFFICER_ROLES_DISPLAY : ['Customer Care', 'Principal Cashier', 'Cashier', 'Operations Staff', 'Staff Member', 'Clinical Nurse', 'RN / Midwife', 'Chief Nurse Manager', 'Medical Doctor', 'Consultant', 'Medical Director', 'Clinical Director', 'Procurement Manager', 'Physiotherapy Manager', 'Physiotherapist', 'Laboratory Manager', 'Lab Team Lead', 'Lab Lead', 'Lab Technologist', 'Laboratory Staff', 'Quality Manager', 'Quality & Accreditation Officer'];
+  const LOW_LEVEL_ROLES_KEY = isITOfficer ? IT_OFFICER_ROLES_KEY : ['customer_care', 'principal_cashier', 'cashier', 'operations_staff', 'staff', 'nurse', 'rn_midwife', 'chef-nurse', 'doctor', 'consultant', 'medical_director', 'clinical_director', 'procurement-manager', 'physio_manager', 'physio', 'lab_manager', 'lab_team_lead', 'lab_lead', 'lab_tech', 'lab', 'quality_manager', 'qm', 'quality_accreditation_officer'];
 
   const isAccessibleUser = (u) => {
     if (canEditAll) return true;

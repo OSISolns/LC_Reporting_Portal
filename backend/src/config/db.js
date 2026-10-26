@@ -4196,6 +4196,36 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       console.error('❌ Failed to setup medical_director role/permissions:', err);
     }
 
+    // --- Clinical Director Role Setup & Permissions Sync ---
+    try {
+      await client.execute({
+        sql: "INSERT OR IGNORE INTO roles (name, display_name) VALUES (?, ?)",
+        args: ['clinical_director', 'Clinical Director']
+      });
+      console.log('✅ SQLite Schema Migration: registered clinical_director role');
+
+      const { ROLE_DEFAULTS } = require('./permissions');
+      const cdPermissions = ROLE_DEFAULTS['clinical_director'];
+      if (cdPermissions) {
+        for (const [moduleName, actions] of Object.entries(cdPermissions)) {
+          for (const [action, granted] of Object.entries(actions)) {
+            await client.execute({
+              sql: `
+                INSERT INTO role_permissions (role_name, module, action, granted, updated_by)
+                VALUES (?, ?, ?, ?, 1)
+                ON CONFLICT(role_name, module, action) DO UPDATE 
+                SET granted = EXCLUDED.granted
+              `,
+              args: ['clinical_director', moduleName, action, granted ? 1 : 0]
+            }).catch(() => { });
+          }
+        }
+        console.log('✅ SQLite Schema Migration: synced clinical_director permissions');
+      }
+    } catch (err) {
+      console.error('❌ Failed to setup clinical_director role/permissions:', err);
+    }
+
     // --- Quality & Accreditation Officer Role Setup ---
     try {
       await client.execute({

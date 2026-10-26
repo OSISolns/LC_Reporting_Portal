@@ -362,7 +362,7 @@ exports.saveObservation = async (req, res) => {
     const existing = await ClinicalObservation.findByPatientAndQueue(patientId, queue_id);
 
     // Enforce that doctors, consultants, PAs, and medical directors can set or update diagnosis & medical notes
-    const isDoctorOrMD = ['doctor', 'consultant', 'medical_director', 'admin', 'pa'].includes(req.user.role);
+    const isDoctorOrMD = ['doctor', 'consultant', 'medical_director', 'clinical_director', 'admin', 'pa'].includes(req.user.role);
     if (!isDoctorOrMD) {
       if (req.body.identification) {
         const existingDiagnosis = existing && existing.identification ? existing.identification.diagnosis : '';
@@ -446,7 +446,7 @@ exports.saveObservation = async (req, res) => {
 
       const statusToSave = req.body.status || existing.status || 'Draft';
 
-      const allowedCompleters = ['nurse', 'chef-nurse', 'doctor', 'consultant', 'medical_director', 'admin'];
+      const allowedCompleters = ['nurse', 'chef-nurse', 'doctor', 'consultant', 'medical_director', 'clinical_director', 'admin'];
       if (['Completed', 'Verified'].includes(statusToSave) && !allowedCompleters.includes(req.user.role)) {
         return res.status(403).json({ success: false, message: 'Only authorized clinical staff can declare clinical sheets completed.' });
       }
@@ -463,7 +463,7 @@ exports.saveObservation = async (req, res) => {
     } else {
       const statusToSave = req.body.status || 'Draft';
 
-      const allowedCompleters = ['nurse', 'chef-nurse', 'doctor', 'consultant', 'medical_director', 'admin'];
+      const allowedCompleters = ['nurse', 'chef-nurse', 'doctor', 'consultant', 'medical_director', 'clinical_director', 'admin'];
       if (['Completed', 'Verified'].includes(statusToSave) && !allowedCompleters.includes(req.user.role)) {
         return res.status(403).json({ success: false, message: 'Only authorized clinical staff can declare clinical sheets completed.' });
       }
@@ -492,14 +492,14 @@ exports.saveObservation = async (req, res) => {
       if (docName && typeof docName === 'string' && docName.trim()) {
         const queryTerm = `%${docName.replace(/^Dr\.\s*/i, '').trim()}%`;
         const docRes = await db.query(
-          `SELECT id FROM users WHERE role IN ('doctor', 'consultant', 'medical_director') AND (full_name ILIKE $1 OR username ILIKE $1)`,
+          `SELECT id FROM users WHERE role IN ('doctor', 'consultant', 'medical_director', 'clinical_director') AND (full_name ILIKE $1 OR username ILIKE $1)`,
           [queryTerm]
         );
         doctorUsers = docRes.rows;
       }
 
       if (doctorUsers.length === 0) {
-        const allDocsRes = await db.query(`SELECT id FROM users WHERE role IN ('doctor', 'consultant', 'medical_director') LIMIT 5`);
+        const allDocsRes = await db.query(`SELECT id FROM users WHERE role IN ('doctor', 'consultant', 'medical_director', 'clinical_director') LIMIT 5`);
         doctorUsers = allDocsRes.rows;
       }
 
@@ -1773,7 +1773,7 @@ exports.syncClinicalUsagesToInventory = syncClinicalUsagesToInventory;
 exports.getAllObservationsList = async (req, res) => {
   try {
     const { search = '', status = '', from = '', to = '' } = req.query;
-    const isPrivileged = ['admin', 'chef-nurse', 'doctor', 'consultant', 'medical_director'].includes(req.user.role);
+    const isPrivileged = ['admin', 'chef-nurse', 'doctor', 'consultant', 'medical_director', 'clinical_director'].includes(req.user.role);
 
     let sql = `
       SELECT

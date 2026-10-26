@@ -28,7 +28,7 @@ const checkPermission = (module, action) => {
         return next();
       }
 
-      if (req.user.role === 'medical_director') {
+      if (['medical_director', 'clinical_director'].includes(req.user.role)) {
         const allowedModules = ['incident_reports', 'clinical_observation', 'feedbacks', 'reports'];
         if (allowedModules.includes(module)) {
           return next();

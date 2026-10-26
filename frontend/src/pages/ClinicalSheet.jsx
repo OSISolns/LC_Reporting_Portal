@@ -291,7 +291,7 @@ const ClinicalSheet = ({ embeddedPatientId, embeddedQueueId, isEmbedded, embedde
     }, 300);
   };
 
-  const isPrescriber = ['doctor', 'consultant', 'medical_director', 'admin', 'pa'].includes(user?.role);
+  const isPrescriber = ['doctor', 'consultant', 'medical_director', 'clinical_director', 'admin', 'pa'].includes(user?.role);
   const isCompleted = ['Completed', 'Verified'].includes(sheetStatus);
 
   const isNoteAuthor = (noteItem) => {

@@ -22,7 +22,7 @@ const SECTIONS = [
     label: 'Dental Clinic',
     icon: Building2,
     description: 'Clinical workflow — patient queue, dental charting, and consumables.',
-    allowedRoles: ['admin', 'deputy_coo', 'coo', 'medical_director', 'dental', 'dentist', 'dental_hod'],
+    allowedRoles: ['admin', 'deputy_coo', 'coo', 'medical_director', 'clinical_director', 'dental', 'dentist', 'dental_hod'],
     tabs: [
       { key: 'worklist',           icon: Calendar,      label: 'Patient Worklist'  },
       { key: 'appointments',       icon: CalendarClock, label: 'Appointments'      },
@@ -36,7 +36,7 @@ const SECTIONS = [
     label: 'Dental Lab',
     icon: FlaskConical,
     description: 'Laboratory workflow — prosthetics cases, work orders, and lab consumables.',
-    allowedRoles: ['admin', 'deputy_coo', 'coo', 'medical_director', 'dental_lab_manager', 'dental_tech', 'dental_lab', 'dental_hod'],
+    allowedRoles: ['admin', 'deputy_coo', 'coo', 'medical_director', 'clinical_director', 'dental_lab_manager', 'dental_tech', 'dental_lab', 'dental_hod'],
     tabs: [
       { key: 'cases',           icon: BookOpen,      label: 'Cases Log'       },
       { key: 'odontogram_lab',  icon: Wrench,        label: 'Prosthetics FDI Odontogram' },

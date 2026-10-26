@@ -16,7 +16,7 @@ router.post('/inventory/supplier-portal/upload', clinicalController.supplierPort
 router.use(authenticateToken);
 router.use(authorizeRoles([
   'nurse', 'rn_midwife', 'admin', 'doctor', 'consultant', 'chef-nurse', 'deputy_coo', 'stock-manager', 
-  'pa', 'medical_director', 'procurement-manager', 
+  'pa', 'medical_director', 'clinical_director', 'procurement-manager', 
   'lab_stock_officer', 'lab_team_lead', 'lab_lead', 'lab_tech', 'lab', 'lab_manager', 'lab_hod',
   'quality_manager', 'qm', 'lab_safety_officer', 'head_biochemistry', 'head_microbiology', 'head_hematology',
   'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology', 'lab_micro_specialist', 'lab_scientist',
@@ -165,7 +165,7 @@ router.get('/inventory/nursing-store-stock', checkPermission('inventory', 'view'
 // /inventory/items is a shared reference lookup used broadly (nursing MAR,
 // e-prescriptions autocomplete) -- left on its existing role list rather
 // than folded into daily_stock, so prescribing roles keep access.
-router.get('/inventory/items', authorizeRoles(['nurse', 'rn_midwife', 'chef-nurse', 'admin', 'doctor', 'consultant', 'medical_director', 'pa', 'stock-manager', 'procurement-manager']), clinicalController.getInventoryItems);
+router.get('/inventory/items', authorizeRoles(['nurse', 'rn_midwife', 'chef-nurse', 'admin', 'doctor', 'consultant', 'medical_director', 'clinical_director', 'pa', 'stock-manager', 'procurement-manager']), clinicalController.getInventoryItems);
 router.post('/inventory/bulk', checkPermission('inventory', 'edit'), clinicalController.saveInventoryBulk);
 router.get('/inventory/deleted-items', checkPermission('inventory', 'view'), clinicalController.getDeletedItems);
 router.post('/inventory/deleted-items', checkPermission('inventory', 'edit'), clinicalController.saveDeletedItems);

@@ -239,6 +239,7 @@ async function seed() {
       ['customer_care', 'Customer Care Officer'],
       ['nurse', 'Clinical Nurse'],
       ['medical_director', 'Medical Director'],
+      ['clinical_director', 'Clinical Director'],
       ['logistics_manager', 'Logistics Manager'],
       ['logistics_officer', 'Logistics Officer'],
       ['imaging_manager', 'Imaging Department Manager'],

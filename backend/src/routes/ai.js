@@ -13,7 +13,7 @@ router.use(authMiddleware);
 // below -- left on the existing hardcoded gate, not part of the new
 // "AI Insights" module, since these are in-workflow drafting aids, not a
 // distinct navigable page)
-const CLINICAL_ROLES = ['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant', 'medical_director'];
+const CLINICAL_ROLES = ['nurse', 'chef-nurse', 'admin', 'doctor', 'consultant', 'medical_director', 'clinical_director'];
 
 // The AI Insights page (management analytics): view = stats/classify,
 // download = executive briefing
@@ -46,7 +46,7 @@ router.get('/clinical/icd11/lookup', authorizeRoles(CLINICAL_ROLES), clinicalAIC
 
 // ── Lumina AI Consumables Intelligence ──────────────────────────────────────
 const LUMINA_ROLES = [
-  'admin', 'nurse', 'chef-nurse', 'doctor', 'medical_director',
+  'admin', 'nurse', 'chef-nurse', 'doctor', 'medical_director', 'clinical_director',
   'dental_hod', 'dental_lab_manager', 'lab_manager',
   'stock_manager', 'procurement', 'deputy_coo', 'coo',
   'dental', 'dentist', 'dental_tech', 'physio',

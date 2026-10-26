@@ -7,8 +7,8 @@ const multer = require('multer');
 const CLASSIFICATION_ROLES = {
   public:       ['*'], // All authenticated staff
   internal:     ['*'], // All authenticated staff
-  confidential: ['lab_hod', 'head_histopathology', 'lab_lead', 'lab_team_lead', 'lab_manager', 'quality_manager', 'qm', 'admin', 'deputy_coo', 'coo', 'medical_director', 'doctor', 'consultant', 'hsfp'],
-  restricted:   ['lab_hod', 'head_histopathology', 'lab_manager', 'quality_manager', 'qm', 'admin', 'deputy_coo', 'coo', 'medical_director'],
+  confidential: ['lab_hod', 'head_histopathology', 'lab_lead', 'lab_team_lead', 'lab_manager', 'quality_manager', 'qm', 'admin', 'deputy_coo', 'coo', 'medical_director', 'clinical_director', 'doctor', 'consultant', 'hsfp'],
+  restricted:   ['lab_hod', 'head_histopathology', 'lab_manager', 'quality_manager', 'qm', 'admin', 'deputy_coo', 'coo', 'medical_director', 'clinical_director'],
 };
 
 const canAccessClassification = (userRole, classification) => {

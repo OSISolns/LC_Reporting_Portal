@@ -36,7 +36,7 @@ const ChairmanExecutiveActions = ({
   const [responseText, setResponseText] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const isExecutive = ['chairman', 'coo', 'deputy_coo', 'admin', 'medical_director', 'sales_manager'].includes(user?.role);
+  const isExecutive = ['chairman', 'coo', 'deputy_coo', 'admin', 'medical_director', 'clinical_director', 'sales_manager'].includes(user?.role);
   const isChairman = user?.role === 'chairman';
 
   const fetchDirectives = async () => {

@@ -59,7 +59,7 @@ const LINE_MANAGER_ROLES = [
 
 // ── RBAC ──────────────────────────────────────────────────────────────────────
 const EXEC_ROLES = [
-  'admin', 'chairman', 'coo', 'deputy_coo', 'medical_director', 'pa',
+  'admin', 'chairman', 'coo', 'deputy_coo', 'medical_director', 'clinical_director', 'pa',
   'sales_manager', 'consultant', 'quality_accreditation_officer',
 ];
 const SECURITY_ROLES = ['admin'];

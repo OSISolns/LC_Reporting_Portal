@@ -66,6 +66,7 @@ const ROLE_DISPLAY_NAMES = {
   'stock-manager': 'Central Store / Stock Manager',
   doctor: 'Medical Doctor',
   medical_director: 'Medical Director',
+  clinical_director: 'Clinical Director',
   'procurement-manager': 'Procurement Manager',
   imaging_tech: 'Imaging Technologist (Radiographer)',
   imaging_manager: 'Imaging Department Manager',

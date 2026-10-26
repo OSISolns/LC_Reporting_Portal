@@ -38,7 +38,7 @@ const IncidentDetailsView = ({ data, onReviewComplete, onExport }) => {
 
   if (!data) return null;
 
-  const isHSFP = user?.role === 'hsfp' || user?.role === 'medical_director';
+  const isHSFP = ['hsfp', 'medical_director', 'medical-director', 'clinical_director', 'clinical-director'].includes((user?.role || '').toLowerCase());
   const isPending  = data.status === 'pending';
   const isApproved = data.status === 'approved';
 

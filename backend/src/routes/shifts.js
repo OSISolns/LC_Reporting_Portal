@@ -209,7 +209,7 @@ router.post(
   async (req, res, next) => {
     try {
       const isSupervisor =
-        ['admin', 'coo', 'deputy_coo', 'medical_director', 'operations_staff'].includes(req.user?.role) ||
+        ['admin', 'coo', 'deputy_coo', 'medical_director', 'clinical_director', 'operations_staff'].includes(req.user?.role) ||
         (shift.isChefNurseRole && shift.isChefNurseRole(req.user?.role));
 
       const hasPerm = isSupervisor ||

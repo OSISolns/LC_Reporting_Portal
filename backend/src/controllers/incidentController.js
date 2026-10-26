@@ -15,7 +15,7 @@ exports.createReport = async (req, res, next) => {
       const User = require('../models/user');
       const Notification = require('../models/notification');
       
-      const rolesToNotify = ['admin', 'it_officer', 'coo', 'deputy_coo', 'sales_manager', 'principal_cashier', 'hsfp'];
+      const rolesToNotify = ['admin', 'it_officer', 'coo', 'deputy_coo', 'sales_manager', 'principal_cashier', 'hsfp', 'medical_director', 'clinical_director'];
       for (const role of rolesToNotify) {
         const users = await User.findByRole(role);
         for (const user of users) {
@@ -50,8 +50,8 @@ exports.getAllReports = async (req, res, next) => {
 
 exports.approveReport = async (req, res, next) => {
   try {
-    if (!['hsfp', 'medical_director'].includes(req.user.role)) {
-      return res.status(403).json({ success: false, message: 'Only the Health & Safety Focal Person or Medical Director can approve incident reports.' });
+    if (!['hsfp', 'medical_director', 'clinical_director'].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Only the Health & Safety Focal Person, Medical Director, or Clinical Director can approve incident reports.' });
     }
     const { comments } = req.body;
     if (!comments || !comments.trim()) {
@@ -65,14 +65,14 @@ exports.approveReport = async (req, res, next) => {
     try {
       const User = require('../models/user');
       const Notification = require('../models/notification');
-      const notifyRoles = ['admin', 'coo', 'deputy_coo'];
+      const notifyRoles = ['admin', 'coo', 'deputy_coo', 'medical_director', 'clinical_director'];
       for (const role of notifyRoles) {
         const users = await User.findByRole(role);
         for (const u of users) {
           await Notification.create({
             userId: u.id,
-            title: `Incident #${report.id} Approved by HSFP`,
-            message: `Report #${report.id} (${report.incident_type}) has been approved by the Health & Safety Focal Person.`,
+            title: `Incident #${report.id} Approved by HSFP / Clinical Leadership`,
+            message: `Report #${report.id} (${report.incident_type}) has been approved by ${req.user.full_name}.`,
             type: 'success',
             link: '/incidents'
           });
@@ -123,7 +123,7 @@ exports.deleteReport = async (req, res, next) => {
     if (!existing) return res.status(404).json({ success: false, message: 'Report not found.' });
     if (existing.status !== 'pending') return res.status(400).json({ success: false, message: 'Only pending reports can be deleted.' });
 
-    const isPrivileged = ['admin', 'hsfp'].includes((req.user?.role || '').toLowerCase());
+    const isPrivileged = ['admin', 'hsfp', 'medical_director', 'clinical_director'].includes((req.user?.role || '').toLowerCase());
     if (!isPrivileged && Number(existing.created_by) !== Number(req.user.id)) {
       return res.status(403).json({ success: false, message: 'Access denied. You can only delete your own reports.' });
     }

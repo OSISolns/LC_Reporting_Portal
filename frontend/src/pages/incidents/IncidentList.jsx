@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Plus, Search, AlertCircle, Eye, Download, Trash2, ShieldCheck, Building2, FileText } from 'lucide-react';
+import { Plus, Search, AlertCircle, Eye, Download, Trash2, ShieldCheck, Building2, FileText, Stethoscope } from 'lucide-react';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Modal from '../../components/Modal';
 import IncidentFormFields from './components/IncidentFormFields';
@@ -58,9 +58,14 @@ const IncidentList = () => {
   // Everyone is authorized to report new incidents
   const canCreateIncidents = true;
 
-  // Determine user's incident report viewing scope
   const userRole = (user?.role || '').toLowerCase();
   const isInstitutionalViewer = ['hsfp', 'admin'].includes(userRole);
+  const isClinicalLeadership = [
+    'medical_director', 'medical-director',
+    'clinical_director', 'clinical-director',
+    'deputy_medical_director', 'deputy-medical-director',
+    'deputy_clinical_director', 'deputy-clinical-director'
+  ].includes(userRole);
   const isChefNurse = [
     'chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse',
     'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse'
@@ -165,6 +170,10 @@ const IncidentList = () => {
             {isInstitutionalViewer ? (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600, backgroundColor: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd' }}>
                 <ShieldCheck size={14} /> Institutional Oversight (All Incidents)
+              </span>
+            ) : isClinicalLeadership ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600, backgroundColor: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>
+                <Stethoscope size={14} /> Medical & Clinical Oversight (All Clinical Incidents)
               </span>
             ) : isChefNurse ? (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600, backgroundColor: '#fdf2f8', color: '#be185d', border: '1px solid #fbcfe8' }}>

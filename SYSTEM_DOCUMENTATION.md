@@ -61,7 +61,7 @@ The portal enforces a two-layer security model:
 - `cancellations`, `refunds`, `results_transfer`, `incident_reports`, `user_management`, `audit_logs`, `reports`, `staff_performance`, `clinical_observation`, `shifts`, `feedbacks`, `safety`, `inventory`, `procurement`, `ai_insights`, `revenue_leakage`, `compliance`, `it_support`, `patients`, `imaging`, `lab`, `dental`, `physio`, `operations`.
 
 #### System Roles (37 Roles)
-- **Executive**: `admin`, `coo`, `deputy_coo`, `chairman`, `sales_manager`, `medical_director`
+- **Executive**: `admin`, `coo`, `deputy_coo`, `chairman`, `sales_manager`, `medical_director`, `clinical_director`
 - **Doctors**: `doctor`, `consultant`, `pa`, `staff`
 - **Nursing**: `nurse`, `chef-nurse`, `deputy_chef_nurse`, `deputy-chef-nurse`, `deputy_chief_nurse`
 - **Labs & Imaging**: `lab_team_lead`, `lab_lead`, `lab_manager`, `lab_tech`, `lab`, `imaging_tech`, `imaging_manager`

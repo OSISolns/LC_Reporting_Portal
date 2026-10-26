@@ -68,6 +68,12 @@ class Incident {
       'procurement-manager': ['Procurement', 'Store', 'Central Store', 'Inventory'],
       'stock-manager': ['Store', 'Central Store', 'Inventory', 'Stock'],
 
+      // Medical & Clinical Directors
+      'medical_director': ['Clinical', 'Medical', 'Medicine', 'Doctor', 'Nursing', 'Ward', 'Inpatient', 'OPD', 'Emergency', 'Surgery', 'Maternity', 'Pediatric', 'Laboratory', 'Imaging', 'Pharmacy', 'Dental', 'Physiotherapy'],
+      'medical-director': ['Clinical', 'Medical', 'Medicine', 'Doctor', 'Nursing', 'Ward', 'Inpatient', 'OPD', 'Emergency', 'Surgery', 'Maternity', 'Pediatric', 'Laboratory', 'Imaging', 'Pharmacy', 'Dental', 'Physiotherapy'],
+      'clinical_director': ['Clinical', 'Medical', 'Medicine', 'Doctor', 'Nursing', 'Ward', 'Inpatient', 'OPD', 'Emergency', 'Surgery', 'Maternity', 'Pediatric', 'Laboratory', 'Imaging', 'Pharmacy', 'Dental', 'Physiotherapy'],
+      'clinical-director': ['Clinical', 'Medical', 'Medicine', 'Doctor', 'Nursing', 'Ward', 'Inpatient', 'OPD', 'Emergency', 'Surgery', 'Maternity', 'Pediatric', 'Laboratory', 'Imaging', 'Pharmacy', 'Dental', 'Physiotherapy'],
+
       // Sales & Billing
       'sales_manager': ['Sales', 'Cashier', 'Billing', 'Customer Care'],
       'principal_cashier': ['Cashier', 'Billing', 'Finance'],
@@ -91,7 +97,49 @@ class Incident {
     const incType = (incident.incident_type || '').toLowerCase();
     const creatorRole = (incident.creator_role || '').toLowerCase();
 
-    // 3. Chef Nurse: Can view all nursing incident reports
+    // 3. Medical Director & Clinical Director: Can view all medical and clinical incident reports
+    const MEDICAL_CLINICAL_DIRECTOR_ROLES = [
+      'medical_director', 'medical-director',
+      'clinical_director', 'clinical-director',
+      'deputy_medical_director', 'deputy-medical-director',
+      'deputy_clinical_director', 'deputy-clinical-director'
+    ];
+    if (MEDICAL_CLINICAL_DIRECTOR_ROLES.includes(role)) {
+      const CLINICAL_DEPTS = [
+        'clinical', 'medical', 'medicine', 'doctor', 'physician', 'consultation', 'specialist',
+        'nursing', 'nurse', 'ward', 'inpatient', 'ipd', 'opd', 'outpatient', 'day care',
+        'emergency', 'er', 'casualty', 'triage', 'resuscitation', 'ambulance',
+        'icu', 'nicu', 'picu', 'hdu', 'critical care',
+        'surgery', 'surgical', 'theatre', 'ot', 'recovery', 'pacu', 'anesthesia', 'anaesthesia', 'minor surgery',
+        'maternity', 'labour', 'delivery', 'anc', 'pnc', 'midwife', 'midwifery', 'obstetrics', 'gynaecology', 'obgyn',
+        'pediatric', 'pediatrics', 'paediatric', 'paediatrics', 'neonatal', 'child health', 'vaccination', 'immunization',
+        'laboratory', 'lab', 'biochemistry', 'microbiology', 'hematology', 'histopathology', 'molecular', 'phlebotomy', 'poct', 'pathology', 'blood bank', 'transfusion',
+        'imaging', 'radiology', 'x-ray', 'ct', 'ultrasound', 'sonography', 'mri', 'echo',
+        'pharmacy', 'dispensary', 'medication',
+        'dental', 'dentist', 'orthodontics', 'stomatology',
+        'physiotherapy', 'physio', 'rehabilitation', 'rehab',
+        'dialysis', 'endoscopy', 'cardiology', 'oncology', 'ophthalmology', 'ent', 'dermatology'
+      ];
+      const CLINICAL_ROLES = [
+        'doctor', 'medical_director', 'medical-director', 'clinical_director', 'clinical-director', 'consultant',
+        'nurse', 'rn_midwife', 'chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse',
+        'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse',
+        'lab_hod', 'lab_manager', 'lab_lead', 'lab_team_lead', 'lab_safety_officer', 'lab_stock_officer',
+        'head_biochemistry', 'head_microbiology', 'head_hematology', 'head_histopathology',
+        'head_molecular_biology', 'head_phlebotomy', 'head_poct', 'lab_micro_specialist',
+        'lab_scientist', 'lab_tech', 'lab',
+        'imaging_manager', 'imaging_tech', 'radiologist', 'sono', 'imaging',
+        'dental_hod', 'dental_tech', 'dental_lab_manager', 'dental', 'dentist',
+        'physio_manager', 'physio', 'physiotherapist'
+      ];
+
+      if (CLINICAL_DEPTS.some(d => incDept.includes(d))) return true;
+      if (incType === 'patient') return true;
+      if (incident.pid_number && String(incident.pid_number).trim() !== '') return true;
+      if (creatorRole && CLINICAL_ROLES.includes(creatorRole)) return true;
+    }
+
+    // 4. Chef Nurse: Can view all nursing incident reports
     const CHEF_NURSE_ROLES = [
       'chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse',
       'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse'
@@ -111,7 +159,7 @@ class Incident {
       if (creatorRole && NURSING_ROLES.includes(creatorRole)) return true;
     }
 
-    // 4. COO & Deputy COO: Can view all operations-related incident reports
+    // 5. COO & Deputy COO: Can view all operations-related incident reports
     const COO_ROLES = ['coo', 'deputy_coo', 'deputy-coo'];
     if (COO_ROLES.includes(role)) {
       const OPERATIONS_DEPTS = [
@@ -135,7 +183,7 @@ class Incident {
       if (creatorRole && OPERATIONS_ROLES.includes(creatorRole)) return true;
     }
 
-    // 5. Other department leads with elevated access
+    // 6. Other department leads with elevated access
     const elevatedMap = Incident.getElevatedDepartmentMap();
     const elevatedDepts = elevatedMap[role] || [];
     if (elevatedDepts.length > 0) {
@@ -161,6 +209,7 @@ class Incident {
 
     // Access control:
     // - HSFP and Admin can view ALL incidents
+    // - Medical Director and Clinical Director can view all Medical & Clinical incident reports
     // - Chef Nurse can view all Nursing incident reports
     // - COO and Deputy COO can view all Operations-related incident reports
     // - Elevated managers view their department incidents
@@ -169,13 +218,68 @@ class Incident {
     const canViewAll = user && ['hsfp', 'admin'].includes(userRole);
 
     if (!canViewAll) {
+      const MEDICAL_CLINICAL_DIRECTOR_ROLES = [
+        'medical_director', 'medical-director',
+        'clinical_director', 'clinical-director',
+        'deputy_medical_director', 'deputy-medical-director',
+        'deputy_clinical_director', 'deputy-clinical-director'
+      ];
       const CHEF_NURSE_ROLES = [
         'chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse',
         'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse'
       ];
       const COO_ROLES = ['coo', 'deputy_coo', 'deputy-coo'];
 
-      if (CHEF_NURSE_ROLES.includes(userRole)) {
+      if (MEDICAL_CLINICAL_DIRECTOR_ROLES.includes(userRole)) {
+        // Medical & Clinical Directors: All Medical & Clinical incident reports + Patient-related incidents + own reports
+        const CLINICAL_DEPTS = [
+          'Clinical', 'Medical', 'Medicine', 'Doctor', 'Physician', 'Consultation', 'Specialist',
+          'Nursing', 'Nurse', 'Ward', 'Inpatient', 'IPD', 'OPD', 'Outpatient', 'Day Care',
+          'Emergency', 'ER', 'Casualty', 'Triage', 'Resuscitation', 'Ambulance',
+          'ICU', 'NICU', 'PICU', 'HDU', 'Critical Care',
+          'Surgery', 'Surgical', 'Theatre', 'OT', 'Recovery', 'PACU', 'Anesthesia', 'Anaesthesia', 'Minor Surgery',
+          'Maternity', 'Labour', 'Delivery', 'ANC', 'PNC', 'Midwife', 'Midwifery', 'Obstetrics', 'Gynaecology', 'OBGYN',
+          'Pediatric', 'Pediatrics', 'Paediatric', 'Paediatrics', 'Neonatal', 'Child Health', 'Vaccination', 'Immunization',
+          'Laboratory', 'Lab', 'Biochemistry', 'Microbiology', 'Hematology', 'Histopathology', 'Molecular', 'Phlebotomy', 'POCT', 'Pathology', 'Blood Bank', 'Transfusion',
+          'Imaging', 'Radiology', 'X-Ray', 'CT', 'Ultrasound', 'Sonography', 'MRI', 'Echo',
+          'Pharmacy', 'Dispensary', 'Medication',
+          'Dental', 'Dentist', 'Orthodontics', 'Stomatology',
+          'Physiotherapy', 'Physio', 'Rehabilitation', 'Rehab',
+          'Dialysis', 'Endoscopy', 'Cardiology', 'Oncology', 'Ophthalmology', 'ENT', 'Dermatology'
+        ];
+        const CLINICAL_ROLES = [
+          'doctor', 'medical_director', 'medical-director', 'clinical_director', 'clinical-director', 'consultant',
+          'nurse', 'rn_midwife', 'chef-nurse', 'chef_nurse', 'chief_nurse', 'chief-nurse',
+          'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse',
+          'lab_hod', 'lab_manager', 'lab_lead', 'lab_team_lead', 'lab_safety_officer', 'lab_stock_officer',
+          'head_biochemistry', 'head_microbiology', 'head_hematology', 'head_histopathology',
+          'head_molecular_biology', 'head_phlebotomy', 'head_poct', 'lab_micro_specialist',
+          'lab_scientist', 'lab_tech', 'lab',
+          'imaging_manager', 'imaging_tech', 'radiologist', 'sono', 'imaging',
+          'dental_hod', 'dental_tech', 'dental_lab_manager', 'dental', 'dentist',
+          'physio_manager', 'physio', 'physiotherapist'
+        ];
+
+        const deptClauses = CLINICAL_DEPTS.map(d => {
+          params.push(`%${d}%`);
+          return `LOWER(i.department) LIKE LOWER($${params.length})`;
+        }).join(' OR ');
+
+        const roleClauses = CLINICAL_ROLES.map(r => {
+          params.push(r);
+          return `LOWER(ro.name) = LOWER($${params.length})`;
+        }).join(' OR ');
+
+        params.push('Patient');
+        const patientClause = `LOWER(i.incident_type) = LOWER($${params.length})`;
+
+        const pidClause = `(i.pid_number IS NOT NULL AND TRIM(i.pid_number) != '')`;
+
+        params.push(user.id);
+        const ownClause = `i.created_by = $${params.length}`;
+
+        query += ` AND (${deptClauses} OR ${roleClauses} OR ${patientClause} OR ${pidClause} OR ${ownClause})`;
+      } else if (CHEF_NURSE_ROLES.includes(userRole)) {
         // Chef Nurse: All Nursing incident reports + own reports
         const NURSING_DEPTS = [
           'Nursing', 'Nurse', 'Ward', 'Inpatient', 'IPD', 'OPD', 'Outpatient',

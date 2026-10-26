@@ -18,7 +18,7 @@ const isChefNurseRole = (role) => {
   return CHEF_NURSE_ROLES.some(k => r.includes(k) || r === k);
 };
 
-const SUPERVISOR_ROLES = ['admin', 'deputy_coo', 'coo', 'medical_director', ...CHEF_NURSE_ROLES];
+const SUPERVISOR_ROLES = ['admin', 'deputy_coo', 'coo', 'medical_director', 'clinical_director', ...CHEF_NURSE_ROLES];
 
 exports.COOLDOWN_HOURS   = COOLDOWN_HOURS;
 exports.CHEF_NURSE_ROLES = CHEF_NURSE_ROLES;
@@ -1006,8 +1006,8 @@ exports.getLatestHandover = async (req, res, next) => {
     const isList = req.query.list === 'true' || req.query.all === 'true';
 
     // Authorization check
-    const isSupervisor = ['admin', 'coo', 'deputy_coo', 'chef-nurse', 'medical_director', ...CHEF_NURSE_ROLES].includes(req.user.role);
-    const clinicalRoles = ['nurse', 'rn_midwife', 'chef-nurse', 'doctor', 'consultant', 'pa', 'medical_director', ...CHEF_NURSE_ROLES];
+    const isSupervisor = ['admin', 'coo', 'deputy_coo', 'chef-nurse', 'medical_director', 'clinical_director', ...CHEF_NURSE_ROLES].includes(req.user.role);
+    const clinicalRoles = ['nurse', 'rn_midwife', 'chef-nurse', 'doctor', 'consultant', 'pa', 'medical_director', 'clinical_director', ...CHEF_NURSE_ROLES];
     const frontOfficeRoles = ['customer_care', 'vip_lounge', 'helpdesk', 'call_center', 'cashier', 'rama_rssb'];
 
     let isAuthorized = isSupervisor;

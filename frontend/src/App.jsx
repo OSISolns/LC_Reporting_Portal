@@ -126,19 +126,19 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             
             <Route path="/users" element={<ProtectedRoute allowedRoles={['admin', 'it_officer']}><Users /></ProtectedRoute>} />
-            <Route path="/providers" element={<ProtectedRoute allowedRoles={['admin', 'coo', 'deputy_coo', 'medical_director']}><Providers /></ProtectedRoute>} />
+            <Route path="/providers" element={<ProtectedRoute allowedRoles={['admin', 'coo', 'deputy_coo', 'medical_director', 'clinical_director']}><Providers /></ProtectedRoute>} />
             <Route path="/permissions" element={<ProtectedRoute allowedRoles={['admin']}><Permissions /></ProtectedRoute>} />
             <Route path="/audit-logs" element={<ProtectedRoute allowedRoles={['admin', 'it_officer', 'quality_accreditation_officer']}><AuditLogs /></ProtectedRoute>} />
-            <Route path="/safety-management" element={<ProtectedRoute allowedRoles={['hsfp', 'admin', 'deputy_coo', 'medical_director', 'quality_manager', 'qm', 'quality_accreditation_officer', 'chairman']}><SafetyManagement /></ProtectedRoute>} />
-            <Route path="/risk-register" element={<ProtectedRoute allowedRoles={['hsfp', 'admin', 'deputy_coo', 'medical_director', 'quality_manager', 'qm', 'quality_accreditation_officer', 'chairman']}><RiskRegister /></ProtectedRoute>} />
-            <Route path="/infection-control" element={<ProtectedRoute allowedRoles={['hsfp', 'admin', 'deputy_coo', 'medical_director', 'quality_manager', 'qm', 'quality_accreditation_officer', 'chairman']}><InfectionControlTracker /></ProtectedRoute>} />
+            <Route path="/safety-management" element={<ProtectedRoute allowedRoles={['hsfp', 'admin', 'deputy_coo', 'medical_director', 'clinical_director', 'quality_manager', 'qm', 'quality_accreditation_officer', 'chairman']}><SafetyManagement /></ProtectedRoute>} />
+            <Route path="/risk-register" element={<ProtectedRoute allowedRoles={['hsfp', 'admin', 'deputy_coo', 'medical_director', 'clinical_director', 'quality_manager', 'qm', 'quality_accreditation_officer', 'chairman']}><RiskRegister /></ProtectedRoute>} />
+            <Route path="/infection-control" element={<ProtectedRoute allowedRoles={['hsfp', 'admin', 'deputy_coo', 'medical_director', 'clinical_director', 'quality_manager', 'qm', 'quality_accreditation_officer', 'chairman']}><InfectionControlTracker /></ProtectedRoute>} />
             <Route path="/revenue-tracker" element={<ProtectedRoute allowedRoles={['sales_manager', 'chairman', 'admin', 'principal_cashier', 'deputy_coo']}><RevenueLeakageTracker /></ProtectedRoute>} />
             <Route path="/compliance" element={<ProtectedRoute allowedRoles={['admin', 'hsfp', 'quality_manager', 'qm', 'quality_accreditation_officer', 'coo', 'deputy_coo', 'chairman']}><CompliancePortal /></ProtectedRoute>} />
             <Route path="/it-dashboard" element={<ProtectedRoute allowedRoles={['admin', 'it_officer', 'chairman']}><ITDashboard /></ProtectedRoute>} />
-            <Route path="/it-ticketing" element={<ProtectedRoute allowedRoles={['admin', 'it_officer', 'doctor', 'consultant', 'pa', 'staff', 'nurse', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_tech', 'lab', 'imaging_tech', 'imaging_manager', 'dentist', 'dental_hod', 'dental_tech', 'dental_lab_manager', 'dental', 'physiotherapist', 'physio', 'physio_manager', 'operations_staff', 'operations', 'cashier', 'principal_cashier', 'customer_care', 'stock-manager', 'procurement-manager', 'hsfp', 'coo', 'deputy_coo', 'chairman', 'sales_manager', 'medical_director', 'quality_accreditation_officer']}><ITAssetTicketing /></ProtectedRoute>} />
+            <Route path="/it-ticketing" element={<ProtectedRoute allowedRoles={['admin', 'it_officer', 'doctor', 'consultant', 'pa', 'staff', 'nurse', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_tech', 'lab', 'imaging_tech', 'imaging_manager', 'dentist', 'dental_hod', 'dental_tech', 'dental_lab_manager', 'dental', 'physiotherapist', 'physio', 'physio_manager', 'operations_staff', 'operations', 'cashier', 'principal_cashier', 'customer_care', 'stock-manager', 'procurement-manager', 'hsfp', 'coo', 'deputy_coo', 'chairman', 'sales_manager', 'medical_director', 'clinical_director', 'quality_accreditation_officer']}><ITAssetTicketing /></ProtectedRoute>} />
             <Route path="/ai-insights" element={<ProtectedRoute allowedRoles={[
               // Executives & Administration
-              'admin', 'chairman', 'coo', 'deputy_coo', 'medical_director', 'pa',
+              'admin', 'chairman', 'coo', 'deputy_coo', 'medical_director', 'clinical_director', 'pa',
               // Financial/Operations oversight
               'sales_manager', 'principal_cashier', 'consultant',
               // Quality & Accreditation
@@ -170,11 +170,11 @@ function App() {
             <Route path="/nursing-hub" element={<ProtectedRoute allowedRoles={['nurse', 'rn_midwife', 'admin', 'chef-nurse', 'coo', 'deputy_coo', 'chairman']}><NursingHub /></ProtectedRoute>} />
             <Route path="/midwife-dashboard" element={<ProtectedRoute allowedRoles={['rn_midwife', 'nurse', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'admin', 'coo', 'deputy_coo', 'chairman']}><MidwifeDashboard /></ProtectedRoute>} />
             <Route path="/nursing-hub/anc-register" element={<ProtectedRoute allowedRoles={['nurse', 'rn_midwife', 'chef-nurse', 'admin', 'coo', 'deputy_coo', 'chairman']}><ANCRegister /></ProtectedRoute>} />
-            <Route path="/doctor-hub" element={<ProtectedRoute allowedRoles={['doctor', 'consultant', 'admin', 'medical_director', 'coo', 'deputy_coo', 'chairman']}><DoctorHub /></ProtectedRoute>} />
-            <Route path="/e-prescriptions" element={<ProtectedRoute allowedRoles={['doctor', 'consultant', 'medical_director', 'coo', 'deputy_coo', 'chairman']}><EPrescriptions /></ProtectedRoute>} />
+            <Route path="/doctor-hub" element={<ProtectedRoute allowedRoles={['doctor', 'consultant', 'admin', 'medical_director', 'clinical_director', 'coo', 'deputy_coo', 'chairman']}><DoctorHub /></ProtectedRoute>} />
+            <Route path="/e-prescriptions" element={<ProtectedRoute allowedRoles={['doctor', 'consultant', 'medical_director', 'clinical_director', 'coo', 'deputy_coo', 'chairman']}><EPrescriptions /></ProtectedRoute>} />
             <Route path="/nursing-hub/daily-report" element={<ProtectedRoute allowedRoles={['nurse', 'rn_midwife', 'chef-nurse', 'admin', 'coo', 'deputy_coo', 'chairman']}><DailyOperationalReport /></ProtectedRoute>} />
-            <Route path="/daily-reports-board" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'chef-nurse', 'pa', 'medical_director', 'operations_staff', 'operations', 'operations_officer', 'operations_manager']}><DailyOperationalReportBoard /></ProtectedRoute>} />
-            <Route path="/feedbacks" element={<ProtectedRoute allowedRoles={['coo', 'deputy_coo', 'chef-nurse', 'medical_director', 'chairman']}><FeedbackList /></ProtectedRoute>} />
+            <Route path="/daily-reports-board" element={<ProtectedRoute allowedRoles={['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'principal_cashier', 'consultant', 'chef-nurse', 'pa', 'medical_director', 'clinical_director', 'operations_staff', 'operations', 'operations_officer', 'operations_manager']}><DailyOperationalReportBoard /></ProtectedRoute>} />
+            <Route path="/feedbacks" element={<ProtectedRoute allowedRoles={['coo', 'deputy_coo', 'chef-nurse', 'medical_director', 'clinical_director', 'chairman']}><FeedbackList /></ProtectedRoute>} />
             <Route path="/central-store" element={<ProtectedRoute allowedRoles={['admin', 'deputy_coo', 'coo', 'chef-nurse', 'nurse', 'rn_midwife', 'stock-manager', 'chairman']}><CentralStoreHub /></ProtectedRoute>} />
             <Route path="/master" element={<ProtectedRoute allowedRoles={['admin', 'stock-manager', 'deputy_coo', 'chairman']}><MasterModule /></ProtectedRoute>} />
             <Route path="/procurement" element={<ProtectedRoute allowedRoles={['admin', 'deputy_coo', 'procurement-manager', 'chairman']}><ProcurementHub /></ProtectedRoute>} />
@@ -274,7 +274,7 @@ function App() {
 
             <Route path="/dental/cases/:id/odontogram" element={
               <ProtectedRoute allowedRoles={[
-                'admin', 'deputy_coo', 'coo', 'medical_director', 'dental_lab_manager', 'dental_tech', 'dental_lab', 'dental_hod'
+                'admin', 'deputy_coo', 'coo', 'medical_director', 'clinical_director', 'dental_lab_manager', 'dental_tech', 'dental_lab', 'dental_hod'
               ]}>
                 <OdontogramDetailsPage />
               </ProtectedRoute>
@@ -332,12 +332,12 @@ function App() {
               </ProtectedRoute>
             } />
 
-            <Route path="/imaging" element={<ProtectedRoute allowedRoles={['imaging_tech', 'imaging_manager', 'admin', 'medical_director', 'chairman']}><ImagingHub /></ProtectedRoute>} />
+            <Route path="/imaging" element={<ProtectedRoute allowedRoles={['imaging_tech', 'imaging_manager', 'admin', 'medical_director', 'clinical_director', 'chairman']}><ImagingHub /></ProtectedRoute>} />
 
-            <Route path="/patients/:patientId/clinical-sheet" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'medical_director', 'chairman']}><ClinicalSheet /></ProtectedRoute>} />
-            <Route path="/clinical-sheet/:patientId" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'medical_director', 'chairman']}><ClinicalSheet /></ProtectedRoute>} />
-            <Route path="/clinical-sheets" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'medical_director', 'chairman']}><ClinicalSheetsList /></ProtectedRoute>} />
-            <Route path="/patients/:patientId/records" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'medical_director', 'chairman']}><PatientRecords /></ProtectedRoute>} />
+            <Route path="/patients/:patientId/clinical-sheet" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'medical_director', 'clinical_director', 'chairman']}><ClinicalSheet /></ProtectedRoute>} />
+            <Route path="/clinical-sheet/:patientId" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'medical_director', 'clinical_director', 'chairman']}><ClinicalSheet /></ProtectedRoute>} />
+            <Route path="/clinical-sheets" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'medical_director', 'clinical_director', 'chairman']}><ClinicalSheetsList /></ProtectedRoute>} />
+            <Route path="/patients/:patientId/records" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'medical_director', 'clinical_director', 'chairman']}><PatientRecords /></ProtectedRoute>} />
             <Route path="/unauthorized" element={<Unauthorized />} />
 
             {/* ── Shift Module ── */}

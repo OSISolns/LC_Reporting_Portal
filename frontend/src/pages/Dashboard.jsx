@@ -63,7 +63,7 @@ const Dashboard = () => {
   if (role === 'physio_manager') return <PhysioManagerDashboard />;
   if (['physiotherapist', 'physio'].includes(role)) return <PhysiotherapistDashboard />;
   if (role === 'rn_midwife') return <MidwifeDashboard />;
-  if (['doctor', 'consultant', 'medical_director'].includes(role)) return <DoctorDashboard />;
+  if (['doctor', 'consultant', 'medical_director', 'clinical_director'].includes(role)) return <DoctorDashboard />;
   if (MGMT_ROLES.includes(role)) return <ManagementDashboard />;
   if (STAFF_ROLES.includes(role)) return <StaffDashboard />;
 
