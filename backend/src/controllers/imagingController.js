@@ -633,16 +633,18 @@ exports.stowUpload = async (req, res, next) => {
 // ── Medical Imaging Archiving & Organized Storage ──────────────────────────────
 exports.listArchives = async (req, res, next) => {
   try {
-    const { search, modality, patientId, bodyRegion, limit = 50, offset = 0 } = req.query;
+    const { search, modality, category, folderPath, patientId, bodyRegion, limit = 100, offset = 0 } = req.query;
     const result = await ImagingArchive.getAll({
       search,
       modality,
+      category,
+      folderPath,
       patientId,
       bodyRegion,
       limit: Number(limit),
       offset: Number(offset),
     });
-    const stats = await ImagingArchive.getStatsByModality();
+    const stats = await ImagingArchive.getStats();
     res.json({
       success: true,
       data: result.archives,
@@ -683,6 +685,8 @@ exports.uploadArchiveFiles = async (req, res, next) => {
     let patientName = req.body.patient_name || req.body.patientName || 'Unknown Patient';
     let modality = req.body.modality || 'X-Ray';
     const bodyRegion = req.body.body_region || req.body.bodyRegion || req.body.body_part || 'General';
+    const category = req.body.category || null;
+    const folderPath = req.body.folder_path || req.body.folderPath || null;
     const seriesName = req.body.series_name || req.body.seriesName || 'Diagnostic Series';
     const clinicalNotes = req.body.clinical_notes || req.body.clinicalNotes || null;
     const metadataJson = req.body.metadata_json || req.body.metadataJson || null;
@@ -759,6 +763,8 @@ exports.uploadArchiveFiles = async (req, res, next) => {
         patientName,
         modality: normModality,
         bodyRegion,
+        category,
+        folderPath,
         seriesName,
         sliceIndex: sliceCounter++,
         fileName: f.fileName,

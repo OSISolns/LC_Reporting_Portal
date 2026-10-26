@@ -2,7 +2,61 @@
 const db = require('../config/db');
 const ImagingStudy = require('./imagingStudy');
 
+const CATEGORIES = [
+  'Dental & Maxillofacial',
+  'Neuroradiology & Head/Neck',
+  'Spine & Musculoskeletal',
+  'Thoracic & Pulmonary',
+  'Abdomen & Pelvis',
+  "Women's Health & Breast",
+  'Cardiovascular & Vascular',
+  'General Clinical',
+];
+
+function inferCategory(modality, bodyRegion) {
+  const mod = String(modality || '').toUpperCase();
+  const reg = String(bodyRegion || '').toLowerCase();
+
+  if (['OPG', 'CBCT', 'CEPHALOGRAM'].includes(mod) || reg.includes('dental') || reg.includes('teeth') || reg.includes('jaw') || reg.includes('mandible') || reg.includes('maxilla') || reg.includes('oral') || reg.includes('arch') || reg.includes('panoramic')) {
+    return 'Dental & Maxillofacial';
+  }
+  if (reg.includes('brain') || reg.includes('head') || reg.includes('skull') || reg.includes('orbit') || reg.includes('sinus') || reg.includes('neck') || reg.includes('neuro') || reg.includes('pituitary')) {
+    return 'Neuroradiology & Head/Neck';
+  }
+  if (reg.includes('spine') || reg.includes('c-s') || reg.includes('l-s') || reg.includes('t-s') || reg.includes('knee') || reg.includes('shoulder') || reg.includes('hip') || reg.includes('ankle') || reg.includes('wrist') || reg.includes('joint') || reg.includes('bone') || reg.includes('extremity') || reg.includes('msk') || reg.includes('femur') || reg.includes('tibia')) {
+    return 'Spine & Musculoskeletal';
+  }
+  if (reg.includes('chest') || reg.includes('lung') || reg.includes('thorax') || reg.includes('rib') || reg.includes('pleura')) {
+    return 'Thoracic & Pulmonary';
+  }
+  if (mod === 'MAMMOGRAPHY' || reg.includes('breast') || reg.includes('mammo') || reg.includes('uterus') || reg.includes('ovary') || reg.includes('fetal') || reg.includes('obstetric') || reg.includes('gynecology')) {
+    return "Women's Health & Breast";
+  }
+  if (reg.includes('abdomen') || reg.includes('pelvis') || reg.includes('liver') || reg.includes('kidney') || reg.includes('bladder') || reg.includes('digestive') || reg.includes('gi') || reg.includes('gallbladder')) {
+    return 'Abdomen & Pelvis';
+  }
+  if (reg.includes('cardio') || reg.includes('heart') || reg.includes('aorta') || reg.includes('carotid') || reg.includes('vascular') || reg.includes('angio')) {
+    return 'Cardiovascular & Vascular';
+  }
+  return 'General Clinical';
+}
+
+function generateFolderPath(patientId, modality, seriesName) {
+  const p = (patientId || 'GENERAL').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const m = (modality || 'X-Ray').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const s = (seriesName || 'Series').replace(/[^a-zA-Z0-9_-]/g, '_');
+  return `${p}/${m}/${s}`;
+}
+
 class ImagingArchive {
+  static get CATEGORIES() {
+    return CATEGORIES;
+  }
+
+  static inferCategory(modality, bodyRegion) {
+    return inferCategory(modality, bodyRegion);
+  }
+
   static async create({
     studyId = null,
     accessionNumber = null,
@@ -10,6 +64,8 @@ class ImagingArchive {
     patientName,
     modality,
     bodyRegion = 'General',
+    category = null,
+    folderPath = null,
     seriesName = 'Diagnostic Series',
     sliceIndex = 1,
     fileName,
@@ -23,15 +79,17 @@ class ImagingArchive {
     uploadedByName = null,
   }) {
     const normModality = ImagingStudy.normalizeModality(modality || 'X-Ray');
+    const assignedCategory = category || inferCategory(normModality, bodyRegion);
+    const assignedFolder = folderPath || generateFolderPath(patientId, normModality, seriesName);
     const metaStr = metadataJson ? (typeof metadataJson === 'string' ? metadataJson : JSON.stringify(metadataJson)) : null;
 
     const { rows } = await db.query(
       `INSERT INTO imaging_archives (
         study_id, accession_number, patient_id, patient_name, modality,
-        body_region, series_name, slice_index, file_name, file_type,
-        file_size_bytes, file_base64, thumbnail_base64, clinical_notes,
-        metadata_json, uploaded_by, uploaded_by_name
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        body_region, category, folder_path, series_name, slice_index,
+        file_name, file_type, file_size_bytes, file_base64, thumbnail_base64,
+        clinical_notes, metadata_json, uploaded_by, uploaded_by_name
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       RETURNING *`,
       [
         studyId,
@@ -40,6 +98,8 @@ class ImagingArchive {
         patientName,
         normModality,
         bodyRegion,
+        assignedCategory,
+        assignedFolder,
         seriesName,
         sliceIndex,
         fileName,
@@ -60,9 +120,11 @@ class ImagingArchive {
   static async getAll({
     search = '',
     modality = '',
+    category = '',
     patientId = '',
     bodyRegion = '',
     studyId = null,
+    folderPath = '',
     startDate = '',
     endDate = '',
     limit = 100,
@@ -70,8 +132,8 @@ class ImagingArchive {
   } = {}) {
     let sql = `
       SELECT id, study_id, accession_number, patient_id, patient_name,
-             modality, body_region, series_name, slice_index, file_name,
-             file_type, file_size_bytes, thumbnail_base64, clinical_notes,
+             modality, body_region, category, folder_path, series_name, slice_index,
+             file_name, file_type, file_size_bytes, thumbnail_base64, clinical_notes,
              metadata_json, uploaded_by, uploaded_by_name, created_at, updated_at
       FROM imaging_archives
       WHERE 1=1
@@ -86,6 +148,16 @@ class ImagingArchive {
     if (modality && modality !== 'ALL') {
       sql += ` AND UPPER(modality) = UPPER(?)`;
       params.push(modality);
+    }
+
+    if (category && category !== 'ALL') {
+      sql += ` AND category = ?`;
+      params.push(category);
+    }
+
+    if (folderPath) {
+      sql += ` AND folder_path LIKE ?`;
+      params.push(`%${folderPath}%`);
     }
 
     if (patientId) {
@@ -116,9 +188,10 @@ class ImagingArchive {
         LOWER(coalesce(accession_number, '')) LIKE ? OR
         LOWER(coalesce(series_name, '')) LIKE ? OR
         LOWER(coalesce(file_name, '')) LIKE ? OR
+        LOWER(coalesce(category, '')) LIKE ? OR
         LOWER(coalesce(clinical_notes, '')) LIKE ?
       )`;
-      params.push(term, term, term, term, term, term);
+      params.push(term, term, term, term, term, term, term);
     }
 
     // Count query
@@ -142,8 +215,8 @@ class ImagingArchive {
     const fields = includeFile
       ? '*'
       : `id, study_id, accession_number, patient_id, patient_name,
-         modality, body_region, series_name, slice_index, file_name,
-         file_type, file_size_bytes, thumbnail_base64, clinical_notes,
+         modality, body_region, category, folder_path, series_name, slice_index,
+         file_name, file_type, file_size_bytes, thumbnail_base64, clinical_notes,
          metadata_json, uploaded_by, uploaded_by_name, created_at, updated_at`;
 
     const { rows } = await db.query(
@@ -155,10 +228,10 @@ class ImagingArchive {
 
   static async getByStudyId(studyId) {
     const { rows } = await db.query(
-      `SELECT * FROM imaging_archives WHERE study_id = ? ORDER BY series_name ASC, slice_index ASC, id ASC`,
+      `SELECT * FROM imaging_archives WHERE study_id = ? ORDER BY slice_index ASC, created_at ASC`,
       [studyId]
     );
-    return rows;
+    return rows || [];
   }
 
   static async delete(id) {
@@ -169,14 +242,53 @@ class ImagingArchive {
     return rows[0] || null;
   }
 
-  static async getStatsByModality() {
-    const { rows } = await db.query(`
-      SELECT modality, count(*) as count, sum(file_size_bytes) as total_size_bytes
+  static async getStats() {
+    const { rows: modRows } = await db.query(`
+      SELECT modality, COUNT(*) as count, SUM(file_size_bytes) as total_bytes
       FROM imaging_archives
       GROUP BY modality
-      ORDER BY count DESC
     `);
-    return rows;
+
+    const { rows: catRows } = await db.query(`
+      SELECT coalesce(category, 'General Clinical') as category, COUNT(*) as count, SUM(file_size_bytes) as total_bytes
+      FROM imaging_archives
+      GROUP BY category
+    `);
+
+    const { rows: patientRows } = await db.query(`
+      SELECT patient_id, patient_name, COUNT(*) as file_count, MAX(created_at) as last_archived_at
+      FROM imaging_archives
+      GROUP BY patient_id, patient_name
+      ORDER BY last_archived_at DESC
+      LIMIT 100
+    `);
+
+    const modalities = {};
+    for (const r of modRows || []) {
+      modalities[r.modality] = {
+        count: Number(r.count),
+        bytes: Number(r.total_bytes || 0),
+      };
+    }
+
+    const categories = {};
+    for (const r of catRows || []) {
+      categories[r.category] = {
+        count: Number(r.count),
+        bytes: Number(r.total_bytes || 0),
+      };
+    }
+
+    return {
+      modalities,
+      categories,
+      patientFolders: patientRows || [],
+    };
+  }
+
+  static async getStatsByModality() {
+    const stats = await this.getStats();
+    return stats.modalities;
   }
 }
 
