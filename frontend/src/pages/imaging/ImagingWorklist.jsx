@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { RefreshCw, Plus, LogIn, X, CalendarClock, Sparkles } from 'lucide-react';
+import { RefreshCw, Plus, LogIn, X, CalendarClock, Sparkles, Eye, Share2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import PatientAutocomplete from '../../components/PatientAutocomplete';
 import TerminologyPicker from '../../components/TerminologyPicker';
+import DiagnosticViewerModal from './DiagnosticViewerModal';
+import ShareStudyModal from './ShareStudyModal';
 import {
   getStudies,
   scheduleStudy,
@@ -56,6 +58,8 @@ const ImagingWorklist = () => {
   const [aiGenerating, setAiGenerating] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [filterStatus, setFilterStatus] = useState('');
+  const [selectedStudyForViewer, setSelectedStudyForViewer] = useState(null);
+  const [selectedStudyForShare, setSelectedStudyForShare] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -314,6 +318,20 @@ const ImagingWorklist = () => {
                 <td className="px-4 py-2.5"><StatusBadge status={s.status} /></td>
                 <td className="px-4 py-2.5">
                   <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => setSelectedStudyForViewer(s)}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800"
+                      title="View in Lumina Diagnostic Viewer"
+                    >
+                      <Eye size={14} /> View
+                    </button>
+                    <button
+                      onClick={() => setSelectedStudyForShare(s)}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 hover:text-slate-800"
+                      title="Share with Requesting Provider"
+                    >
+                      <Share2 size={14} /> Share
+                    </button>
                     {s.status === 'scheduled' && (
                       <>
                         <button onClick={() => doCheckIn(s.id)} className="inline-flex items-center gap-1 text-xs font-semibold text-sky-700 hover:underline">
@@ -339,6 +357,32 @@ const ImagingWorklist = () => {
           </tbody>
         </table>
       </div>
+
+      {/* In-Lumina Diagnostic Viewer Modal */}
+      {selectedStudyForViewer && (
+        <DiagnosticViewerModal
+          studyId={selectedStudyForViewer.id}
+          isOpen={!!selectedStudyForViewer}
+          onClose={() => setSelectedStudyForViewer(null)}
+          onShare={() => {
+            const st = selectedStudyForViewer;
+            setSelectedStudyForViewer(null);
+            setSelectedStudyForShare(st);
+          }}
+        />
+      )}
+
+      {/* Share Study with Requesting Provider Modal */}
+      {selectedStudyForShare && (
+        <ShareStudyModal
+          study={selectedStudyForShare}
+          isOpen={!!selectedStudyForShare}
+          onClose={() => setSelectedStudyForShare(null)}
+          onSuccess={() => {
+            toast.success('Study successfully shared with requesting provider.');
+          }}
+        />
+      )}
     </div>
   );
 };

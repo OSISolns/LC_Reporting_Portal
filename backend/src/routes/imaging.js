@@ -46,6 +46,26 @@ router.get('/studies/:id/report/pdf', checkPermission('imaging', 'view'), imagin
 router.get('/dicom/status', checkPermission('imaging', 'view'), imagingController.dicomStatus);
 router.post('/studies/:id/dicom/link', checkPermission('imaging', 'acquire'), imagingController.linkDicom);
 router.get('/studies/:id/dicom', checkPermission('imaging', 'view'), imagingController.getDicomImages);
+
+// ── Medical Imaging Archiving & Vault (CT, MRI, OPG, X-Ray, etc.) ──────────────
+router.get('/archives', checkPermission('imaging', 'view'), imagingController.listArchives);
+router.get('/archives/:id', checkPermission('imaging', 'view'), imagingController.getArchiveById);
+router.get('/archives/study/:studyId', checkPermission('imaging', 'view'), imagingController.getArchivesByStudy);
+router.post('/archives/upload', checkPermission('imaging', 'create'), imagingController.archiveUpload.array('files', 20), imagingController.uploadArchiveFiles);
+router.delete('/archives/:id', checkPermission('imaging', 'edit'), imagingController.deleteArchive);
+
+// ── Provider Sharing (CT, MRI, OPG, X-Ray, Mammography, Ultrasound, CBCT, CEPHALOGRAM) ──
+router.post('/shares', checkPermission('imaging', 'view'), imagingController.createShare);
+router.get('/shares', checkPermission('imaging', 'view'), imagingController.listShares);
+router.get('/shares/my-shared', checkPermission('imaging', 'view'), imagingController.getMySharedStudies);
+router.get('/shares/token/:token', checkPermission('imaging', 'view'), imagingController.getShareByToken);
+router.patch('/shares/:id/status', checkPermission('imaging', 'view'), imagingController.updateShareStatus);
+router.delete('/shares/:id', checkPermission('imaging', 'edit'), imagingController.revokeShare);
+
+// ── In-Lumina Diagnostic Viewer Bundles ─────────────────────────────────────────
+router.get('/studies/:id/viewer-bundle', checkPermission('imaging', 'view'), imagingController.getViewerBundle);
+router.get('/shares/viewer-bundle/:token', checkPermission('imaging', 'view'), imagingController.getShareViewerBundle);
+
 // ── OHDSI OMOP CDM PostgreSQL Integration & Research Export ─────────────────────
 const omopCdmController = require('../controllers/omopCdmController');
 router.get('/omop/status', checkPermission('imaging', 'view'), omopCdmController.getStatus);

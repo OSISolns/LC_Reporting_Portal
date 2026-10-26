@@ -1169,6 +1169,77 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         await client.execute('CREATE INDEX IF NOT EXISTS idx_imaging_reports_study ON imaging_reports(study_id)').catch(() => { });
       }).catch(() => { });
 
+      console.log('⚙️ Running imaging_archives and imaging_shares table migrations...');
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS imaging_archives (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          study_id INTEGER,
+          accession_number TEXT,
+          patient_id TEXT NOT NULL,
+          patient_name TEXT NOT NULL,
+          modality TEXT NOT NULL,
+          body_region TEXT,
+          series_name TEXT,
+          slice_index INTEGER DEFAULT 1,
+          file_name TEXT NOT NULL,
+          file_type TEXT,
+          file_size_bytes INTEGER DEFAULT 0,
+          file_base64 TEXT NOT NULL,
+          thumbnail_base64 TEXT,
+          clinical_notes TEXT,
+          metadata_json TEXT,
+          uploaded_by INTEGER,
+          uploaded_by_name TEXT,
+          created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          updated_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          FOREIGN KEY (study_id) REFERENCES imaging_studies(id),
+          FOREIGN KEY (uploaded_by) REFERENCES users(id)
+        )
+      `).then(async () => {
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_imaging_archives_study ON imaging_archives(study_id)').catch(() => { });
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_imaging_archives_patient ON imaging_archives(patient_id)').catch(() => { });
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_imaging_archives_modality ON imaging_archives(modality)').catch(() => { });
+      }).catch((err) => {
+        console.warn('  ⚠️ Failed to verify/create imaging_archives:', err.message);
+      });
+
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS imaging_shares (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          study_id INTEGER,
+          archive_id INTEGER,
+          patient_id TEXT NOT NULL,
+          patient_name TEXT NOT NULL,
+          modality TEXT NOT NULL,
+          provider_id INTEGER,
+          provider_name TEXT NOT NULL,
+          provider_email TEXT,
+          shared_by_user_id INTEGER,
+          shared_by_name TEXT,
+          share_token TEXT UNIQUE NOT NULL,
+          urgency TEXT DEFAULT 'routine',
+          clinical_indication TEXT,
+          consultation_notes TEXT,
+          can_view_images INTEGER DEFAULT 1,
+          can_view_report INTEGER DEFAULT 1,
+          can_download INTEGER DEFAULT 1,
+          status TEXT DEFAULT 'shared',
+          view_count INTEGER DEFAULT 0,
+          last_viewed_at DATETIME,
+          expires_at DATETIME,
+          created_at DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          FOREIGN KEY (study_id) REFERENCES imaging_studies(id),
+          FOREIGN KEY (archive_id) REFERENCES imaging_archives(id),
+          FOREIGN KEY (shared_by_user_id) REFERENCES users(id)
+        )
+      `).then(async () => {
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_imaging_shares_provider ON imaging_shares(provider_name)').catch(() => { });
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_imaging_shares_study ON imaging_shares(study_id)').catch(() => { });
+        await client.execute('CREATE INDEX IF NOT EXISTS idx_imaging_shares_token ON imaging_shares(share_token)').catch(() => { });
+      }).catch((err) => {
+        console.warn('  ⚠️ Failed to verify/create imaging_shares:', err.message);
+      });
+
       console.log('⚙️ Running lab_orders, lab_results, and lab_qc_logs table migrations...');
       await client.execute(`
         CREATE TABLE IF NOT EXISTS lab_orders (

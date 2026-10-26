@@ -13,17 +13,28 @@ const db = require('../config/db');
  * see ENCRYPTED_COLUMNS in config/db.js.
  */
 
-// The 4 operational units that log exams daily. `modality` is stored as free
-// text, so this list is the canonical set for validation/UI, not a hard schema
-// constraint.
-const MODALITIES = ['X-Ray', 'CT', 'MRI', 'Ultrasound'];
+// The canonical clinical imaging modalities supported across Lumina
+const MODALITIES = [
+  'CT',
+  'MRI',
+  'OPG',
+  'X-Ray',
+  'Mammography',
+  'Ultrasound',
+  'CBCT',
+  'CEPHALOGRAM'
+];
 
 // Human-facing labels ↔ canonical modality codes.
 const MODALITY_LABELS = {
+  CT: 'CT-Scan (Computed Tomography)',
+  MRI: 'MRI (Magnetic Resonance Imaging)',
+  OPG: 'OPG (Orthopantomogram / Panoramic X-Ray)',
   'X-Ray': 'Radiography (X-Ray)',
-  CT: 'CT-Scan',
-  MRI: 'MRI',
-  Ultrasound: 'Ultrasound',
+  Mammography: 'Mammography',
+  Ultrasound: 'Ultrasound (Sonography)',
+  CBCT: 'CBCT (Cone Beam Computed Tomography)',
+  CEPHALOGRAM: 'Cephalogram (Cephalometric Radiography)'
 };
 
 const STATUS_FLOW = {
@@ -53,10 +64,14 @@ class ImagingStudy {
   static normalizeModality(input) {
     if (!input) return null;
     const v = String(input).trim().toLowerCase();
-    if (['x-ray', 'xray', 'radiography', 'x ray', 'dx'].includes(v)) return 'X-Ray';
     if (['ct', 'ct-scan', 'ct scan', 'computed tomography'].includes(v)) return 'CT';
     if (['mri', 'magnetic resonance'].includes(v)) return 'MRI';
-    if (['ultrasound', 'us', 'sonography', 'echo'].includes(v)) return 'Ultrasound';
+    if (['opg', 'panoramic', 'orthopantomogram', 'panorex'].includes(v)) return 'OPG';
+    if (['x-ray', 'xray', 'radiography', 'x ray', 'dx', 'cr'].includes(v)) return 'X-Ray';
+    if (['mammography', 'mammo', 'mg', 'breast imaging'].includes(v)) return 'Mammography';
+    if (['ultrasound', 'us', 'sonography', 'echo', 'echography'].includes(v)) return 'Ultrasound';
+    if (['cbct', 'cone beam', 'conebeam', 'cone beam ct', '3d dental'].includes(v)) return 'CBCT';
+    if (['cephalogram', 'ceph', 'cephalometric', 'lateral ceph'].includes(v)) return 'CEPHALOGRAM';
     // Unknown modality: pass through so the register can still hold it.
     return String(input).trim();
   }

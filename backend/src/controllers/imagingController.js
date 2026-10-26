@@ -3,12 +3,21 @@ const db = require('../config/db');
 const ImagingStudy = require('../models/imagingStudy');
 const ImagingReport = require('../models/imagingReport');
 const ImagingDicom = require('../models/imagingDicom');
+const ImagingArchive = require('../models/imagingArchive');
+const ImagingShare = require('../models/imagingShare');
 const Notification = require('../models/notification');
 const User = require('../models/user');
 const { logAction } = require('../middleware/audit');
 const terminology = require('../utils/terminology');
 const dicomweb = require('../utils/dicomweb');
 const { generateImagingReportPDF } = require('../utils/pdf');
+const multer = require('multer');
+
+const archiveUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
+});
+exports.archiveUpload = archiveUpload;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const accessionFor = (id) => `IMG-${new Date().getFullYear()}-${String(id).padStart(5, '0')}`;
@@ -617,6 +626,466 @@ exports.stowUpload = async (req, res, next) => {
     res.json({ success: true, message: `Uploaded ${buffers.length} instance(s) to PACS.`, data: stowResult });
   } catch (err) {
     if (err.response) return res.status(502).json({ success: false, message: `PACS STOW error: ${err.response.status}` });
+    next(err);
+  }
+};
+
+// ── Medical Imaging Archiving & Organized Storage ──────────────────────────────
+exports.listArchives = async (req, res, next) => {
+  try {
+    const { search, modality, patientId, bodyRegion, limit = 50, offset = 0 } = req.query;
+    const result = await ImagingArchive.getAll({
+      search,
+      modality,
+      patientId,
+      bodyRegion,
+      limit: Number(limit),
+      offset: Number(offset),
+    });
+    const stats = await ImagingArchive.getStatsByModality();
+    res.json({
+      success: true,
+      data: result.archives,
+      total: result.total,
+      limit: result.limit,
+      offset: result.offset,
+      stats,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getArchiveById = async (req, res, next) => {
+  try {
+    const archive = await ImagingArchive.getById(req.params.id);
+    if (!archive) return res.status(404).json({ success: false, message: 'Archive not found.' });
+    res.json({ success: true, data: archive });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getArchivesByStudy = async (req, res, next) => {
+  try {
+    const archives = await ImagingArchive.getByStudyId(req.params.studyId);
+    res.json({ success: true, data: archives });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.uploadArchiveFiles = async (req, res, next) => {
+  try {
+    const studyId = req.body.study_id ? Number(req.body.study_id) : (req.body.studyId ? Number(req.body.studyId) : null);
+    let accessionNumber = req.body.accession_number || req.body.accessionNumber || null;
+    let patientId = req.body.patient_id || req.body.patientId || 'UNKNOWN';
+    let patientName = req.body.patient_name || req.body.patientName || 'Unknown Patient';
+    let modality = req.body.modality || 'X-Ray';
+    const bodyRegion = req.body.body_region || req.body.bodyRegion || req.body.body_part || 'General';
+    const seriesName = req.body.series_name || req.body.seriesName || 'Diagnostic Series';
+    const clinicalNotes = req.body.clinical_notes || req.body.clinicalNotes || null;
+    const metadataJson = req.body.metadata_json || req.body.metadataJson || null;
+
+    if (studyId) {
+      const study = await ImagingStudy.findById(studyId);
+      if (study) {
+        if (!accessionNumber) accessionNumber = study.accession_number;
+        if (!patientId || patientId === 'UNKNOWN') patientId = study.patient_id;
+        if (!patientName || patientName === 'Unknown Patient') patientName = study.patient_name;
+        if (!req.body.modality) modality = study.modality;
+      }
+    }
+
+    const normModality = ImagingStudy.normalizeModality(modality);
+
+    // Support both multipart file upload and base64 body payload
+    const rawFiles = [];
+    if (req.files && Array.isArray(req.files) && req.files.length > 0) {
+      for (const f of req.files) {
+        rawFiles.push({
+          fileName: f.originalname || 'image.png',
+          fileType: f.mimetype || 'image/png',
+          fileSizeBytes: f.size || 0,
+          fileBase64: f.buffer.toString('base64'),
+        });
+      }
+    } else if (req.file) {
+      rawFiles.push({
+        fileName: req.file.originalname || 'image.png',
+        fileType: req.file.mimetype || 'image/png',
+        fileSizeBytes: req.file.size || 0,
+        fileBase64: req.file.buffer.toString('base64'),
+      });
+    } else if (req.body.files && Array.isArray(req.body.files)) {
+      for (const item of req.body.files) {
+        if (typeof item === 'string') {
+          rawFiles.push({
+            fileName: 'image.png',
+            fileType: 'image/png',
+            fileSizeBytes: Math.round(item.length * 0.75),
+            fileBase64: item,
+          });
+        } else if (item && item.base64) {
+          rawFiles.push({
+            fileName: item.name || 'image.png',
+            fileType: item.type || 'image/png',
+            fileSizeBytes: item.size || Math.round(item.base64.length * 0.75),
+            fileBase64: item.base64,
+          });
+        }
+      }
+    } else if (req.body.fileBase64) {
+      rawFiles.push({
+        fileName: req.body.fileName || 'image.png',
+        fileType: req.body.fileType || 'image/png',
+        fileSizeBytes: req.body.fileSizeBytes || Math.round(req.body.fileBase64.length * 0.75),
+        fileBase64: req.body.fileBase64,
+      });
+    }
+
+    if (rawFiles.length === 0) {
+      return res.status(400).json({ success: false, message: 'No image or diagnostic file provided.' });
+    }
+
+    const createdArchives = [];
+    let sliceCounter = 1;
+
+    for (const f of rawFiles) {
+      const created = await ImagingArchive.create({
+        studyId,
+        accessionNumber,
+        patientId,
+        patientName,
+        modality: normModality,
+        bodyRegion,
+        seriesName,
+        sliceIndex: sliceCounter++,
+        fileName: f.fileName,
+        fileType: f.fileType,
+        fileSizeBytes: f.fileSizeBytes,
+        fileBase64: f.fileBase64,
+        thumbnailBase64: f.fileType.startsWith('image/') ? f.fileBase64 : null,
+        clinicalNotes,
+        metadataJson,
+        uploadedBy: req.user ? req.user.id : null,
+        uploadedByName: req.user ? (req.user.name || req.user.username) : 'System',
+      });
+      createdArchives.push(created);
+    }
+
+    await logAction(req, 'IMAGING_ARCHIVE_UPLOAD', 'imaging_archives', createdArchives[0]?.id || 0, {
+      count: createdArchives.length,
+      modality: normModality,
+      patientId,
+      studyId,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `Archived ${createdArchives.length} file(s) under ${normModality} modality.`,
+      data: createdArchives,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.deleteArchive = async (req, res, next) => {
+  try {
+    const archive = await ImagingArchive.getById(req.params.id);
+    if (!archive) return res.status(404).json({ success: false, message: 'Archive not found.' });
+
+    await ImagingArchive.delete(req.params.id);
+    await logAction(req, 'IMAGING_ARCHIVE_DELETE', 'imaging_archives', archive.id, {
+      patientId: archive.patient_id,
+      fileName: archive.file_name,
+    });
+
+    res.json({ success: true, message: 'Archive removed successfully.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ── Sharing CT, MRI, OPG, X-Ray, etc. with Requesting Providers ───────────────
+exports.createShare = async (req, res, next) => {
+  try {
+    const {
+      study_id,
+      studyId,
+      archive_id,
+      archiveId,
+      patient_id,
+      patientId,
+      patient_name,
+      patientName,
+      modality,
+      provider_id,
+      providerId,
+      provider_name,
+      providerName,
+      provider_email,
+      providerEmail,
+      urgency = 'routine',
+      clinical_indication,
+      clinicalIndication,
+      consultation_notes,
+      consultationNotes,
+      can_view_images = true,
+      can_view_report = true,
+      can_download = true,
+      expires_in_days = 30,
+    } = req.body;
+
+    const sId = study_id || studyId || null;
+    const aId = archive_id || archiveId || null;
+    let pId = patient_id || patientId;
+    let pName = patient_name || patientName;
+    let mod = modality;
+
+    if (sId) {
+      const study = await ImagingStudy.findById(sId);
+      if (study) {
+        if (!pId) pId = study.patient_id;
+        if (!pName) pName = study.patient_name;
+        if (!mod) mod = study.modality;
+      }
+    } else if (aId) {
+      const archive = await ImagingArchive.getById(aId);
+      if (archive) {
+        if (!pId) pId = archive.patient_id;
+        if (!pName) pName = archive.patient_name;
+        if (!mod) mod = archive.modality;
+      }
+    }
+
+    const prName = provider_name || providerName;
+    if (!prName || !prName.trim()) {
+      return res.status(400).json({ success: false, message: 'Provider name is mandatory to share an imaging study.' });
+    }
+
+    if (!pId || !pName) {
+      return res.status(400).json({ success: false, message: 'Patient details (PID and Name) are required.' });
+    }
+
+    const normModality = ImagingStudy.normalizeModality(mod || 'X-Ray');
+
+    const share = await ImagingShare.create({
+      studyId: sId,
+      archiveId: aId,
+      patientId: pId,
+      patientName: pName,
+      modality: normModality,
+      providerId: provider_id || providerId || null,
+      providerName: prName.trim(),
+      providerEmail: provider_email || providerEmail || null,
+      sharedByUserId: req.user ? req.user.id : null,
+      sharedByName: req.user ? (req.user.name || req.user.username) : 'Radiology Team',
+      urgency,
+      clinicalIndication: clinical_indication || clinicalIndication || null,
+      consultationNotes: consultation_notes || consultationNotes || null,
+      canViewImages: can_view_images,
+      canViewReport: can_view_report,
+      canDownload: can_download,
+      expiresInDays: expires_in_days,
+    });
+
+    // Notify provider if user account matches provider
+    try {
+      const { rows: matchedUsers } = await db.query(
+        `SELECT id FROM users WHERE name LIKE ? OR email = ? LIMIT 3`,
+        [`%${prName.trim()}%`, provider_email || '']
+      );
+      for (const u of matchedUsers || []) {
+        await Notification.create({
+          userId: u.id,
+          title: `Imaging Study Shared: ${normModality} (${pName})`,
+          message: `${req.user ? req.user.name : 'Imaging'} shared a ${normModality} study for patient ${pName} (${pId}). Urgency: ${urgency.toUpperCase()}.`,
+          type: urgency === 'stat' || urgency === 'urgent' ? 'alert' : 'info',
+          link: `/imaging?tab=shares&token=${share.share_token}`,
+        });
+      }
+    } catch (_notifyErr) { /* non-fatal */ }
+
+    await logAction(req, 'IMAGING_STUDY_SHARED', 'imaging_shares', share.id, {
+      modality: normModality,
+      providerName: prName,
+      patientId: pId,
+      urgency,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `Successfully shared ${normModality} study with ${prName}.`,
+      data: share,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.listShares = async (req, res, next) => {
+  try {
+    const {
+      search,
+      providerName,
+      providerId,
+      modality,
+      studyId,
+      status,
+      limit = 50,
+      offset = 0,
+    } = req.query;
+
+    const result = await ImagingShare.getAll({
+      search,
+      providerName,
+      providerId,
+      modality,
+      studyId,
+      status,
+      limit: Number(limit),
+      offset: Number(offset),
+    });
+
+    const stats = await ImagingShare.getStats();
+
+    res.json({
+      success: true,
+      data: result.shares,
+      total: result.total,
+      limit: result.limit,
+      offset: result.offset,
+      stats,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getMySharedStudies = async (req, res, next) => {
+  try {
+    const userIdentifier = req.user ? (req.user.name || req.user.username || req.user.email) : '';
+    const shares = await ImagingShare.getSharedForProvider(userIdentifier, 100);
+    res.json({ success: true, data: shares });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getShareByToken = async (req, res, next) => {
+  try {
+    const share = await ImagingShare.getByToken(req.params.token);
+    if (!share) return res.status(404).json({ success: false, message: 'Share link not found or expired.' });
+    if (share.status === 'revoked') {
+      return res.status(403).json({ success: false, message: 'This study share link has been revoked.' });
+    }
+    if (share.expires_at && new Date(share.expires_at) < new Date()) {
+      return res.status(410).json({ success: false, message: 'This imaging share link has expired.' });
+    }
+
+    await ImagingShare.recordView(share.id);
+    res.json({ success: true, data: share });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.updateShareStatus = async (req, res, next) => {
+  try {
+    const { status } = req.body;
+    if (!status) return res.status(400).json({ success: false, message: 'Status is required.' });
+    const updated = await ImagingShare.updateStatus(req.params.id, status);
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.revokeShare = async (req, res, next) => {
+  try {
+    await ImagingShare.revoke(req.params.id);
+    await logAction(req, 'IMAGING_SHARE_REVOKED', 'imaging_shares', req.params.id, {});
+    res.json({ success: true, message: 'Share access revoked successfully.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ── In-Lumina Diagnostic Viewer Bundle ─────────────────────────────────────────
+exports.getViewerBundle = async (req, res, next) => {
+  try {
+    const studyId = req.params.id;
+    const study = await ImagingStudy.findById(studyId);
+    if (!study) return res.status(404).json({ success: false, message: 'Study not found.' });
+
+    const [report, archives, dicoms, sharesRes] = await Promise.all([
+      ImagingReport.findByStudyId(studyId).catch(() => null),
+      ImagingArchive.getByStudyId(studyId).catch(() => []),
+      ImagingDicom.findByStudyId(studyId).catch(() => []),
+      ImagingShare.getAll({ studyId, limit: 10 }).catch(() => ({ shares: [] })),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        study,
+        report,
+        archives: archives || [],
+        dicoms: dicoms || [],
+        shares: sharesRes.shares || [],
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getShareViewerBundle = async (req, res, next) => {
+  try {
+    const { token } = req.params;
+    const share = await ImagingShare.getByToken(token);
+    if (!share) return res.status(404).json({ success: false, message: 'Shared imaging study not found.' });
+    if (share.status === 'revoked') {
+      return res.status(403).json({ success: false, message: 'Access to this shared study has been revoked.' });
+    }
+    if (share.expires_at && new Date(share.expires_at) < new Date()) {
+      return res.status(410).json({ success: false, message: 'Access to this shared study has expired.' });
+    }
+
+    await ImagingShare.recordView(share.id);
+
+    let study = null;
+    let report = null;
+    let archives = [];
+    let dicoms = [];
+
+    if (share.study_id) {
+      study = await ImagingStudy.findById(share.study_id);
+      if (share.can_view_report) {
+        report = await ImagingReport.findByStudyId(share.study_id).catch(() => null);
+      }
+      if (share.can_view_images) {
+        archives = await ImagingArchive.getByStudyId(share.study_id).catch(() => []);
+        dicoms = await ImagingDicom.findByStudyId(share.study_id).catch(() => []);
+      }
+    } else if (share.archive_id && share.can_view_images) {
+      const arch = await ImagingArchive.getById(share.archive_id);
+      if (arch) archives = [arch];
+    }
+
+    res.json({
+      success: true,
+      data: {
+        share,
+        study,
+        report,
+        archives,
+        dicoms,
+      },
+    });
+  } catch (err) {
     next(err);
   }
 };

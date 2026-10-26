@@ -48,3 +48,24 @@ export const getOmopStatus = () => api.get('/imaging/omop/status');
 export const initOmopSchema = (data) => api.post('/imaging/omop/init-schema', data);
 export const syncOmopData = (data) => api.post('/imaging/omop/sync', data);
 export const downloadOmopSqlUrl = (schema = 'cdm') => `/api/imaging/omop/export-sql?schema=${schema}`;
+
+// Medical Image Archives & Organized Vault (CT, MRI, OPG, X-Ray, etc.)
+export const getArchives = (params) => api.get('/imaging/archives', { params });
+export const getArchive = (id) => api.get(`/imaging/archives/${id}`);
+export const getArchivesByStudy = (studyId) => api.get(`/imaging/archives/study/${studyId}`);
+export const uploadArchiveFiles = (formData) => api.post('/imaging/archives/upload', formData, {
+  headers: { 'Content-Type': 'multipart/form-data' }
+});
+export const deleteArchive = (id) => api.delete(`/imaging/archives/${id}`);
+
+// Provider Sharing (CT, MRI, OPG, X-Ray, Mammography, Ultrasound, CBCT, CEPHALOGRAM)
+export const createShare = (data) => api.post('/imaging/shares', data);
+export const getShares = (params) => api.get('/imaging/shares', { params });
+export const getMySharedStudies = () => api.get('/imaging/shares/my-shared');
+export const getShareByToken = (token) => api.get(`/imaging/shares/token/${token}`);
+export const updateShareStatus = (id, status) => api.patch(`/imaging/shares/${id}/status`, { status });
+export const revokeShare = (id) => api.delete(`/imaging/shares/${id}`);
+
+// In-Lumina Diagnostic Viewer Bundles
+export const getViewerBundle = (studyId) => api.get(`/imaging/studies/${studyId}/viewer-bundle`);
+export const getShareViewerBundle = (token) => api.get(`/imaging/shares/viewer-bundle/${token}`);

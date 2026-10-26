@@ -332,7 +332,7 @@ function App() {
               </ProtectedRoute>
             } />
 
-            <Route path="/imaging" element={<ProtectedRoute allowedRoles={['imaging_tech', 'imaging_manager', 'admin', 'medical_director', 'clinical_director', 'chairman']}><ImagingHub /></ProtectedRoute>} />
+            <Route path="/imaging" element={<ProtectedRoute allowedRoles={['imaging_tech', 'imaging_manager', 'admin', 'medical_director', 'clinical_director', 'chairman', 'coo', 'deputy_coo', 'doctor', 'consultant', 'dentist', 'dental_hod']}><ImagingHub /></ProtectedRoute>} />
 
             <Route path="/patients/:patientId/clinical-sheet" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'medical_director', 'clinical_director', 'chairman']}><ClinicalSheet /></ProtectedRoute>} />
             <Route path="/clinical-sheet/:patientId" element={<ProtectedRoute allowedRoles={['nurse', 'admin', 'doctor', 'consultant', 'chef-nurse', 'medical_director', 'clinical_director', 'chairman']}><ClinicalSheet /></ProtectedRoute>} />
