@@ -5,7 +5,7 @@ import {
   Trash2, Box, Refrigerator,
   Snowflake, Thermometer, X, Database, Send, CheckCircle2, ArrowRight,
   Building2, FlaskConical, Check, Minus, ShieldCheck, Sparkles, Info,
-  Calendar, Filter, ChevronRight, ChevronLeft
+  Calendar, Filter, ChevronRight, ChevronLeft, FileSpreadsheet
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
@@ -17,6 +17,7 @@ import {
   getGeneralStockLabItems, createUnitRequisition
 } from '../../api/lab';
 import LabRequisitionHub from './LabRequisitionHub';
+import { exportToLegacyExcel } from '../../utils/excelExport';
 
 const LAB_DISCIPLINES = [
   'Biochemistry',
@@ -754,56 +755,81 @@ export default function LabStockOfficerDashboard() {
     }
   };
 
-  // ── Export Inventory CSV (Strictly without expiry & lots) ─────────────────────
-  const handleExportCSV = () => {
+  // ── Export Inventory Excel Register ───────────────────────────────────────────
+  const handleExportExcel = async () => {
     try {
-      const headers = [
-        'ID',
-        'Reagent / Consumable Name',
-        'Category',
-        'Department / Bench',
-        'Equipment Group / Analyzer',
-        'Storage Unit',
-        'Storage Temp',
-        'Quantity In Hand',
-        'Unit of Measure',
-        'Min Alert Threshold',
-        'Stock Status'
+      const columns = [
+        { header: 'Item ID', key: 'id', width: 10 },
+        { header: 'Reagent / Consumable Name', key: 'item_name', width: 32 },
+        { header: 'Category', key: 'category', width: 18 },
+        { header: 'Department / Bench', key: 'department', width: 22 },
+        { header: 'Equipment Group / Analyzer', key: 'equipment_group', width: 26 },
+        {
+          header: 'Storage Unit',
+          key: 'storage_unit',
+          width: 24,
+          render: (item) => storageUnits.find(u => u.id === item.storage_unit_id)?.label || item.storage_unit_label || item.storage_unit_id || 'Storage Unit'
+        },
+        {
+          header: 'Storage Temperature',
+          key: 'storage_temp',
+          width: 22,
+          render: (item) => (item.storage_temp === 'fridge_2_8' || item.storage_temp === 'refrigerator') ? '2°C to 8°C (Cold Chain)' :
+            item.storage_temp === 'freezer_minus_20' ? '-20°C (Freezer)' :
+              item.storage_temp === 'freezer_minus_80' ? '-80°C (Deep Freezer)' : '20°C to 25°C (Room Temp)'
+        },
+        {
+          header: 'Qty In-Hand',
+          key: 'quantity_in_hand',
+          width: 14,
+          render: (item) => Number(item.quantity_in_hand) || 0
+        },
+        { header: 'Unit of Measure', key: 'unit_of_measure', width: 16 },
+        {
+          header: 'Min Threshold',
+          key: 'min_threshold',
+          width: 15,
+          render: (item) => Number(item.min_threshold) || 0
+        },
+        {
+          header: 'Stock Status',
+          key: 'stock_status',
+          width: 16,
+          render: (item) => {
+            const qty = Number(item.quantity_in_hand) || 0;
+            const min = Number(item.min_threshold) || 0;
+            return qty <= 0 ? 'Depleted' : qty <= min ? 'Low Stock' : 'Adequate';
+          }
+        }
       ];
 
-      const rows = inventory.map(item => {
-        const qty = Number(item.quantity_in_hand) || 0;
-        const min = Number(item.min_threshold) || 0;
-        const status = qty <= 0 ? 'Depleted (0)' : qty <= min ? 'Low Stock' : 'Adequate';
+      const exportData = filteredInventory.length > 0 ? filteredInventory : inventory;
 
-        return [
-          item.id,
-          `"${(item.item_name || '').replace(/"/g, '""')}"`,
-          item.category || '',
-          item.department || '',
-          `"${(item.equipment_group || '').replace(/"/g, '""')}"`,
-          item.storage_unit_id || '',
-          item.storage_temp || '',
-          qty,
-          item.unit_of_measure || '',
-          min,
-          status
-        ].join(',');
+      await exportToLegacyExcel({
+        title: 'Laboratory In-Hand Reagents & Consumables Register',
+        subtitle: 'ISO 15189:2022 Pathology Diagnostic & Material Management | Control No: LEG/PATHLAB/MSD/FM-12-VERS-004',
+        filename: 'Lab_InHand_Reagents_Inventory',
+        sheetName: 'In-Hand Reagents',
+        columns,
+        data: exportData,
+        metadata: [
+          ['Department', 'Laboratory Diagnostics Hub'],
+          ['Control Number', 'LEG/PATHLAB/MSD/FM-12-VERS-004'],
+          ['Duty Role', 'Lab Stock Manager'],
+          ['Filter Applied', equipFilter !== 'all' || deptFilter !== 'all' || storageUnitFilter !== 'all' ? 'Active Filtered Selection' : 'Full Inventory Register'],
+          ['Total Reagents Exported', `${exportData.length} items`]
+        ],
+        summaryMetrics: [
+          { label: 'Total In-Hand Items', value: kpis.totalItems, sub: 'Active Laboratory Register' },
+          { label: 'Cold Chain Reagents', value: kpis.coldChainCount, sub: '2°C to 8°C Monitored' },
+          { label: 'Low Buffer Warnings', value: kpis.lowStockCount, sub: 'At or Below Minimum' },
+          { label: 'Depleted Stockouts', value: kpis.stockoutCount, sub: 'Urgent Procurement Requisition' }
+        ],
+        user
       });
-
-      const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows].join('\n');
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement('a');
-      link.setAttribute('href', encodedUri);
-      link.setAttribute('download', `Lab_InHand_Inventory_${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      toast.success('Laboratory In-Hand Inventory Register exported.');
     } catch (err) {
-      console.error('CSV export failed:', err);
-      toast.error('Failed to export inventory CSV.');
+      console.error('Excel export failed:', err);
+      toast.error('Failed to export laboratory reagents Excel register.');
     }
   };
 
@@ -847,11 +873,12 @@ export default function LabStockOfficerDashboard() {
           </button>
 
           <button
-            onClick={handleExportCSV}
-            className="px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+            onClick={handleExportExcel}
+            className="px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+            title="Export laboratory inventory as an Excel workbook"
           >
-            <Download size={14} className="text-slate-600" />
-            <span>Export CSV</span>
+            <FileSpreadsheet size={14} className="text-emerald-600" />
+            <span>Export Excel</span>
           </button>
 
           <button
