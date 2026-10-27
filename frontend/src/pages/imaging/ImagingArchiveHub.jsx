@@ -30,13 +30,16 @@ import {
   Stethoscope,
   Smile,
   Shield,
-  Download
+  Download,
+  ExternalLink,
+  FileSpreadsheet
 } from 'lucide-react';
 import { getArchives, uploadArchiveFiles, deleteArchive } from '../../api/imaging';
 import PatientAutocomplete from '../../components/PatientAutocomplete';
 import { getPatientByPid } from '../../api/patients';
 import DiagnosticViewerModal from './DiagnosticViewerModal';
 import ShareStudyModal from './ShareStudyModal';
+import { exportToLegacyExcel } from '../../utils/excelExport';
 import { toast } from 'react-hot-toast';
 
 const MODALITIES = [
@@ -340,6 +343,72 @@ export default function ImagingArchiveHub() {
     }
   };
 
+  const handleDetachWorkstation = (item) => {
+    if (!item?.id) return;
+    const pid = item.patient_id || '';
+    const url = `/imaging/viewer?archiveId=${item.id}${pid ? `&patientId=${encodeURIComponent(pid)}` : ''}`;
+    const screenW = window.screen.availWidth || 1600;
+    const screenH = window.screen.availHeight || 1000;
+    window.open(url, '_blank', `width=${screenW},height=${screenH},menubar=no,toolbar=no,location=no,status=no,resizable=yes`);
+    toast.success('Workstation detached to separate monitor window!');
+  };
+
+  const handleExportExcel = async () => {
+    if (!archives || archives.length === 0) {
+      toast.error('No archives available to export.');
+      return;
+    }
+
+    const uniquePatients = new Set(archives.map((a) => a.patient_id).filter(Boolean)).size;
+    const uniqueModalities = new Set(archives.map((a) => a.modality).filter(Boolean)).size;
+
+    const columns = [
+      { header: 'Archive ID', key: 'id', alignment: 'center' },
+      { header: 'Patient PID', key: 'patient_id', alignment: 'left' },
+      { header: 'Patient Name', key: 'patient_name', alignment: 'left' },
+      { header: 'Modality', key: 'modality', alignment: 'center', isStatus: true },
+      { header: 'Category', key: 'category', alignment: 'left' },
+      { header: 'Body Region', key: 'body_region', alignment: 'left' },
+      { header: 'Series Name', key: 'series_name', alignment: 'left' },
+      { header: 'Slice #', key: 'slice_index', alignment: 'center' },
+      { header: 'File Name', key: 'file_name', alignment: 'left' },
+      {
+        header: 'File Size',
+        key: 'file_size_bytes',
+        alignment: 'right',
+        render: (item) => `${Math.round((item.file_size_bytes || 0) / 1024)} KB`
+      },
+      {
+        header: 'Archived Date',
+        key: 'created_at',
+        alignment: 'center',
+        render: (item) => item.created_at ? new Date(item.created_at).toLocaleString() : '—'
+      },
+      { header: 'Clinical Notes', key: 'clinical_notes', alignment: 'left' }
+    ];
+
+    await exportToLegacyExcel({
+      title: 'LEGACY CLINICS KIGALI — DIAGNOSTICS VAULT & ARCHIVES REGISTRY',
+      subtitle: `Official Diagnostic Imaging Registry & Storage Audit — Modality: ${activeModality} | Category: ${activeCategory}`,
+      filename: 'Legacy_Clinics_Diagnostics_Vault_Registry',
+      columns,
+      data: archives,
+      summaryMetrics: [
+        { label: 'Total Archives', value: archives.length },
+        { label: 'Unique Patients', value: uniquePatients },
+        { label: 'Modalities Represented', value: uniqueModalities },
+        { label: 'Classification Status', value: 'Verified' }
+      ],
+      metadata: [
+        { label: 'Facility', value: 'Legacy Clinics Kigali — Medical Imaging Department' },
+        { label: 'System', value: 'Lumina Diagnostics Vault & PACS' },
+        { label: 'Category Filter', value: activeCategory },
+        { label: 'Modality Filter', value: activeModality },
+        { label: 'Exported Date', value: new Date().toLocaleString() }
+      ]
+    });
+  };
+
   // Group archives by Patient Folders
   const patientFolderGroups = useMemo(() => {
     const groups = {};
@@ -504,6 +573,14 @@ export default function ImagingArchiveHub() {
               title="Refresh Archives"
             >
               <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+            </button>
+
+            <button
+              onClick={handleExportExcel}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg transition-colors shadow-xs whitespace-nowrap"
+              title="Export Diagnostic Vault Registry to Official Legacy Clinics Excel"
+            >
+              <FileSpreadsheet size={14} /> Export Registry (.xlsx)
             </button>
 
             <button
@@ -721,6 +798,13 @@ export default function ImagingArchiveHub() {
                               View in Lumina
                             </button>
                             <button
+                              onClick={() => handleDetachWorkstation(item)}
+                              className="p-1 rounded text-slate-600 hover:text-sky-700 hover:bg-sky-50 border border-slate-200 transition-colors"
+                              title="Detach to Standalone Dual-Monitor Workstation"
+                            >
+                              <ExternalLink size={13} />
+                            </button>
+                            <button
                               onClick={() => setShareItem(item)}
                               className="p-1 rounded text-slate-600 hover:text-[#1C69A0] hover:bg-slate-100 transition-colors"
                               title="Share"
@@ -911,6 +995,13 @@ export default function ImagingArchiveHub() {
                           <Eye size={13} /> View in Lumina
                         </button>
                         <button
+                          onClick={() => handleDetachWorkstation(item)}
+                          className="p-1.5 rounded-lg text-slate-600 hover:text-sky-700 hover:bg-sky-50 border border-slate-200 transition-colors"
+                          title="Detach to Standalone Dual-Monitor Workstation"
+                        >
+                          <ExternalLink size={14} />
+                        </button>
+                        <button
                           onClick={() => setShareItem(item)}
                           className="p-1.5 rounded-lg text-slate-600 hover:text-[#1C69A0] hover:bg-slate-100 transition-colors"
                           title="Share with Provider"
@@ -1026,6 +1117,13 @@ export default function ImagingArchiveHub() {
                         title="Share with Requesting Provider"
                       >
                         <Share2 size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleDetachWorkstation(item)}
+                        className="p-1.5 rounded text-sky-600 hover:bg-sky-50 transition-colors"
+                        title="Detach to Standalone Dual-Monitor Workstation"
+                      >
+                        <ExternalLink size={14} />
                       </button>
                       <button
                         onClick={() => setViewerItem(item)}
