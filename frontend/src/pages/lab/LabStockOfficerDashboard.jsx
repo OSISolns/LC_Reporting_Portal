@@ -157,6 +157,7 @@ export default function LabStockOfficerDashboard() {
 
   // Cold Chain Tab Filter: 'all' | 'fridge' | 'room_temp' | 'freezer'
   const [storageTabType, setStorageTabType] = useState('all');
+  const [storageSearch, setStorageSearch] = useState('');
 
   // Analyzers Tab Filters
   const [analyzerSearch, setAnalyzerSearch] = useState('');
@@ -341,9 +342,20 @@ export default function LabStockOfficerDashboard() {
 
   // ── Filtered Storage Units for Tab 3 ────────────────────────────────────────
   const filteredStorageUnits = useMemo(() => {
-    if (storageTabType === 'all') return storageUnits;
-    return storageUnits.filter(u => u.type === storageTabType);
-  }, [storageUnits, storageTabType]);
+    let list = storageUnits;
+    if (storageTabType !== 'all') {
+      list = list.filter(u => u.type === storageTabType);
+    }
+    if (storageSearch && storageSearch.trim()) {
+      const q = storageSearch.toLowerCase().trim();
+      list = list.filter(u =>
+        (u.label || '').toLowerCase().includes(q) ||
+        (u.id || '').toLowerCase().includes(q) ||
+        (u.temp_range || '').toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [storageUnits, storageTabType, storageSearch]);
 
   // ── Filtered General Stock Laboratory Items (Tab 5) ─────────────────────────
   const filteredGeneralStock = useMemo(() => {
@@ -1549,12 +1561,15 @@ export default function LabStockOfficerDashboard() {
       {/* ── TAB 3: LABORATORY COLD CHAIN & STORAGE UNITS ── */}
       {activeTab === 'cold_chain' && (
         <div className="space-y-4">
-          {/* Header */}
+          {/* Header Card with Metrics & Control Badge */}
           <div className="bg-white p-5 rounded-xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <span className="text-[11px] font-bold text-[#1B669E] bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                   MoH Rwanda • ISO 15189 Cold Chain Standard
+                </span>
+                <span className="text-[10px] font-mono font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-300">
+                  Control No: LEG/PATHLAB/MSD/FM-12-VERS-004
                 </span>
               </div>
               <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -1576,9 +1591,9 @@ export default function LabStockOfficerDashboard() {
             </div>
           </div>
 
-          {/* Quick Category Filter Bar */}
-          <div className="bg-white p-2 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Quick Category Filter Bar & Search */}
+          <div className="bg-white p-3 rounded-xl border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-1.5 flex-wrap w-full md:w-auto">
               <button
                 onClick={() => setStorageTabType('all')}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${storageTabType === 'all'
@@ -1620,109 +1635,237 @@ export default function LabStockOfficerDashboard() {
               </button>
             </div>
 
-            <span className="text-[11px] text-slate-400 font-medium px-2 hidden sm:inline">
-              ISO Daily AM/PM Verification Active
-            </span>
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="relative flex-1 md:w-64">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Filter storage units..."
+                  value={storageSearch}
+                  onChange={(e) => setStorageSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#1B669E] focus:border-[#1B669E] text-slate-800"
+                />
+              </div>
+              <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap hidden lg:inline">
+                ISO Daily AM/PM Verification Active
+              </span>
+            </div>
           </div>
 
-          {/* Grid of Storage Units */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredStorageUnits.map((unit) => {
-              const unitReagents = inventory.filter(i => i.storage_unit_id === unit.id);
-              const depletedItems = unitReagents.filter(i => (Number(i.quantity_in_hand) || 0) <= 0);
-              const lowItems = unitReagents.filter(i => {
-                const q = Number(i.quantity_in_hand) || 0;
-                const m = Number(i.min_threshold) || 0;
-                return q > 0 && q <= m;
-              });
-              const adequateItems = unitReagents.filter(i => {
-                const q = Number(i.quantity_in_hand) || 0;
-                const m = Number(i.min_threshold) || 0;
-                return q > m;
-              });
+          {/* Table of Storage Units */}
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
+                    <th className="py-3 px-4">Storage Unit &amp; ID</th>
+                    <th className="py-3 px-4">Storage Class &amp; Type</th>
+                    <th className="py-3 px-4">Target Temp Range</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4 text-center">Stored Reagents</th>
+                    <th className="py-3 px-4">Stock Health Breakdown</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-700 font-normal">
+                  {filteredStorageUnits.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="py-12 text-center text-slate-400">
+                        <Refrigerator className="mx-auto mb-2 text-slate-300" size={32} />
+                        <p className="font-semibold text-slate-600">No laboratory storage units found</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Try adjusting your filter selection or search query.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredStorageUnits.map((unit) => {
+                      const unitReagents = inventory.filter(i => i.storage_unit_id === unit.id);
+                      const depletedItems = unitReagents.filter(i => (Number(i.quantity_in_hand) || 0) <= 0);
+                      const lowItems = unitReagents.filter(i => {
+                        const q = Number(i.quantity_in_hand) || 0;
+                        const m = Number(i.min_threshold) || 0;
+                        return q > 0 && q <= m;
+                      });
+                      const adequateItems = unitReagents.filter(i => {
+                        const q = Number(i.quantity_in_hand) || 0;
+                        const m = Number(i.min_threshold) || 0;
+                        return q > m;
+                      });
 
-              const isFridge = unit.type === 'fridge';
-              const isFreezer = unit.type === 'freezer';
+                      const isFridge = unit.type === 'fridge';
+                      const isFreezer = unit.type === 'freezer';
 
-              return (
-                <div key={unit.id} className="bg-white p-5 rounded-xl border border-slate-200 space-y-3.5 flex flex-col justify-between">
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2.5">
-                        <div className={`p-2.5 rounded-lg ${isFridge ? 'bg-sky-50 text-sky-700' :
-                          isFreezer ? 'bg-indigo-50 text-indigo-700' : 'bg-amber-50 text-amber-700'
-                          }`}>
-                          {isFridge ? <Refrigerator size={18} /> :
-                            isFreezer ? <Snowflake size={18} /> : <Thermometer size={18} />}
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-xs text-slate-900 leading-tight">{unit.label}</h3>
-                          <span className="text-[10px] text-slate-400 font-mono block mt-0.5">ID: {unit.id}</span>
-                        </div>
-                      </div>
+                      const typeColor = isFridge
+                        ? 'bg-sky-50 text-sky-800 border-sky-200'
+                        : isFreezer
+                        ? 'bg-indigo-50 text-indigo-800 border-indigo-200'
+                        : 'bg-amber-50 text-amber-800 border-amber-200';
 
-                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1 shrink-0">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        Operational
-                      </span>
-                    </div>
+                      const typeLabel = isFridge
+                        ? 'Cold Chain (2°C–8°C)'
+                        : isFreezer
+                        ? 'Deep Freeze (-20°C/-80°C)'
+                        : 'Ambient (20°C–25°C)';
 
-                    {/* Temperature Range & Verification Tag */}
-                    <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-xs space-y-1.5">
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-500">Target Range:</span>
-                        <span className="font-bold text-slate-900 font-mono">{unit.temp_range || (isFridge ? '2°C to 8°C' : '20°C to 25°C')}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-[11px]">
-                        <span className="text-slate-500">Storage Class:</span>
-                        <span className={`font-semibold ${isFridge ? 'text-sky-700' : isFreezer ? 'text-indigo-700' : 'text-amber-700'
-                          }`}>
-                          {isFridge ? 'Cold Chain Reagent Unit' : isFreezer ? 'Deep Freeze Storage' : 'Ambient Storage Shelf'}
-                        </span>
-                      </div>
-                    </div>
+                      return (
+                        <tr key={unit.id} className="hover:bg-slate-50/70 transition-colors">
+                          {/* Unit Identifier & Name */}
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2.5">
+                              <div className={`p-2 rounded-lg shrink-0 border ${
+                                isFridge
+                                  ? 'bg-sky-50 text-sky-700 border-sky-100'
+                                  : isFreezer
+                                  ? 'bg-indigo-50 text-indigo-700 border-indigo-100'
+                                  : 'bg-amber-50 text-amber-700 border-amber-100'
+                              }`}>
+                                {isFridge ? <Refrigerator size={16} /> : isFreezer ? <Snowflake size={16} /> : <Thermometer size={16} />}
+                              </div>
+                              <div>
+                                <div className="font-bold text-slate-900 text-xs">{unit.label}</div>
+                                <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                                  ID: {unit.id}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
 
-                    {/* Inventory inside this storage unit */}
-                    <div className="p-2.5 rounded-lg border border-slate-100 bg-white space-y-1.5">
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-slate-600 font-medium">Stored In-Hand Items:</span>
-                        <span className="font-bold text-slate-900">{unitReagents.length} items</span>
-                      </div>
+                          {/* Storage Class & Type */}
+                          <td className="py-3 px-4">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${typeColor}`}>
+                              {typeLabel}
+                            </span>
+                            <div className="text-[10px] text-slate-500 font-medium mt-0.5">
+                              {isFridge ? 'Cold Chain Reagent Unit' : isFreezer ? 'Deep Freeze Storage' : 'Ambient Storage Shelf'}
+                            </div>
+                          </td>
 
-                      <div className="grid grid-cols-3 gap-1 pt-1 text-center text-[10px]">
-                        <div className={`p-1 rounded ${depletedItems.length > 0 ? 'bg-rose-50 text-rose-700 font-bold border border-rose-200' : 'bg-slate-50 text-slate-500'}`}>
-                          <div>{depletedItems.length}</div>
-                          <div className="text-[9px]">Stockout</div>
-                        </div>
-                        <div className={`p-1 rounded ${lowItems.length > 0 ? 'bg-amber-50 text-amber-700 font-bold border border-amber-200' : 'bg-slate-50 text-slate-500'}`}>
-                          <div>{lowItems.length}</div>
-                          <div className="text-[9px]">Low</div>
-                        </div>
-                        <div className="p-1 rounded bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
-                          <div>{adequateItems.length}</div>
-                          <div className="text-[9px]">Adequate</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                          {/* Target Temp Range */}
+                          <td className="py-3 px-4">
+                            <div className="font-mono font-bold text-slate-800 text-xs">
+                              {unit.temp_range || (isFridge ? '2°C to 8°C' : '20°C to 25°C')}
+                            </div>
+                            <div className="text-[10px] text-emerald-700 font-medium">
+                              Daily AM/PM Log Active
+                            </div>
+                          </td>
 
-                  {/* Action to view reagents */}
-                  <div className="pt-2 border-t border-slate-100">
-                    <button
-                      onClick={() => {
-                        setStorageUnitFilter(unit.id);
-                        setEquipFilter('all');
-                        setSearchQuery('');
-                        setActiveTab('inventory');
-                      }}
-                      className="w-full py-1.5 text-center text-xs font-semibold text-[#1B669E] bg-blue-50/70 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200"
-                    >
-                      View Stored Reagents ({unitReagents.length}) →
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                          {/* Operational Status */}
+                          <td className="py-3 px-4">
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              Operational
+                            </span>
+                          </td>
+
+                          {/* Stored In-Hand Items Count */}
+                          <td className="py-3 px-4 text-center">
+                            <span className="font-bold text-slate-800 text-xs bg-slate-100 px-2.5 py-0.5 rounded border border-slate-200">
+                              {unitReagents.length}
+                            </span>
+                          </td>
+
+                          {/* Stock Health Breakdown */}
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                  depletedItems.length > 0
+                                    ? 'bg-rose-50 text-rose-700 border-rose-200 font-bold'
+                                    : 'bg-slate-50 text-slate-400 border-slate-200'
+                                }`}
+                                title="Depleted reagents (Stockout)"
+                              >
+                                {depletedItems.length} Stockout
+                              </span>
+                              <span
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                  lowItems.length > 0
+                                    ? 'bg-amber-50 text-amber-700 border-amber-200 font-bold'
+                                    : 'bg-slate-50 text-slate-400 border-slate-200'
+                                }`}
+                                title="Low stock reagents"
+                              >
+                                {lowItems.length} Low
+                              </span>
+                              <span
+                                className="px-2 py-0.5 rounded text-[10px] font-bold border bg-emerald-50 text-emerald-700 border-emerald-200"
+                                title="Adequate stock reagents"
+                              >
+                                {adequateItems.length} Adequate
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Actions */}
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => {
+                                  setStorageUnitFilter(unit.id);
+                                  setEquipFilter('all');
+                                  setSearchQuery('');
+                                  setActiveTab('inventory');
+                                }}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 text-[#1B669E] hover:bg-blue-100 border border-blue-200 transition-colors shadow-2xs"
+                                title="Filter stored reagents in this unit"
+                              >
+                                <FlaskConical size={12} />
+                                View Reagents ({unitReagents.length})
+                              </button>
+
+                              {(depletedItems.length > 0 || lowItems.length > 0) && (
+                                <button
+                                  onClick={() => {
+                                    const depletedOrLow = unitReagents.filter(i => {
+                                      const q = Number(i.quantity_in_hand) || 0;
+                                      const m = Number(i.min_threshold) || 0;
+                                      return q <= m;
+                                    });
+
+                                    const itemsToReq = (depletedOrLow.length > 0 ? depletedOrLow : unitReagents).slice(0, 8).map(it => ({
+                                      item_name: it.item_name,
+                                      quantity_requested: Math.max(1, (Number(it.min_threshold) || 5) * 2 - (Number(it.quantity_in_hand) || 0)),
+                                      unit: it.unit_of_measure || it.unit || 'pcs',
+                                      category: it.category || 'Reagents',
+                                      inventory_ref_id: it.id || null,
+                                      remarks: `Storage restock for ${unit.label} (${unit.temp_range || ''})`
+                                    }));
+
+                                    setReqForm({
+                                      notes: `Requisition to restock ${unit.label} (Storage: ${unit.temp_range || 'Cold Chain'})`,
+                                      urgency: depletedOrLow.some(i => (Number(i.quantity_in_hand) || 0) <= 0) ? 'High' : 'Medium',
+                                      stock_source: 'general_stock',
+                                      requesting_unit: 'General Laboratory',
+                                      items: itemsToReq.length > 0 ? itemsToReq : [{ item_name: '', quantity_requested: 5, unit: 'pcs', category: 'Reagents', remarks: `Unit ${unit.label}`, inventory_ref_id: null }]
+                                    });
+                                    setIsReqModalOpen(true);
+                                  }}
+                                  className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-300 transition-colors shadow-2xs"
+                                  title="Quick requisition to replenish low/depleted reagents in this storage unit"
+                                >
+                                  <ClipboardList size={12} />
+                                  Restock
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Table Footer Status */}
+            <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+              <span>
+                Showing <strong>{filteredStorageUnits.length}</strong> of <strong>{storageUnits.length}</strong> laboratory storage units
+              </span>
+              <span className="text-[10px] font-mono font-semibold text-slate-400">
+                MoH Rwanda Laboratory Quality Management System (ISO 15189:2022)
+              </span>
+            </div>
           </div>
         </div>
       )}
