@@ -4,7 +4,8 @@ import {
   ClipboardList, Cpu, Download, Edit3,
   Trash2, Box, Refrigerator,
   Snowflake, Thermometer, X, Database, Send, CheckCircle2, ArrowRight,
-  Building2, FlaskConical, Check, Minus, ShieldCheck, Sparkles, Info
+  Building2, FlaskConical, Check, Minus, ShieldCheck, Sparkles, Info,
+  Calendar, Filter, ChevronRight
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
@@ -156,6 +157,11 @@ export default function LabStockOfficerDashboard() {
 
   // Cold Chain Tab Filter: 'all' | 'fridge' | 'room_temp' | 'freezer'
   const [storageTabType, setStorageTabType] = useState('all');
+
+  // Analyzers Tab Filters
+  const [analyzerSearch, setAnalyzerSearch] = useState('');
+  const [analyzerBenchFilter, setAnalyzerBenchFilter] = useState('all');
+  const [analyzerStatusFilter, setAnalyzerStatusFilter] = useState('all');
 
   // Modals
   const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
@@ -355,6 +361,97 @@ export default function LabStockOfficerDashboard() {
     }
     return list;
   }, [generalStockItems, searchQuery, categoryFilter]);
+
+  // ── Filtered Connected Analyzers (Tab 2) ───────────────────────────────────
+  const filteredAnalyzers = useMemo(() => {
+    return analyzers.filter(an => {
+      const q = analyzerSearch.toLowerCase().trim();
+      const matchesSearch = !q ||
+        (an.name || '').toLowerCase().includes(q) ||
+        (an.manufacturer || '').toLowerCase().includes(q) ||
+        (an.model || '').toLowerCase().includes(q) ||
+        (an.serial_number || '').toLowerCase().includes(q) ||
+        (an.department || '').toLowerCase().includes(q);
+
+      const matchesBench = analyzerBenchFilter === 'all' ||
+        (an.department || '').toLowerCase() === analyzerBenchFilter.toLowerCase();
+
+      const matchesStatus = analyzerStatusFilter === 'all' ||
+        (an.status || 'operational').toLowerCase() === analyzerStatusFilter.toLowerCase();
+
+      return matchesSearch && matchesBench && matchesStatus;
+    });
+  }, [analyzers, analyzerSearch, analyzerBenchFilter, analyzerStatusFilter]);
+
+  // Overall statistics for analyzers
+  const analyzerOverallStats = useMemo(() => {
+    let totalAssigned = 0;
+    let totalDepleted = 0;
+    let totalLow = 0;
+    let totalAdequate = 0;
+
+    analyzers.forEach(an => {
+      const matchedItems = getAnalyzerReagents(an, inventory);
+      totalAssigned += matchedItems.length;
+      matchedItems.forEach(i => {
+        const q = Number(i.quantity_in_hand) || 0;
+        const m = Number(i.min_threshold) || 0;
+        if (q <= 0) totalDepleted++;
+        else if (q <= m) totalLow++;
+        else totalAdequate++;
+      });
+    });
+
+    return { totalAssigned, totalDepleted, totalLow, totalAdequate };
+  }, [analyzers, inventory]);
+
+  const handleFilterReagentsForAnalyzer = (an) => {
+    if (an.name.includes('C 311') || an.name.includes('C311')) {
+      setEquipFilter('Cobas C311');
+    } else if (an.name.includes('e411') || an.name.includes('E411')) {
+      setEquipFilter('Cobas e411');
+    } else if (an.name.includes('VITEK')) {
+      setEquipFilter('VITEK');
+    } else if (an.name.includes('Mispa')) {
+      setEquipFilter('Mispa');
+    } else if (an.name.includes('BS-430')) {
+      setEquipFilter('BS-430');
+    } else if (an.name.includes('Bc-780')) {
+      setEquipFilter('Bc-780');
+    } else if (an.name.includes('XN-330')) {
+      setEquipFilter('Sysmex');
+    } else {
+      setSearchQuery(an.name);
+    }
+    setStorageUnitFilter('all');
+    setActiveTab('inventory');
+  };
+
+  const handleRequisitionForAnalyzer = (an, matchedItems) => {
+    const depletedOrLow = matchedItems.filter(i => {
+      const q = Number(i.quantity_in_hand) || 0;
+      const m = Number(i.min_threshold) || 0;
+      return q <= m;
+    });
+
+    const itemsToReq = (depletedOrLow.length > 0 ? depletedOrLow : matchedItems).slice(0, 8).map(it => ({
+      item_name: it.item_name,
+      quantity_requested: Math.max(1, (Number(it.min_threshold) || 5) * 2 - (Number(it.quantity_in_hand) || 0)),
+      unit: it.unit_of_measure || it.unit || 'pcs',
+      category: it.category || 'Reagents',
+      inventory_ref_id: it.id || null,
+      remarks: `Restock for analyzer ${an.name} (${an.model || ''})`
+    }));
+
+    setReqForm({
+      notes: `Requisition replenishment for analyzer ${an.name} (${an.department || 'Lab'})`,
+      urgency: depletedOrLow.some(i => (Number(i.quantity_in_hand) || 0) <= 0) ? 'High' : 'Medium',
+      stock_source: 'general_stock',
+      requesting_unit: an.department || 'General Laboratory',
+      items: itemsToReq.length > 0 ? itemsToReq : [{ item_name: '', quantity_requested: 5, unit: 'pcs', category: 'Reagents', remarks: `Analyzer ${an.name}`, inventory_ref_id: null }]
+    });
+    setIsReqModalOpen(true);
+  };
 
   // ── Handler: Pre-fill & open requisition for Central Store item ───────────────
   const handleRequisitionFromCentralStore = (item) => {
@@ -1175,119 +1272,276 @@ export default function LabStockOfficerDashboard() {
       {/* ── TAB 2: CONNECTED LABORATORY ANALYZERS & CONSUMABLES ── */}
       {activeTab === 'analyzers' && (
         <div className="space-y-4">
-          <div className="bg-white p-4.5 rounded-xl border border-slate-200">
-            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Cpu className="text-[#1B669E]" size={16} />
-              Connected Laboratory Analyzers &amp; Consumables
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Available diagnostic analyzers configured with real-time in-hand consumable and reagent stock levels.
-            </p>
+          {/* Header Card with Metrics & Control Badge */}
+          <div className="bg-white p-5 rounded-xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <span className="text-[11px] font-bold text-[#1B669E] bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                  MoH Rwanda • ISO 15189 Pathology Analyzer Registry
+                </span>
+                <span className="text-[10px] font-mono font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-300">
+                  Control No: LEG/PATHLAB/MSD/FM-12-VERS-004
+                </span>
+              </div>
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Cpu className="text-[#1B669E]" size={18} />
+                Connected Laboratory Analyzers &amp; Consumables
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Real-time analyzer status, calibration schedules, and linked reagent inventory health.
+              </p>
+            </div>
+
+            {/* Quick KPI Strip */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-center">
+                <div className="text-[10px] text-slate-500 font-semibold uppercase">Total Analyzers</div>
+                <div className="text-xs font-bold text-slate-800">{analyzers.length} Active</div>
+              </div>
+              <div className="px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-center">
+                <div className="text-[10px] text-emerald-700 font-semibold uppercase">Operational</div>
+                <div className="text-xs font-bold text-emerald-800">
+                  {analyzers.filter(a => (a.status || 'operational').toLowerCase() === 'operational').length} Online
+                </div>
+              </div>
+              <div className="px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200 text-center">
+                <div className="text-[10px] text-[#1B669E] font-semibold uppercase">Linked Reagents</div>
+                <div className="text-xs font-bold text-[#1B669E]">{analyzerOverallStats.totalAssigned} items</div>
+              </div>
+              {analyzerOverallStats.totalDepleted > 0 && (
+                <div className="px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-200 text-center">
+                  <div className="text-[10px] text-rose-700 font-semibold uppercase">Stockout Alerts</div>
+                  <div className="text-xs font-bold text-rose-800">{analyzerOverallStats.totalDepleted} Reagents</div>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {analyzers.map((an) => {
-              const matchedItems = getAnalyzerReagents(an, inventory);
-              const depletedItems = matchedItems.filter(i => (Number(i.quantity_in_hand) || 0) <= 0);
-              const lowItems = matchedItems.filter(i => {
-                const q = Number(i.quantity_in_hand) || 0;
-                const m = Number(i.min_threshold) || 0;
-                return q > 0 && q <= m;
-              });
-              const adequateItems = matchedItems.filter(i => {
-                const q = Number(i.quantity_in_hand) || 0;
-                const m = Number(i.min_threshold) || 0;
-                return q > m;
-              });
+          {/* Search & Bench Filter Bar */}
+          <div className="bg-white p-3.5 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-2 w-full sm:w-auto flex-1">
+              <div className="relative flex-1 max-w-sm">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search analyzer name, model, serial #..."
+                  value={analyzerSearch}
+                  onChange={(e) => setAnalyzerSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#1B669E] focus:border-[#1B669E] text-slate-800"
+                />
+              </div>
 
-              return (
-                <div key={an.id} className="bg-white p-4.5 rounded-xl border border-slate-200 space-y-3 flex flex-col justify-between">
-                  <div className="space-y-2.5">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <div className="p-2 rounded-lg bg-blue-50 text-[#1B669E]">
-                          <Cpu size={16} />
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-xs text-slate-900 leading-tight">{an.name}</h3>
-                          <span className="text-[10px] text-slate-400 font-medium block">
-                            {an.manufacturer} • {an.model}
-                          </span>
-                        </div>
-                      </div>
-                      <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
-                        {an.status || 'Operational'}
-                      </span>
-                    </div>
+              {/* Bench Filter */}
+              <select
+                value={analyzerBenchFilter}
+                onChange={(e) => setAnalyzerBenchFilter(e.target.value)}
+                className="px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#1B669E] text-slate-700 font-medium"
+              >
+                <option value="all">All Benches</option>
+                {LAB_DISCIPLINES.map(b => (
+                  <option key={b} value={b}>{b}</option>
+                ))}
+              </select>
 
-                    <div className="p-2 rounded-lg bg-slate-50 border border-slate-100 text-[11px] space-y-1">
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Bench:</span>
-                        <span className="font-semibold text-slate-800">{an.department || 'Biochemistry'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Serial #:</span>
-                        <span className="font-mono text-slate-700">{an.serial_number || 'N/A'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Calibration:</span>
-                        <span className="font-medium text-slate-700">Due {an.next_calibration_due || 'On Schedule'}</span>
-                      </div>
-                    </div>
+              {/* Status Filter */}
+              <select
+                value={analyzerStatusFilter}
+                onChange={(e) => setAnalyzerStatusFilter(e.target.value)}
+                className="px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#1B669E] text-slate-700 font-medium"
+              >
+                <option value="all">All Statuses</option>
+                <option value="operational">Operational</option>
+                <option value="maintenance due">Maintenance Due</option>
+                <option value="under maintenance">Under Maintenance</option>
+                <option value="out of service">Out of Service</option>
+              </select>
+            </div>
 
-                    {/* Stock status summary for this analyzer */}
-                    <div className="p-2.5 rounded-lg border border-slate-100 bg-white space-y-1.5 text-xs">
-                      <div className="flex justify-between items-center text-[11px]">
-                        <span className="text-slate-600 font-medium">Assigned Reagents:</span>
-                        <span className="font-bold text-slate-900">{matchedItems.length} items</span>
-                      </div>
+            {(analyzerSearch || analyzerBenchFilter !== 'all' || analyzerStatusFilter !== 'all') && (
+              <button
+                onClick={() => {
+                  setAnalyzerSearch('');
+                  setAnalyzerBenchFilter('all');
+                  setAnalyzerStatusFilter('all');
+                }}
+                className="text-xs text-[#1B669E] hover:underline font-semibold"
+              >
+                Reset Filters
+              </button>
+            )}
+          </div>
 
-                      <div className="grid grid-cols-3 gap-1 pt-1 text-center text-[10px]">
-                        <div className={`p-1 rounded ${depletedItems.length > 0 ? 'bg-rose-50 text-rose-700 font-bold border border-rose-200' : 'bg-slate-50 text-slate-500'}`}>
-                          <div>{depletedItems.length}</div>
-                          <div className="text-[9px]">Stockout</div>
-                        </div>
-                        <div className={`p-1 rounded ${lowItems.length > 0 ? 'bg-amber-50 text-amber-700 font-bold border border-amber-200' : 'bg-slate-50 text-slate-500'}`}>
-                          <div>{lowItems.length}</div>
-                          <div className="text-[9px]">Low</div>
-                        </div>
-                        <div className="p-1 rounded bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
-                          <div>{adequateItems.length}</div>
-                          <div className="text-[9px]">Adequate</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+          {/* Analyzers Table */}
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
+                    <th className="py-3 px-4">Analyzer &amp; Model</th>
+                    <th className="py-3 px-4">Bench / Dept</th>
+                    <th className="py-3 px-4">Serial Number</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Next Calibration</th>
+                    <th className="py-3 px-4 text-center">Linked Reagents</th>
+                    <th className="py-3 px-4">Stock Health Breakdown</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-700 font-normal">
+                  {filteredAnalyzers.length === 0 ? (
+                    <tr>
+                      <td colSpan="8" className="py-12 text-center text-slate-400">
+                        <Cpu className="mx-auto mb-2 text-slate-300" size={32} />
+                        <p className="font-semibold text-slate-600">No laboratory analyzers found</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Try adjusting your search query or bench filter.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredAnalyzers.map((an) => {
+                      const matchedItems = getAnalyzerReagents(an, inventory);
+                      const depletedItems = matchedItems.filter(i => (Number(i.quantity_in_hand) || 0) <= 0);
+                      const lowItems = matchedItems.filter(i => {
+                        const q = Number(i.quantity_in_hand) || 0;
+                        const m = Number(i.min_threshold) || 0;
+                        return q > 0 && q <= m;
+                      });
+                      const adequateItems = matchedItems.filter(i => {
+                        const q = Number(i.quantity_in_hand) || 0;
+                        const m = Number(i.min_threshold) || 0;
+                        return q > m;
+                      });
 
-                  <button
-                    onClick={() => {
-                      if (an.name.includes('C 311') || an.name.includes('C311')) {
-                        setEquipFilter('Cobas C311');
-                      } else if (an.name.includes('e411') || an.name.includes('E411')) {
-                        setEquipFilter('Cobas e411');
-                      } else if (an.name.includes('VITEK')) {
-                        setEquipFilter('VITEK');
-                      } else if (an.name.includes('Mispa')) {
-                        setEquipFilter('Mispa');
-                      } else if (an.name.includes('BS-430')) {
-                        setEquipFilter('BS-430');
-                      } else if (an.name.includes('Bc-780')) {
-                        setEquipFilter('Bc-780');
-                      } else if (an.name.includes('XN-330')) {
-                        setEquipFilter('Sysmex');
-                      } else {
-                        setSearchQuery(an.name);
-                      }
-                      setStorageUnitFilter('all');
-                      setActiveTab('inventory');
-                    }}
-                    className="w-full py-1.5 text-center text-xs font-semibold text-[#1B669E] bg-blue-50/70 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200"
-                  >
-                    Filter Associated Reagents ({matchedItems.length}) →
-                  </button>
-                </div>
-              );
-            })}
+                      const statusColor = (an.status || 'operational').toLowerCase() === 'operational'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-amber-50 text-amber-700 border-amber-200';
+
+                      return (
+                        <tr key={an.id} className="hover:bg-slate-50/70 transition-colors">
+                          {/* Analyzer Name & Model */}
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2.5">
+                              <div className="p-2 rounded-lg bg-blue-50 text-[#1B669E] shrink-0 border border-blue-100">
+                                <Cpu size={16} />
+                              </div>
+                              <div>
+                                <div className="font-bold text-slate-900 text-xs">{an.name}</div>
+                                <div className="text-[11px] text-slate-500 font-medium">
+                                  {an.manufacturer || 'Manufacturer N/A'} • {an.model || 'Model N/A'}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Bench / Dept */}
+                          <td className="py-3 px-4">
+                            <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-50 text-[#1B669E] border border-sky-200">
+                              {an.department || 'Biochemistry'}
+                            </span>
+                          </td>
+
+                          {/* Serial Number */}
+                          <td className="py-3 px-4">
+                            <span className="font-mono text-[11px] text-slate-600 font-semibold bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                              {an.serial_number || 'N/A'}
+                            </span>
+                          </td>
+
+                          {/* Operational Status */}
+                          <td className="py-3 px-4">
+                            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusColor}`}>
+                              <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+                              {an.status || 'Operational'}
+                            </span>
+                          </td>
+
+                          {/* Calibration Due */}
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-1.5 text-slate-600 text-[11px] font-medium">
+                              <Calendar size={13} className="text-slate-400 shrink-0" />
+                              <span>{an.next_calibration_due || 'On Schedule'}</span>
+                            </div>
+                          </td>
+
+                          {/* Linked Reagents Count */}
+                          <td className="py-3 px-4 text-center">
+                            <span className="font-bold text-slate-800 text-xs bg-slate-100 px-2.5 py-0.5 rounded border border-slate-200">
+                              {matchedItems.length}
+                            </span>
+                          </td>
+
+                          {/* Stock Health Breakdown */}
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                  depletedItems.length > 0
+                                    ? 'bg-rose-50 text-rose-700 border-rose-200 font-bold'
+                                    : 'bg-slate-50 text-slate-400 border-slate-200'
+                                }`}
+                                title="Depleted reagents (Stockout)"
+                              >
+                                {depletedItems.length} Stockout
+                              </span>
+                              <span
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                  lowItems.length > 0
+                                    ? 'bg-amber-50 text-amber-700 border-amber-200 font-bold'
+                                    : 'bg-slate-50 text-slate-400 border-slate-200'
+                                }`}
+                                title="Low stock reagents"
+                              >
+                                {lowItems.length} Low
+                              </span>
+                              <span
+                                className="px-2 py-0.5 rounded text-[10px] font-bold border bg-emerald-50 text-emerald-700 border-emerald-200"
+                                title="Adequate stock reagents"
+                              >
+                                {adequateItems.length} Adequate
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Actions */}
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => handleFilterReagentsForAnalyzer(an)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 text-[#1B669E] hover:bg-blue-100 border border-blue-200 transition-colors shadow-2xs"
+                                title="Filter in-hand reagents for this analyzer"
+                              >
+                                <FlaskConical size={12} />
+                                View Reagents ({matchedItems.length})
+                              </button>
+
+                              {(depletedItems.length > 0 || lowItems.length > 0) && (
+                                <button
+                                  onClick={() => handleRequisitionForAnalyzer(an, matchedItems)}
+                                  className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-300 transition-colors shadow-2xs"
+                                  title="Quick requisition to replenish low/depleted reagents"
+                                >
+                                  <ClipboardList size={12} />
+                                  Restock
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Table Footer Status */}
+            <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+              <span>
+                Showing <strong>{filteredAnalyzers.length}</strong> of <strong>{analyzers.length}</strong> connected laboratory analyzers
+              </span>
+              <span className="text-[10px] font-mono font-semibold text-slate-400">
+                MoH Rwanda Laboratory Quality Management System (ISO 15189:2022)
+              </span>
+            </div>
           </div>
         </div>
       )}
