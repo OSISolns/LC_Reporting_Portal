@@ -796,20 +796,16 @@ export default function LabStockOfficerDashboard() {
   return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-6 text-slate-800 font-sans">
 
-      {/* ── Simple, Clean Institutional Header ── */}
+      {/* ── Institutional Header with Personalized Greetings ── */}
       <div className="bg-white p-5 rounded-xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-
-            </span>
-            <span className="text-slate-300">•</span>
             <span className="text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
               Laboratory Diagnostics Hub
             </span>
             <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Duty: Lab stock Manager
+              Duty: Lab Stock Manager
             </span>
             <span className="text-[11px] font-mono font-bold text-amber-900 bg-amber-50 px-2.5 py-0.5 rounded border border-amber-300 flex items-center gap-1.5 shadow-xs">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
@@ -817,11 +813,11 @@ export default function LabStockOfficerDashboard() {
             </span>
           </div>
 
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-            Lab stock Manager Dashboard
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+            {new Date().getHours() < 12 ? 'Good Morning' : new Date().getHours() < 17 ? 'Good Afternoon' : 'Good Evening'}, {user?.fullName?.split(' ')[0] || user?.fullName || 'Colleague'} 👋
           </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Legacy Clinics • In-Hand Inventory, Connected Analyzers &amp; Cold Chain Management
+          <p className="text-xs text-slate-500 mt-0.5 font-medium">
+            Welcome to Laboratory Stock &amp; In-Hand Inventory, Connected Analyzers &amp; Cold Chain Management
           </p>
         </div>
 

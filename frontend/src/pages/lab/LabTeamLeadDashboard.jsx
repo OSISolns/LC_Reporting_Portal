@@ -231,10 +231,10 @@ export default function LabTeamLeadDashboard() {
           </div>
           <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2">
             <Microscope className="text-blue-200" size={26} />
-            Laboratory Team Leader Hub
+            {new Date().getHours() < 12 ? 'Good Morning' : new Date().getHours() < 17 ? 'Good Afternoon' : 'Good Evening'}, {user?.fullName?.split(' ')[0] || user?.fullName || 'Team Leader'} 👋
           </h1>
-          <p className="text-xs text-blue-100 max-w-xl">
-            Real-time bench workload distribution, STAT sample turn-around countdown, QC Westgard compliance, and technical verification authorization.
+          <p className="text-xs text-blue-100 max-w-xl font-medium">
+            Laboratory Team Leader Command • Real-time bench workload distribution, STAT countdown, and technical verification authorization.
           </p>
         </div>
 

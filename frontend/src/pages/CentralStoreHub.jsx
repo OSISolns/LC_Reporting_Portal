@@ -1681,9 +1681,11 @@ export default function CentralStoreHub() {
           <div>
             <div className="flex items-center gap-2">
               <span className="p-1.5 bg-sky-700 text-white rounded-xl"><Database size={18} /></span>
-              <h1 className="text-lg font-black text-slate-900 tracking-tight">General Store Hub</h1>
+              <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                {new Date().getHours() < 12 ? 'Good Morning' : new Date().getHours() < 17 ? 'Good Afternoon' : 'Good Evening'}, {user?.fullName?.split(' ')[0] || user?.fullName || 'Stock Officer'} 👋
+              </h1>
             </div>
-            <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mt-0.5">Global Stock & Procurement Management</p>
+            <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mt-0.5">General Store Hub • Global Stock &amp; Central Warehouse Management</p>
           </div>
         </div>
 

@@ -111,13 +111,20 @@ export default function LabManagerDashboard() {
             <FlaskConical className="text-blue-100" size={22} />
           </div>
           <div>
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-lg font-bold tracking-tight text-white">Laboratory Manager Dashboard</h1>
+            <div className="flex items-center gap-2.5 flex-wrap mb-1">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-white/20 text-white border border-white/30 backdrop-blur-xs">
+                Pathology Management
+              </span>
               <span className="px-2 py-0.5 bg-amber-400/20 text-amber-200 border border-amber-400/40 rounded font-mono text-[10px] font-bold">
                 Control No: LEG/PATHLAB/MSD/FM-12-VERS-004
               </span>
             </div>
-            <p className="text-xs text-blue-200/80">Pathology Quality Control &amp; Operational Analytics</p>
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2">
+              {new Date().getHours() < 12 ? 'Good Morning' : new Date().getHours() < 17 ? 'Good Afternoon' : 'Good Evening'}, {user?.fullName?.split(' ')[0] || user?.fullName || 'Lab Manager'} 👋
+            </h1>
+            <p className="text-xs text-blue-200/90 font-medium mt-0.5">
+              Laboratory Quality Control, Turnaround Time &amp; Diagnostics Operational Analytics
+            </p>
           </div>
         </div>
 

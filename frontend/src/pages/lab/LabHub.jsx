@@ -1098,10 +1098,7 @@ const LabHub = () => {
       {/* ── MINIMALIST HEADER ── */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
         <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-              <FlaskConical className="text-[#1B669E]" size={20} /> Laboratory Hub
-            </h1>
+          <div className="flex items-center gap-2 flex-wrap mb-1">
             {isManager ? (
               <span className="px-2.5 py-0.5 bg-blue-100/80 text-blue-900 border border-blue-200 rounded-full text-[10px] font-bold flex items-center gap-1 shadow-2xs">
                 <ShieldCheck size={12} className="text-blue-700" /> Lab Manager
@@ -1119,8 +1116,12 @@ const LabHub = () => {
               Control No: LEG/PATHLAB/MSD/FM-12-VERS-004
             </span>
           </div>
-          <p className="text-xs text-slate-500 mt-0.5 font-normal">
-            Outpatient Specimen Diagnostics & Worklist Management
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+            <FlaskConical className="text-[#1B669E]" size={22} />
+            {new Date().getHours() < 12 ? 'Good Morning' : new Date().getHours() < 17 ? 'Good Afternoon' : 'Good Evening'}, {user?.fullName?.split(' ')[0] || user?.fullName || 'Colleague'} 👋
+          </h1>
+          <p className="text-xs text-slate-500 mt-0.5 font-medium">
+            Laboratory Hub • Outpatient Specimen Diagnostics, Worklist &amp; Quality Control
           </p>
         </div>
 

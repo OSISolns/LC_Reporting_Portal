@@ -946,11 +946,20 @@ export default function StockManagerDashboard() {
                 <Package size={28} />
               </span>
               <div>
-                <h1 className="text-3xl font-black tracking-tight text-slate-900 flex items-center gap-2.5">
-                  Stock Operations Portal
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                    General Stock Operations
+                  </span>
+                  <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Duty: Stock Manager
+                  </span>
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 flex items-center gap-2.5">
+                  {new Date().getHours() < 12 ? 'Good Morning' : new Date().getHours() < 17 ? 'Good Afternoon' : 'Good Evening'}, {user?.fullName?.split(' ')[0] || user?.fullName || 'Stock Manager'} 👋
                 </h1>
                 <p className="text-sm text-slate-500 mt-0.5 font-medium">
-                  Real-time manager dashboard • Signed in as <span className="text-indigo-600 font-bold">{user?.fullName || 'Stock Manager'}</span>
+                  Welcome to General Stock Operations • In-hand inventory, clinical requisitions, batches, and supplier logistics.
                 </p>
               </div>
             </div>

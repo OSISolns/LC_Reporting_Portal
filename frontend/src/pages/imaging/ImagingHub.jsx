@@ -51,12 +51,21 @@ const ImagingHub = () => {
 
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-          <span className="text-[#1C69A0]">LUMINA</span> Imaging Hub
+      <div className="mb-6 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
+          <span className="text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+            Radiology &amp; Medical Imaging Hub
+          </span>
+          <span className="text-[11px] font-bold text-sky-800 bg-sky-50 px-2 py-0.5 rounded border border-sky-200 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
+            Duty: {user?.role ? user.role.replace(/_/g, ' ').toUpperCase() : 'Imaging Specialist'}
+          </span>
+        </div>
+        <h1 className="text-xl sm:text-2xl font-black text-slate-800 flex items-center gap-2">
+          {new Date().getHours() < 12 ? 'Good Morning' : new Date().getHours() < 17 ? 'Good Afternoon' : 'Good Evening'}, {user?.fullName?.split(' ')[0] || user?.fullName || 'Colleague'} 👋
         </h1>
-        <p className="text-sm text-slate-500">
-          Radiology worklist, diagnostic storage vault, and provider sharing for CT, MRI, OPG, X-Ray, Mammography, Ultrasound, CBCT, & Cephalogram.
+        <p className="text-xs text-slate-500 mt-0.5 font-medium">
+          Radiology worklist, diagnostic storage vault, and provider sharing for CT, MRI, OPG, X-Ray, Mammography, Ultrasound, CBCT, &amp; Cephalogram.
         </p>
       </div>
 

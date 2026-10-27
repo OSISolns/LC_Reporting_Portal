@@ -5,6 +5,7 @@ import {
   ShieldCheck, Smile, Sparkles, Crosshair
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
 import { getImagingDashboard } from '../../api/imaging';
 
 const UNIT_ICON = {
@@ -43,6 +44,7 @@ const KpiTile = ({ icon, label, value, sub, accent = 'text-slate-800', ring = 'b
 );
 
 const ImagingDashboard = () => {
+  const { user } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -92,16 +94,27 @@ const ImagingDashboard = () => {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-5 bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
         <div>
-          <h2 className="text-lg font-bold text-slate-800">Department Dashboard</h2>
-          <p className="text-sm text-slate-500">Operational overview — volumes, utilization and reporting performance.</p>
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <span className="text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+              Medical Imaging &amp; Radiology
+            </span>
+            <span className="text-[11px] font-bold text-sky-800 bg-sky-50 px-2 py-0.5 rounded border border-sky-200 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
+              Duty: {user?.role ? user.role.replace(/_/g, ' ').toUpperCase() : 'Imaging Specialist'}
+            </span>
+          </div>
+          <h2 className="text-xl sm:text-2xl font-black text-slate-800 flex items-center gap-2">
+            {new Date().getHours() < 12 ? 'Good Morning' : new Date().getHours() < 17 ? 'Good Afternoon' : 'Good Evening'}, {user?.fullName?.split(' ')[0] || user?.fullName || 'Colleague'} 👋
+          </h2>
+          <p className="text-xs text-slate-500 mt-0.5 font-medium">Department Analytics • Exam volumes, modality utilization, and diagnostic reporting performance.</p>
         </div>
         <button
           onClick={load}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer border border-slate-200"
         >
-          <RefreshCw size={15} className={loading ? 'animate-spin' : ''} /> Refresh
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
         </button>
       </div>
 
