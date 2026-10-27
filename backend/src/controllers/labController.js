@@ -2026,6 +2026,7 @@ exports.getGeneralStockLabItems = async (req, res, next) => {
         sb.lot_number,
         sb.expiry_date,
         COALESCE(sb.quantity, 0) as quantity,
+        COALESCE(sb.quantity, 0) as central_store_quantity,
         sb.storage,
         d.name as department,
         d.id as department_id,
