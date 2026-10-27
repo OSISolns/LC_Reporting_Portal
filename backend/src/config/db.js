@@ -1792,6 +1792,8 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       };
       await safeAddDocCol("storage_provider TEXT DEFAULT 'database'");
       await safeAddDocCol("file_url TEXT");
+      await safeAddDocCol("control_number TEXT DEFAULT 'LEG/PATHLAB/MSD/FM-12-VERS-004'");
+      await client.execute("UPDATE lab_documents SET control_number = 'LEG/PATHLAB/MSD/FM-12-VERS-004' WHERE control_number IS NULL OR control_number = ''").catch(() => {});
 
       // ── Lab Archive: Access Logs Table ─────────────────────────────────────
       await client.execute(`

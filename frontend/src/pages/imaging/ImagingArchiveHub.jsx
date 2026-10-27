@@ -848,7 +848,9 @@ export default function ImagingArchiveHub() {
                 const modBadge = MODALITY_BADGES[item.modality] || 'bg-slate-100 text-slate-800';
                 const imgSrc = item.thumbnail_base64
                   ? (item.thumbnail_base64.startsWith('data:') ? item.thumbnail_base64 : `data:${item.file_type || 'image/png'};base64,${item.thumbnail_base64}`)
-                  : (item.file_base64 ? `data:${item.file_type || 'image/png'};base64,${item.file_base64}` : null);
+                  : (item.file_base64
+                      ? (item.file_base64.startsWith('data:') ? item.file_base64 : `data:${item.file_type || 'image/png'};base64,${item.file_base64}`)
+                      : (item.id ? `/api/imaging/archives/${item.id}/file` : null));
 
                 return (
                   <tr key={item.id} className="hover:bg-slate-50 transition-colors">
@@ -937,7 +939,9 @@ export default function ImagingArchiveHub() {
             const badgeClass = MODALITY_BADGES[item.modality] || 'bg-slate-100 text-slate-800 border-slate-200';
             const imgSrc = item.thumbnail_base64
               ? (item.thumbnail_base64.startsWith('data:') ? item.thumbnail_base64 : `data:${item.file_type || 'image/png'};base64,${item.thumbnail_base64}`)
-              : (item.file_base64 ? `data:${item.file_type || 'image/png'};base64,${item.file_base64}` : null);
+              : (item.file_base64
+                  ? (item.file_base64.startsWith('data:') ? item.file_base64 : `data:${item.file_type || 'image/png'};base64,${item.file_base64}`)
+                  : (item.id ? `/api/imaging/archives/${item.id}/file` : null));
 
             return (
               <div

@@ -62,6 +62,23 @@ class ImagingReport {
       recommendations: data.recommendations || null,
     };
 
+    let validStudyId = null;
+    if (studyId && Number.isInteger(Number(studyId)) && Number(studyId) > 0) {
+      try {
+        const checkStudy = await db.query('SELECT id FROM imaging_studies WHERE id = ?', [Number(studyId)]);
+        if (checkStudy.rows && checkStudy.rows.length > 0) validStudyId = checkStudy.rows[0].id;
+      } catch (_) { validStudyId = null; }
+    }
+    if (!validStudyId) return { error: 'invalid_study' };
+
+    let validUserId = null;
+    if (user?.id && Number.isInteger(Number(user.id)) && Number(user.id) > 0) {
+      try {
+        const checkUser = await db.query('SELECT id FROM users WHERE id = ?', [Number(user.id)]);
+        if (checkUser.rows && checkUser.rows.length > 0) validUserId = checkUser.rows[0].id;
+      } catch (_) { validUserId = null; }
+    }
+
     if (existing) {
       if (['final', 'verified'].includes(existing.status)) {
         // Locked — must go through amend().
@@ -75,7 +92,7 @@ class ImagingReport {
           WHERE id = $8 RETURNING *`,
         [fields.technique, fields.findings_narrative, fields.findings_code_json,
          fields.impression, fields.diagnosis_code_json, fields.recommendations,
-         user.id, existing.id]
+         validUserId, existing.id]
       );
       return rows[0];
     }
@@ -85,7 +102,7 @@ class ImagingReport {
         (study_id, radiologist_id, technique, findings_narrative, findings_code_json,
          impression, diagnosis_code_json, recommendations, status)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'draft') RETURNING *`,
-      [studyId, user.id, fields.technique, fields.findings_narrative, fields.findings_code_json,
+      [validStudyId, validUserId, fields.technique, fields.findings_narrative, fields.findings_code_json,
        fields.impression, fields.diagnosis_code_json, fields.recommendations]
     );
     return rows[0];

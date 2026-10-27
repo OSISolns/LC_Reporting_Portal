@@ -3,7 +3,8 @@ import {
   Package, AlertTriangle, Search, Plus, RefreshCw,
   ClipboardList, Cpu, Download, Edit3,
   Trash2, Box, Refrigerator,
-  Snowflake, Thermometer, X
+  Snowflake, Thermometer, X, Database, Send, CheckCircle2, ArrowRight,
+  Building2, FlaskConical, Check, Minus, ShieldCheck, Sparkles, Info
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
@@ -11,7 +12,8 @@ import { useNavigate } from 'react-router-dom';
 import {
   getInhandInventory, createInhandInventory, updateInhandInventory,
   deleteInhandInventory, getStorageUnits, saveStorageUnit,
-  getAnalyzers, getLabRequisitions, createLabRequisition
+  getAnalyzers, getLabRequisitions, createLabRequisition,
+  getGeneralStockLabItems, createUnitRequisition
 } from '../../api/lab';
 import LabRequisitionHub from './LabRequisitionHub';
 
@@ -71,6 +73,15 @@ const STORAGE_TEMPS = [
 
 const UOM_OPTIONS = ['kits', 'bot', 'box', 'pack', 'pcs', 'kg', 'vials', 'tests', 'cartridges', 'strips', 'tubes', 'plates'];
 
+const REQ_JUSTIFICATION_PRESETS = [
+  'Routine Weekly Restock',
+  'High Patient Testing Volume',
+  'Impending Buffer Stockout',
+  'Analyzer Calibration Run',
+  'Emergency STAT Replacement',
+  'Quality Control Validation'
+];
+
 // Helper to associate reagents with the available analyzers
 const getAnalyzerReagents = (analyzer, inventoryList) => {
   const anName = (analyzer.name || '').toLowerCase();
@@ -127,8 +138,12 @@ export default function LabStockOfficerDashboard() {
   const [savingUnit, setSavingUnit] = useState(false);
   const [submittingReq, setSubmittingReq] = useState(false);
 
-  // Active Tab: 'inventory' | 'analyzers' | 'cold_chain' | 'requisitions'
+  // Active Tab: 'inventory' | 'analyzers' | 'cold_chain' | 'requisitions' | 'general_stock'
   const [activeTab, setActiveTab] = useState('inventory');
+
+  // General Stock Lab Items (Avail Central Store items specifically belonging to Laboratory)
+  const [generalStockItems, setGeneralStockItems] = useState([]);
+  const [loadingGeneralStock, setLoadingGeneralStock] = useState(false);
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -183,7 +198,9 @@ export default function LabStockOfficerDashboard() {
   const [reqForm, setReqForm] = useState({
     notes: '',
     urgency: 'Medium',
-    items: [{ item_name: '', quantity_requested: 5, unit: 'kits', remarks: '' }]
+    stock_source: 'general_stock',
+    requesting_unit: 'General Laboratory',
+    items: [{ item_name: '', quantity_requested: 5, unit: 'pcs', category: 'Reagents', remarks: '', inventory_ref_id: null }]
   });
 
   // ── Load All Data ──────────────────────────────────────────────────────────
@@ -192,11 +209,12 @@ export default function LabStockOfficerDashboard() {
     else setLoading(true);
 
     try {
-      const [invRes, storageRes, analyzerRes, reqRes] = await Promise.allSettled([
+      const [invRes, storageRes, analyzerRes, reqRes, genStockRes] = await Promise.allSettled([
         getInhandInventory(),
         getStorageUnits(),
         getAnalyzers(),
-        getLabRequisitions({ limit: 50 })
+        getLabRequisitions({ limit: 50 }),
+        getGeneralStockLabItems()
       ]);
 
       if (invRes.status === 'fulfilled' && invRes.value.data?.success) {
@@ -210,6 +228,9 @@ export default function LabStockOfficerDashboard() {
       }
       if (reqRes.status === 'fulfilled' && reqRes.value.data?.success) {
         setRequisitions(reqRes.value.data.data || []);
+      }
+      if (genStockRes.status === 'fulfilled' && genStockRes.value.data?.success) {
+        setGeneralStockItems(genStockRes.value.data.data || []);
       }
     } catch (err) {
       console.error('Failed to load lab stock data:', err);
@@ -317,6 +338,42 @@ export default function LabStockOfficerDashboard() {
     if (storageTabType === 'all') return storageUnits;
     return storageUnits.filter(u => u.type === storageTabType);
   }, [storageUnits, storageTabType]);
+
+  // ── Filtered General Stock Laboratory Items (Tab 5) ─────────────────────────
+  const filteredGeneralStock = useMemo(() => {
+    let list = generalStockItems;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(item =>
+        item.name?.toLowerCase().includes(q) ||
+        item.sku?.toLowerCase().includes(q) ||
+        item.category?.toLowerCase().includes(q)
+      );
+    }
+    if (categoryFilter !== 'all') {
+      list = list.filter(item => item.category === categoryFilter);
+    }
+    return list;
+  }, [generalStockItems, searchQuery, categoryFilter]);
+
+  // ── Handler: Pre-fill & open requisition for Central Store item ───────────────
+  const handleRequisitionFromCentralStore = (item) => {
+    setReqForm({
+      notes: `Requisition to General Stock Manager for ${item.name} (${item.sku || 'SKU N/A'})`,
+      urgency: 'Medium',
+      stock_source: 'general_stock',
+      requesting_unit: 'General Laboratory',
+      items: [{
+        item_name: item.name,
+        quantity_requested: 1,
+        unit: item.unit_of_measure || 'pcs',
+        category: item.category || 'Reagents',
+        inventory_ref_id: item.id || null,
+        remarks: `SKU: ${item.sku || 'N/A'}, Central Store Balance: ${item.central_store_quantity}`
+      }]
+    });
+    setIsReqModalOpen(true);
+  };
 
   // ── Handler: Open Add/Edit Item Modal ─────────────────────────────────────────
   const handleOpenAddModal = () => {
@@ -490,7 +547,10 @@ export default function LabStockOfficerDashboard() {
   const handleAddReqItem = () => {
     setReqForm(prev => ({
       ...prev,
-      items: [...prev.items, { item_name: '', quantity_requested: 5, unit: 'kits', remarks: '' }]
+      items: [
+        ...prev.items,
+        { item_name: '', quantity_requested: 1, unit: 'pcs', category: 'Reagents', remarks: '', inventory_ref_id: null }
+      ]
     }));
   };
 
@@ -509,31 +569,56 @@ export default function LabStockOfficerDashboard() {
     });
   };
 
+  const handleStepQuantity = (index, delta) => {
+    setReqForm(prev => {
+      const items = [...prev.items];
+      const current = Number(items[index].quantity_requested) || 1;
+      const nextVal = Math.max(1, current + delta);
+      items[index] = { ...items[index], quantity_requested: nextVal };
+      return { ...prev, items };
+    });
+  };
+
   const handleSubmitRequisition = async (e) => {
     e.preventDefault();
-    const validItems = reqForm.items.filter(i => i.item_name.trim());
+    const validItems = reqForm.items.filter(i => i.item_name && i.item_name.trim());
     if (validItems.length === 0) {
-      toast.error('Please specify at least one reagent or item to request.');
+      toast.error('Please specify at least one reagent or consumable item to request.');
       return;
     }
 
     try {
       setSubmittingReq(true);
       const payload = {
-        department: 'Laboratory',
+        requesting_unit: reqForm.requesting_unit || 'General Laboratory',
+        urgency: reqForm.urgency || 'Medium',
         notes: reqForm.notes || 'Routine Laboratory Reagent & Consumable Replenishment',
-        urgency: reqForm.urgency,
-        items: validItems
+        stock_source: reqForm.stock_source || 'general_stock',
+        items: validItems.map(it => ({
+          item_name: it.item_name.trim(),
+          item_category: it.category || 'Reagents',
+          unit_of_measure: it.unit || 'pcs',
+          requested_quantity: Math.max(1, Number(it.quantity_requested) || 1),
+          inventory_ref_id: it.inventory_ref_id || null,
+          notes: it.remarks || null
+        }))
       };
 
-      const res = await createLabRequisition(payload);
+      const res = await createUnitRequisition(payload);
       if (res.data?.success) {
-        toast.success('Laboratory replenishment requisition submitted to Central Store.');
+        const refNo = res.data.ref_number || '';
+        toast.success(
+          reqForm.stock_source === 'general_stock'
+            ? `Requisition ${refNo} forwarded directly to General Stock Manager!`
+            : `Laboratory internal requisition ${refNo} created!`
+        );
         setIsReqModalOpen(false);
         setReqForm({
           notes: '',
           urgency: 'Medium',
-          items: [{ item_name: '', quantity_requested: 5, unit: 'kits', remarks: '' }]
+          stock_source: 'general_stock',
+          requesting_unit: 'General Laboratory',
+          items: [{ item_name: '', quantity_requested: 5, unit: 'pcs', category: 'Reagents', remarks: '', inventory_ref_id: null }]
         });
         fetchAllData(true);
       }
@@ -606,7 +691,7 @@ export default function LabStockOfficerDashboard() {
         <div>
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-              MoH Rwanda Standard • ISO 15189
+
             </span>
             <span className="text-slate-300">•</span>
             <span className="text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
@@ -615,6 +700,10 @@ export default function LabStockOfficerDashboard() {
             <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Duty: Lab stock Manager
+            </span>
+            <span className="text-[11px] font-mono font-bold text-amber-900 bg-amber-50 px-2.5 py-0.5 rounded border border-amber-300 flex items-center gap-1.5 shadow-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
+              Control No: LEG/PATHLAB/MSD/FM-12-VERS-004
             </span>
           </div>
 
@@ -726,8 +815,8 @@ export default function LabStockOfficerDashboard() {
           <button
             onClick={() => setActiveTab('inventory')}
             className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-2 ${activeTab === 'inventory'
-                ? 'bg-[#1B669E] text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              ? 'bg-[#1B669E] text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
           >
             <Package size={14} />
@@ -737,8 +826,8 @@ export default function LabStockOfficerDashboard() {
           <button
             onClick={() => setActiveTab('analyzers')}
             className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-2 ${activeTab === 'analyzers'
-                ? 'bg-[#1B669E] text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              ? 'bg-[#1B669E] text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
           >
             <Cpu size={14} />
@@ -748,8 +837,8 @@ export default function LabStockOfficerDashboard() {
           <button
             onClick={() => setActiveTab('cold_chain')}
             className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-2 ${activeTab === 'cold_chain'
-                ? 'bg-[#1B669E] text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              ? 'bg-[#1B669E] text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
           >
             <Refrigerator size={14} />
@@ -759,12 +848,23 @@ export default function LabStockOfficerDashboard() {
           <button
             onClick={() => setActiveTab('requisitions')}
             className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-2 ${activeTab === 'requisitions'
-                ? 'bg-[#1B669E] text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              ? 'bg-[#1B669E] text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
           >
             <ClipboardList size={14} />
             <span>Unit Requisitions ({requisitions.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('general_stock')}
+            className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-2 ${activeTab === 'general_stock'
+              ? 'bg-[#1B669E] text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+          >
+            <Database size={14} />
+            <span>General Stock Lab Items ({filteredGeneralStock.length})</span>
           </button>
         </div>
 
@@ -952,7 +1052,7 @@ export default function LabStockOfficerDashboard() {
                           <td className="py-3.5 px-4">
                             <div className="flex items-center gap-2.5">
                               <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isStockout ? 'bg-rose-50 text-rose-700' :
-                                  isLow ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600'
+                                isLow ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600'
                                 }`}>
                                 <Package size={15} />
                               </div>
@@ -1005,7 +1105,7 @@ export default function LabStockOfficerDashboard() {
                             <div className="w-36 mx-auto space-y-1">
                               <div className="flex items-center justify-between text-[11px] font-mono">
                                 <span className={`font-bold ${isStockout ? 'text-rose-600' :
-                                    isLow ? 'text-amber-700' : 'text-slate-800'
+                                  isLow ? 'text-amber-700' : 'text-slate-800'
                                   }`}>
                                   {qty} {item.unit_of_measure}
                                 </span>
@@ -1016,7 +1116,7 @@ export default function LabStockOfficerDashboard() {
                               <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
                                 <div
                                   className={`h-full rounded-full transition-all ${isStockout ? 'bg-rose-500 w-full' :
-                                      isLow ? 'bg-amber-500' : 'bg-[#1B669E]'
+                                    isLow ? 'bg-amber-500' : 'bg-[#1B669E]'
                                     }`}
                                   style={{ width: `${Math.max(5, percentage)}%` }}
                                 />
@@ -1027,8 +1127,8 @@ export default function LabStockOfficerDashboard() {
                           {/* Stock Status */}
                           <td className="py-3.5 px-4 text-center">
                             <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${isStockout ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                                isLow ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                                  'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              isLow ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                'bg-emerald-50 text-emerald-700 border-emerald-200'
                               }`}>
                               {isStockout ? 'Depleted' : isLow ? 'Low Stock' : 'Adequate'}
                             </span>
@@ -1228,8 +1328,8 @@ export default function LabStockOfficerDashboard() {
               <button
                 onClick={() => setStorageTabType('all')}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${storageTabType === 'all'
-                    ? 'bg-[#1B669E] text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  ? 'bg-[#1B669E] text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
               >
                 All Storage Units ({storageUnits.length})
@@ -1237,8 +1337,8 @@ export default function LabStockOfficerDashboard() {
               <button
                 onClick={() => setStorageTabType('fridge')}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${storageTabType === 'fridge'
-                    ? 'bg-[#1B669E] text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  ? 'bg-[#1B669E] text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
               >
                 <Refrigerator size={13} />
@@ -1247,8 +1347,8 @@ export default function LabStockOfficerDashboard() {
               <button
                 onClick={() => setStorageTabType('room_temp')}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${storageTabType === 'room_temp'
-                    ? 'bg-[#1B669E] text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  ? 'bg-[#1B669E] text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
               >
                 <Thermometer size={13} />
@@ -1257,8 +1357,8 @@ export default function LabStockOfficerDashboard() {
               <button
                 onClick={() => setStorageTabType('freezer')}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${storageTabType === 'freezer'
-                    ? 'bg-[#1B669E] text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  ? 'bg-[#1B669E] text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
               >
                 <Snowflake size={13} />
@@ -1296,7 +1396,7 @@ export default function LabStockOfficerDashboard() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2.5">
                         <div className={`p-2.5 rounded-lg ${isFridge ? 'bg-sky-50 text-sky-700' :
-                            isFreezer ? 'bg-indigo-50 text-indigo-700' : 'bg-amber-50 text-amber-700'
+                          isFreezer ? 'bg-indigo-50 text-indigo-700' : 'bg-amber-50 text-amber-700'
                           }`}>
                           {isFridge ? <Refrigerator size={18} /> :
                             isFreezer ? <Snowflake size={18} /> : <Thermometer size={18} />}
@@ -1377,6 +1477,166 @@ export default function LabStockOfficerDashboard() {
       {activeTab === 'requisitions' && (
         <div className="space-y-4">
           <LabRequisitionHub embedded={true} />
+        </div>
+      )}
+
+      {/* ── TAB 5: GENERAL STOCK LABORATORY ITEMS ── */}
+      {activeTab === 'general_stock' && (
+        <div className="space-y-4">
+          {/* Institutional Info Banner */}
+          <div className="bg-white p-4 rounded-xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-xl bg-teal-50 border border-teal-200 text-teal-800">
+                <Database size={20} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Central Store Laboratory Inventory (General Stock)
+                  </h3>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-teal-100 text-teal-900 border border-teal-200">
+                    Strictly Department: LABORATORY
+                  </span>
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-300">
+                    LEG/PATHLAB/MSD/FM-12-VERS-004
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Live stock levels held at Central Store for Laboratory consumables &amp; reagents. Laboratory Stock Manager can make direct requisitions to the General Stock Manager.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setReqForm({
+                    notes: 'Requisition for General Store Laboratory Items',
+                    urgency: 'Medium',
+                    stock_source: 'general_stock',
+                    items: [{ item_name: '', quantity_requested: 5, unit: 'pcs', remarks: '' }]
+                  });
+                  setIsReqModalOpen(true);
+                }}
+                className="px-3.5 py-2 rounded-lg bg-[#1B669E] hover:bg-[#155280] text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
+              >
+                <Send size={13} />
+                <span>New Requisition to GM</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Search & Filter Controls */}
+          <div className="bg-white p-3.5 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+            <div className="relative w-full sm:w-80">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+              <input
+                type="text"
+                placeholder="Search SKU, item name, or specs..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#1B669E] focus:border-[#1B669E] text-slate-800"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <span className="text-[11px] text-slate-400 font-medium">
+                Showing {filteredGeneralStock.length} items
+              </span>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-700">
+                <thead className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-500 font-bold">
+                  <tr>
+                    <th className="py-3 px-4">SKU / Code</th>
+                    <th className="py-3 px-4">Item Name &amp; Description</th>
+                    <th className="py-3 px-4">Category</th>
+                    <th className="py-3 px-4">Storage / Unit</th>
+                    <th className="py-3 px-4 text-right">Central Store Qty</th>
+                    <th className="py-3 px-4 text-center">Batch / Expiry</th>
+                    <th className="py-3 px-4 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-normal">
+                  {filteredGeneralStock.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-slate-400 text-xs">
+                        No Laboratory items found in General Stock matching filter.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredGeneralStock.map((item) => {
+                      const qty = Number(item.central_store_quantity) || 0;
+                      const hasStock = qty > 0;
+
+                      return (
+                        <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-3 px-4 font-mono font-bold text-slate-700 text-[11px]">
+                            {item.sku || `ITEM-${item.id}`}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="font-bold text-slate-900">{item.name}</div>
+                            {item.description && (
+                              <div className="text-[11px] text-slate-500 line-clamp-1">{item.description}</div>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                              {item.category || 'General'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-slate-600 font-medium">
+                              {item.storage_type || 'Standard'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <span className="font-bold text-sm text-slate-900">
+                                {qty}
+                              </span>
+                              <span className="text-[11px] text-slate-500 font-medium">
+                                {item.unit_of_measure || 'units'}
+                              </span>
+                              <span className={`w-2 h-2 rounded-full ml-1 ${hasStock ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            {item.active_batches && item.active_batches.length > 0 ? (
+                              <div className="text-[11px]">
+                                <span className="font-mono text-slate-700 font-semibold">{item.active_batches[0].batch_number}</span>
+                                {item.active_batches[0].expiry_date && (
+                                  <span className="text-slate-400 ml-1">
+                                    (Exp: {item.active_batches[0].expiry_date.split('T')[0]})
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-slate-400 text-[11px]">Standard Batch</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <button
+                              onClick={() => handleRequisitionFromCentralStore(item)}
+                              className="px-2.5 py-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 font-semibold text-[11px] flex items-center gap-1 mx-auto transition-colors"
+                              title="Create Requisition to General Stock Manager"
+                            >
+                              <Send size={12} />
+                              <span>Requisition</span>
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1574,8 +1834,8 @@ export default function LabStockOfficerDashboard() {
                     type="button"
                     onClick={() => setAdjustForm({ ...adjustForm, change_type: 'deduct' })}
                     className={`py-2 text-xs font-semibold rounded-lg border transition-colors ${adjustForm.change_type === 'deduct'
-                        ? 'bg-rose-50 border-rose-300 text-rose-700'
-                        : 'bg-white border-slate-200 text-slate-600'
+                      ? 'bg-rose-50 border-rose-300 text-rose-700'
+                      : 'bg-white border-slate-200 text-slate-600'
                       }`}
                   >
                     - Deduct / Consume
@@ -1584,8 +1844,8 @@ export default function LabStockOfficerDashboard() {
                     type="button"
                     onClick={() => setAdjustForm({ ...adjustForm, change_type: 'add' })}
                     className={`py-2 text-xs font-semibold rounded-lg border transition-colors ${adjustForm.change_type === 'add'
-                        ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
-                        : 'bg-white border-slate-200 text-slate-600'
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                      : 'bg-white border-slate-200 text-slate-600'
                       }`}
                   >
                     + Add / Receive
@@ -1736,124 +1996,479 @@ export default function LabStockOfficerDashboard() {
 
       {/* ── MODAL: New Lab Requisition ── */}
       {isReqModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-2xl overflow-hidden my-8">
-            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/60">
-              <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                <ClipboardList className="text-[#1B669E]" size={16} />
-                Create Laboratory Requisition
-              </h3>
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xl w-full max-w-4xl overflow-hidden my-auto flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-[#1B669E] via-[#145382] to-[#0f3e62] px-6 py-4 text-white flex items-center justify-between shadow-sm flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-inner flex-shrink-0">
+                  <ClipboardList size={20} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-bold text-base text-white tracking-tight leading-tight">
+                      Create Laboratory Requisition
+                    </h3>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-400/20 text-amber-200 border border-amber-400/30 backdrop-blur-md">
+                      <ShieldCheck size={12} className="text-amber-300" />
+                      Control No: LEG/PATHLAB/MSD/FM-12-VERS-004
+                    </span>
+                  </div>
+                  <p className="text-xs text-sky-100/90 mt-0.5">
+                    ISO 15189:2022 Pathology Diagnostic &amp; Material Management System
+                  </p>
+                </div>
+              </div>
               <button
+                type="button"
                 onClick={() => setIsReqModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+                className="text-white/70 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-colors"
+                title="Close modal"
               >
-                <X size={16} />
+                <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmitRequisition} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">Originating Department</label>
-                  <input
-                    type="text"
-                    disabled
-                    value="Laboratory"
-                    className="w-full px-3 py-2 text-xs bg-slate-100 border border-slate-200 rounded-lg text-slate-600 font-semibold"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">Priority / Urgency</label>
-                  <select
-                    value={reqForm.urgency}
-                    onChange={(e) => setReqForm({ ...reqForm, urgency: e.target.value })}
-                    className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#1B669E] focus:border-[#1B669E] text-slate-800"
+            {/* Form Body - Scrollable */}
+            <form onSubmit={handleSubmitRequisition} className="p-6 overflow-y-auto space-y-5 flex-1 text-slate-800">
+              
+              {/* Channel / Stock Source Selector */}
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-2 uppercase tracking-wider">
+                  Requisition Supply Channel
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {/* Central Store Card */}
+                  <div
+                    onClick={() => setReqForm({ ...reqForm, stock_source: 'general_stock' })}
+                    className={`cursor-pointer rounded-xl border p-4 transition-all duration-150 flex items-start gap-3.5 ${
+                      reqForm.stock_source === 'general_stock'
+                        ? 'border-[#1B669E] bg-sky-50/70 ring-2 ring-[#1B669E]/30 shadow-xs'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'
+                    }`}
                   >
-                    <option value="Low">Low (Buffer Stock)</option>
-                    <option value="Medium">Medium (Routine Replenishment)</option>
-                    <option value="High">High (Impending Stockout)</option>
-                    <option value="Emergency">Emergency (Immediate Diagnostic Halt)</option>
-                  </select>
+                    <div className={`p-2.5 rounded-lg flex-shrink-0 ${
+                      reqForm.stock_source === 'general_stock' ? 'bg-[#1B669E] text-white shadow-xs' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      <Building2 size={20} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <span className="font-bold text-xs text-slate-900">Central Store (General Stock)</span>
+                        {reqForm.stock_source === 'general_stock' && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#1B669E] bg-white px-2 py-0.5 rounded-full border border-sky-200 shadow-2xs">
+                            <Check size={11} /> Selected
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-600 leading-relaxed">
+                        Hospital central warehouse items. Automatically forwarded directly to General Stock Manager for fulfillment.
+                      </p>
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="inline-block text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                          {generalStockItems.length} Catalog Items Avail
+                        </span>
+                        <span className="text-[10px] font-semibold text-slate-500">
+                          Routes: External Store
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Lab In-Hand Buffer Card */}
+                  <div
+                    onClick={() => setReqForm({ ...reqForm, stock_source: 'lab_stock' })}
+                    className={`cursor-pointer rounded-xl border p-4 transition-all duration-150 flex items-start gap-3.5 ${
+                      reqForm.stock_source === 'lab_stock'
+                        ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-600/30 shadow-xs'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'
+                    }`}
+                  >
+                    <div className={`p-2.5 rounded-lg flex-shrink-0 ${
+                      reqForm.stock_source === 'lab_stock' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      <Package size={20} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <span className="font-bold text-xs text-slate-900">Lab In-Hand Reagent Buffer</span>
+                        {reqForm.stock_source === 'lab_stock' && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-white px-2 py-0.5 rounded-full border border-emerald-200 shadow-2xs">
+                            <Check size={11} /> Selected
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-600 leading-relaxed">
+                        Internal pathology buffer allocation between laboratory benches, analyzers, cold rooms, and testing stations.
+                      </p>
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="inline-block text-[10px] font-bold text-indigo-800 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                          {inventory.length} In-Hand Batches
+                        </span>
+                        <span className="text-[10px] font-semibold text-slate-500">
+                          Routes: Internal Lab
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
+              {/* Bench Destination & Urgency Priority */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50/80 p-4 rounded-xl border border-slate-200/90">
+                {/* Requesting Bench / Unit */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1.5 flex items-center justify-between">
+                    <span>Requesting Bench / Pathology Unit</span>
+                    <span className="text-[10px] font-normal text-slate-400">Target Receiving Bench</span>
+                  </label>
+                  <select
+                    value={reqForm.requesting_unit}
+                    onChange={(e) => setReqForm({ ...reqForm, requesting_unit: e.target.value })}
+                    className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30 focus:border-[#1B669E] font-medium text-slate-800 shadow-2xs"
+                  >
+                    <option value="General Laboratory">General Laboratory (Central Lab Hub)</option>
+                    {LAB_DISCIPLINES.map(d => (
+                      <option key={d} value={d}>{d} Department / Bench</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Priority / Urgency Segmented Pills */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1.5 flex items-center justify-between">
+                    <span>Clinical Priority Level</span>
+                    <span className="text-[10px] font-normal text-slate-400">Turnaround Requirement</span>
+                  </label>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {[
+                      { val: 'Low', label: 'Low', desc: 'Buffer', color: 'hover:border-slate-300', active: 'bg-slate-100 text-slate-800 border-slate-400 ring-1 ring-slate-400 font-bold' },
+                      { val: 'Medium', label: 'Medium', desc: 'Routine', color: 'hover:border-sky-300', active: 'bg-sky-50 text-[#1B669E] border-sky-400 ring-1 ring-sky-400 font-bold' },
+                      { val: 'High', label: 'High', desc: 'Urgent', color: 'hover:border-amber-300', active: 'bg-amber-50 text-amber-900 border-amber-400 ring-1 ring-amber-400 font-bold' },
+                      { val: 'Emergency', label: 'STAT Alert', desc: 'Critical', color: 'hover:border-rose-300', active: 'bg-rose-50 text-rose-700 border-rose-500 ring-1 ring-rose-500 font-bold' }
+                    ].map(p => (
+                      <button
+                        key={p.val}
+                        type="button"
+                        onClick={() => setReqForm({ ...reqForm, urgency: p.val })}
+                        className={`px-2 py-1.5 text-center rounded-lg border text-xs transition-all ${
+                          reqForm.urgency === p.val
+                            ? p.active
+                            : `bg-white text-slate-600 border-slate-200 ${p.color}`
+                        }`}
+                      >
+                        <div className="font-semibold text-[11px] leading-tight">{p.label}</div>
+                        <div className="text-[9px] opacity-75">{p.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Justification & Quick Motive Chips */}
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">Order Justification</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    Order Justification &amp; Clinical Motive
+                  </label>
+                  <span className="text-[10px] text-slate-400">Required for ISO 15189 material audit trail</span>
+                </div>
                 <textarea
                   rows="2"
                   value={reqForm.notes}
                   onChange={(e) => setReqForm({ ...reqForm, notes: e.target.value })}
-                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#1B669E] focus:border-[#1B669E] text-slate-800"
+                  placeholder="State justification (e.g. routine bench replenishment, analyzer volume surge, impending buffer stockout)..."
+                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30 focus:border-[#1B669E] text-slate-800 placeholder-slate-400 shadow-2xs"
                 />
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-700">Requested Items &amp; Quantities</label>
-                  <button
-                    type="button"
-                    onClick={handleAddReqItem}
-                    className="text-xs font-semibold text-[#1B669E] hover:underline"
-                  >
-                    + Add Item Line
-                  </button>
-                </div>
-
-                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                  {reqForm.items.map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 border border-slate-200 text-xs">
-                      <input
-                        type="text"
-                        value={item.item_name}
-                        onChange={(e) => handleReqItemChange(idx, 'item_name', e.target.value)}
-                        className="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-[#1B669E]"
-                      />
-                      <input
-                        type="number"
-                        min="1"
-                        value={item.quantity_requested}
-                        onChange={(e) => handleReqItemChange(idx, 'quantity_requested', Number(e.target.value))}
-                        className="w-16 px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:border-[#1B669E]"
-                      />
-                      <select
-                        value={item.unit}
-                        onChange={(e) => handleReqItemChange(idx, 'unit', e.target.value)}
-                        className="w-24 px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-[#1B669E]"
-                      >
-                        {UOM_OPTIONS.map(u => (
-                          <option key={u} value={u}>{u}</option>
-                        ))}
-                      </select>
-                      {reqForm.items.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveReqItem(idx)}
-                          className="text-slate-400 hover:text-rose-600 p-1"
-                        >
-                          <X size={15} />
-                        </button>
-                      )}
-                    </div>
+                
+                {/* 1-Click Justification Presets */}
+                <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                  <span className="text-[10px] font-semibold text-slate-500 flex items-center gap-1">
+                    <Sparkles size={11} className="text-amber-500" /> Quick Motive:
+                  </span>
+                  {REQ_JUSTIFICATION_PRESETS.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => {
+                        const current = reqForm.notes.trim();
+                        if (!current) {
+                          setReqForm({ ...reqForm, notes: preset });
+                        } else if (!current.includes(preset)) {
+                          setReqForm({ ...reqForm, notes: `${current}; ${preset}` });
+                        }
+                      }}
+                      className="text-[10px] font-medium bg-slate-100 hover:bg-sky-50 hover:text-[#1B669E] hover:border-sky-300 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200 transition-colors"
+                    >
+                      + {preset}
+                    </button>
                   ))}
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-100 flex justify-end gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setIsReqModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submittingReq}
-                  className="px-4 py-2 text-xs font-semibold text-white bg-[#1B669E] hover:bg-[#155280] rounded-lg transition-colors shadow-xs disabled:opacity-50"
-                >
-                  {submittingReq ? 'Submitting...' : 'Submit Requisition'}
-                </button>
+              {/* Items Line Builder */}
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between pb-1 border-b border-slate-200">
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                      Requested Items &amp; Quantities
+                    </label>
+                    <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                      {reqForm.items.length} item{reqForm.items.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddReqItem}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1B669E] bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-lg border border-sky-200 transition-colors shadow-2xs"
+                  >
+                    <Plus size={14} /> Add Item Line
+                  </button>
+                </div>
+
+                {/* Datalist for fast item suggestions */}
+                <datalist id="generalStockLabList">
+                  {generalStockItems.map(it => (
+                    <option key={it.id} value={it.name}>
+                      {it.sku ? `[${it.sku}] ` : ''}(Central Store Bal: {it.central_store_quantity} {it.unit_of_measure})
+                    </option>
+                  ))}
+                </datalist>
+
+                <datalist id="inhandLabList">
+                  {inventory.map(it => (
+                    <option key={it.id} value={it.item_name}>
+                      ({it.department} · In-Hand: {it.quantity_in_hand} {it.unit})
+                    </option>
+                  ))}
+                </datalist>
+
+                {/* Items Line List */}
+                <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                  {reqForm.items.map((item, idx) => {
+                    // Match item in catalog to show real-time stock
+                    const matchedGen = generalStockItems.find(
+                      g => g.name.toLowerCase() === (item.item_name || '').toLowerCase()
+                    );
+                    const matchedInv = inventory.find(
+                      inv => (inv.item_name || '').toLowerCase() === (item.item_name || '').toLowerCase()
+                    );
+
+                    return (
+                      <div
+                        key={idx}
+                        className="p-3 rounded-xl bg-slate-50/90 border border-slate-200/90 shadow-2xs hover:border-slate-300 transition-all space-y-2.5"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[11px] font-mono font-bold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200 shadow-2xs">
+                            Line #{idx + 1}
+                          </span>
+
+                          {/* Live Balance Indicator Badge */}
+                          {reqForm.stock_source === 'general_stock' && matchedGen && (
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                              matchedGen.central_store_quantity > 0
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                : 'bg-rose-50 text-rose-700 border-rose-300'
+                            }`}>
+                              Central Store Balance: {matchedGen.central_store_quantity} {matchedGen.unit_of_measure}
+                              {matchedGen.central_store_quantity === 0 ? ' (Stockout)' : ''}
+                            </span>
+                          )}
+
+                          {reqForm.stock_source === 'lab_stock' && matchedInv && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded border bg-indigo-50 text-indigo-800 border-indigo-200">
+                              Lab In-Hand: {matchedInv.quantity_in_hand} {matchedInv.unit} ({matchedInv.department || 'Lab'})
+                            </span>
+                          )}
+
+                          {reqForm.items.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveReqItem(idx)}
+                              className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-1 rounded-md transition-colors"
+                              title="Delete line"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Line inputs grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 text-xs">
+                          {/* Item Name / Catalog Select */}
+                          <div className="sm:col-span-5">
+                            <input
+                              type="text"
+                              list={reqForm.stock_source === 'general_stock' ? 'generalStockLabList' : 'inhandLabList'}
+                              placeholder={
+                                reqForm.stock_source === 'general_stock'
+                                  ? 'Type or select Lab item name from Central Store...'
+                                  : 'Type or select reagent name...'
+                              }
+                              value={item.item_name}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                handleReqItemChange(idx, 'item_name', val);
+
+                                if (reqForm.stock_source === 'general_stock') {
+                                  const matched = generalStockItems.find(g => g.name.toLowerCase() === val.toLowerCase());
+                                  if (matched) {
+                                    if (matched.unit_of_measure) handleReqItemChange(idx, 'unit', matched.unit_of_measure);
+                                    if (matched.category) handleReqItemChange(idx, 'category', matched.category);
+                                    if (matched.id) handleReqItemChange(idx, 'inventory_ref_id', matched.id);
+                                    if (!item.remarks) {
+                                      handleReqItemChange(idx, 'remarks', `SKU: ${matched.sku || 'N/A'}, Central Store Bal: ${matched.central_store_quantity}`);
+                                    }
+                                  }
+                                } else {
+                                  const matched = inventory.find(inv => (inv.item_name || '').toLowerCase() === val.toLowerCase());
+                                  if (matched) {
+                                    if (matched.unit) handleReqItemChange(idx, 'unit', matched.unit);
+                                    if (matched.category) handleReqItemChange(idx, 'category', matched.category);
+                                    if (matched.id) handleReqItemChange(idx, 'inventory_ref_id', matched.id);
+                                  }
+                                }
+                              }}
+                              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30 focus:border-[#1B669E] shadow-2xs"
+                            />
+                          </div>
+
+                          {/* Category */}
+                          <div className="sm:col-span-3">
+                            <select
+                              value={item.category || 'Reagents'}
+                              onChange={(e) => handleReqItemChange(idx, 'category', e.target.value)}
+                              className="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30 focus:border-[#1B669E] shadow-2xs"
+                            >
+                              {REAGENT_CATEGORIES.map(c => (
+                                <option key={c} value={c}>{c}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Quantity Stepper */}
+                          <div className="sm:col-span-2">
+                            <div className="flex items-center rounded-lg border border-slate-300 bg-white overflow-hidden shadow-2xs">
+                              <button
+                                type="button"
+                                onClick={() => handleStepQuantity(idx, -1)}
+                                className="px-2 py-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                                title="Decrease"
+                              >
+                                <Minus size={12} />
+                              </button>
+                              <input
+                                type="number"
+                                min="1"
+                                value={item.quantity_requested}
+                                onChange={(e) => handleReqItemChange(idx, 'quantity_requested', Math.max(1, Number(e.target.value) || 1))}
+                                className="w-full text-center py-1.5 font-bold text-xs text-slate-900 focus:outline-none"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleStepQuantity(idx, 1)}
+                                className="px-2 py-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                                title="Increase"
+                              >
+                                <Plus size={12} />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Unit of Measure */}
+                          <div className="sm:col-span-2">
+                            <select
+                              value={item.unit}
+                              onChange={(e) => handleReqItemChange(idx, 'unit', e.target.value)}
+                              className="w-full px-2 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30 focus:border-[#1B669E] shadow-2xs"
+                            >
+                              {UOM_OPTIONS.map(u => (
+                                <option key={u} value={u}>{u}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Specs / Remarks row */}
+                        <div>
+                          <input
+                            type="text"
+                            placeholder="Specifications, brand preference, lot reference, or bench purpose..."
+                            value={item.remarks}
+                            onChange={(e) => handleReqItemChange(idx, 'remarks', e.target.value)}
+                            className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[11px] text-slate-700 placeholder-slate-400 focus:outline-none focus:border-[#1B669E]"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Summary Bar */}
+              <div className="p-3.5 rounded-xl bg-slate-100/90 border border-slate-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-500 font-medium">Requisition Total:</span>
+                    <span className="font-bold text-slate-900 bg-white px-2.5 py-0.5 rounded border border-slate-200 shadow-2xs">
+                      {reqForm.items.filter(i => i.item_name && i.item_name.trim()).length} line(s) · {reqForm.items.reduce((acc, curr) => acc + (Number(curr.quantity_requested) || 0), 0)} units
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-500 font-medium">Target Channel:</span>
+                    <span className={`font-bold px-2 py-0.5 rounded border text-[11px] ${
+                      reqForm.stock_source === 'general_stock'
+                        ? 'bg-blue-50 text-[#1B669E] border-blue-200'
+                        : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                    }`}>
+                      {reqForm.stock_source === 'general_stock'
+                        ? 'General Stock Manager (Central Store)'
+                        : 'Laboratory In-Hand Buffer (Internal)'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="text-[10px] font-mono text-slate-500 font-semibold">
+                  ISO 15189 | Doc: LEG/PATHLAB/MSD/FM-12-VERS-004
+                </div>
+              </div>
+
+              {/* Form Action Footer */}
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-between gap-3">
+                <span className="text-[11px] text-slate-500 hidden sm:inline">
+                  {reqForm.stock_source === 'general_stock'
+                    ? 'Requisition will be placed in Forwarded state for immediate Central Store dispatch.'
+                    : 'Requisition will log into the laboratory internal material registry.'}
+                </span>
+
+                <div className="flex items-center gap-2.5 ml-auto">
+                  <button
+                    type="button"
+                    onClick={() => setIsReqModalOpen(false)}
+                    className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl transition-colors shadow-2xs"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submittingReq}
+                    className="px-5 py-2 text-xs font-bold text-white bg-gradient-to-r from-[#1B669E] to-[#145382] hover:from-[#155280] hover:to-[#0f3e62] rounded-xl transition-all shadow-md hover:shadow-lg disabled:opacity-50 inline-flex items-center gap-2"
+                  >
+                    {submittingReq ? (
+                      <>
+                        <RefreshCw size={14} className="animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <Send size={14} />
+                        Submit Laboratory Requisition
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

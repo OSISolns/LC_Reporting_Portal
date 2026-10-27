@@ -1,6 +1,16 @@
 'use strict';
 const db = require('../config/db');
 
+async function getValidFk(table, id) {
+  if (!id || !Number.isInteger(Number(id)) || Number(id) <= 0) return null;
+  try {
+    const { rows } = await db.query(`SELECT id FROM ${table} WHERE id = ?`, [Number(id)]);
+    return (rows && rows.length > 0) ? rows[0].id : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 class Refund {
   static async create(data, userId) {
     const {
@@ -68,6 +78,12 @@ class Refund {
     };
     const cleanAmount = (a) => (a !== undefined && a !== null && a.toString().trim() !== '' ? a : null);
 
+    const [validProviderId, validCreatedBy, validBilledBy] = await Promise.all([
+      getValidFk('providers', selectedProviderId),
+      getValidFk('users', userId),
+      getValidFk('users', billedBy),
+    ]);
+
     const { rows } = await db.query(
       `INSERT INTO refund_requests (
         patient_full_name, pid_number, sid_number,
@@ -84,8 +100,8 @@ class Refund {
         momoCode, cleanAmount(totalAmountPaid), cleanAmount(amountToBeRefunded),
         amountPaidBy, originalReceiptNumber,
         cleanDate(initialTransactionDate), reasonForRefund,
-        userId, initialStatus, billedBy || null, selectedService,
-        selectedProviderId ? parseInt(selectedProviderId, 10) : null, selectedProviderName
+        validCreatedBy, initialStatus, validBilledBy, selectedService,
+        validProviderId, selectedProviderName
       ]
     );
     return rows[0];
@@ -133,6 +149,11 @@ class Refund {
     };
     const cleanAmount = (a) => (a && a.toString().trim() !== '' ? a : null);
 
+    const [validProviderId, validBilledBy] = await Promise.all([
+      selectedProviderId !== undefined ? getValidFk('providers', selectedProviderId) : undefined,
+      billedBy !== undefined ? getValidFk('users', billedBy) : undefined,
+    ]);
+
     const { rows } = await db.query(
       `UPDATE refund_requests SET
         patient_full_name = $1,
@@ -147,7 +168,7 @@ class Refund {
         original_receipt_number = $10,
         initial_transaction_date = $11,
         reason_for_refund = $12,
-        billed_by = $13,
+        billed_by = COALESCE($13, billed_by),
         status = COALESCE($14, status),
         service_name = COALESCE($15, service_name),
         provider_id = COALESCE($16, provider_id),
@@ -161,8 +182,8 @@ class Refund {
         momoCode, cleanAmount(totalAmountPaid), cleanAmount(amountToBeRefunded),
         amountPaidBy, originalReceiptNumber,
         cleanDate(initialTransactionDate), reasonForRefund,
-        billedBy || null, data.status || null, selectedService,
-        selectedProviderId ? parseInt(selectedProviderId, 10) : null, selectedProviderName, id
+        validBilledBy || null, data.status || null, selectedService,
+        validProviderId !== undefined ? validProviderId : null, selectedProviderName, id
       ]
     );
     return rows[0];
@@ -274,6 +295,7 @@ class Refund {
   }
 
   static async uploadSupportingDocument(id, fileBase64, fileName, userId) {
+    const validUserId = await getValidFk('users', userId);
     const { rows } = await db.query(
       `UPDATE refund_requests
        SET supporting_document_base64 = $1,
@@ -283,7 +305,7 @@ class Refund {
            updated_at = NOW()
        WHERE id = $4
        RETURNING id, supporting_document_name, supporting_document_uploaded_at, supporting_document_uploaded_by`,
-      [fileBase64, fileName, userId, id]
+      [fileBase64, fileName, validUserId, id]
     );
     return rows[0];
   }
@@ -297,34 +319,37 @@ class Refund {
   }
 
   static async verify(id, userId) {
+    const validUserId = await getValidFk('users', userId);
     const { rows } = await db.query(
       `UPDATE refund_requests
        SET status = 'verified', verified_by = $1, verified_at = NOW(), updated_at = NOW()
        WHERE id = $2 AND status = 'pending'
        RETURNING *`,
-      [userId, id]
+      [validUserId, id]
     );
     return rows[0];
   }
 
   static async approve(id, userId) {
+    const validUserId = await getValidFk('users', userId);
     const { rows } = await db.query(
       `UPDATE refund_requests
        SET status = 'approved', approved_by = $1, approved_at = NOW(), updated_at = NOW()
        WHERE id = $2 AND status = 'verified'
        RETURNING *`,
-      [userId, id]
+      [validUserId, id]
     );
     return rows[0];
   }
 
   static async reject(id, userId, comment) {
+    const validUserId = await getValidFk('users', userId);
     const { rows } = await db.query(
       `UPDATE refund_requests
        SET status = 'rejected', rejected_by = $1, rejection_comment = $2, rejected_at = NOW(), updated_at = NOW()
        WHERE id = $3 AND status IN ('pending','verified')
        RETURNING *`,
-      [userId, comment, id]
+      [validUserId, comment, id]
     );
     return rows[0];
   }

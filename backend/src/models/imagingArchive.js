@@ -259,7 +259,40 @@ class ImagingArchive {
     return rows || [];
   }
 
+  static async getByStudyOrMatch({ studyId, accessionNumber, patientId, modality } = {}) {
+    const conditions = [];
+    const params = [];
+
+    if (studyId && Number(studyId) > 0) {
+      conditions.push('study_id = ?');
+      params.push(Number(studyId));
+    }
+    if (accessionNumber) {
+      conditions.push('(accession_number IS NOT NULL AND accession_number = ?)');
+      params.push(accessionNumber);
+    }
+    if (patientId) {
+      if (modality) {
+        conditions.push('(patient_id = ? AND UPPER(modality) = UPPER(?))');
+        params.push(patientId, modality);
+      } else {
+        conditions.push('patient_id = ?');
+        params.push(patientId);
+      }
+    }
+
+    if (conditions.length === 0) return [];
+
+    const sql = `SELECT * FROM imaging_archives WHERE ${conditions.join(' OR ')} ORDER BY slice_index ASC, created_at ASC`;
+    const { rows } = await db.query(sql, params);
+    return rows || [];
+  }
+
   static async delete(id) {
+    try {
+      await db.query(`UPDATE imaging_shares SET archive_id = NULL WHERE archive_id = ?`, [id]);
+    } catch (_) { }
+
     const { rows } = await db.query(
       `DELETE FROM imaging_archives WHERE id = ? RETURNING id`,
       [id]

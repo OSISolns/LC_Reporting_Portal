@@ -39,4 +39,7 @@ export const addUnitStockItem = (data) => api.post('/lab/unit-stock', data);
 export const consumeUnitStockItem = (id, data) => api.post(`/lab/unit-stock/${id}/consume`, data);
 export const getUnitConsumptionLogs = (params) => api.get('/lab/unit-stock/logs', { params });
 
+// ── General Stock Laboratory Items ──────────────────────────────────────────
+export const getGeneralStockLabItems = (params) => api.get('/lab/general-stock-items', { params });
+
 

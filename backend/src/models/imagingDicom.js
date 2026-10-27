@@ -13,6 +13,9 @@ class ImagingDicom {
   static async linkFromPacs(studyId, studyInstanceUID) {
     if (!dicomweb.isConfigured()) return { error: 'pacs_not_configured' };
 
+    const checkStudy = await db.query('SELECT id FROM imaging_studies WHERE id = ?', [Number(studyId)]);
+    if (!checkStudy.rows || checkStudy.rows.length === 0) return { error: 'invalid_study' };
+
     const series = await dicomweb.fetchSeries(studyInstanceUID);
     if (!series.length) return { error: 'no_series' };
 

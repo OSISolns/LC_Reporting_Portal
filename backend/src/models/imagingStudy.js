@@ -79,6 +79,33 @@ class ImagingStudy {
   // ── Create a study (optionally with an inline order) ────────────────────────
   static async create(data, user) {
     const modality = this.normalizeModality(data.modality);
+
+    // Verify foreign keys to prevent SQLite code 787 FOREIGN KEY constraint failed
+    let validOrderId = null;
+    if (data.order_id && Number.isInteger(Number(data.order_id)) && Number(data.order_id) > 0) {
+      try {
+        const checkOrder = await db.query('SELECT id FROM imaging_orders WHERE id = ?', [Number(data.order_id)]);
+        if (checkOrder.rows && checkOrder.rows.length > 0) validOrderId = checkOrder.rows[0].id;
+      } catch (e) { validOrderId = null; }
+    }
+
+    let validPerformedBy = null;
+    if (data.performed_by && Number.isInteger(Number(data.performed_by)) && Number(data.performed_by) > 0) {
+      try {
+        const checkUser = await db.query('SELECT id FROM users WHERE id = ?', [Number(data.performed_by)]);
+        if (checkUser.rows && checkUser.rows.length > 0) validPerformedBy = checkUser.rows[0].id;
+      } catch (e) { validPerformedBy = null; }
+    }
+
+    let validCreatedBy = null;
+    const uid = user?.id || data.created_by;
+    if (uid && Number.isInteger(Number(uid)) && Number(uid) > 0) {
+      try {
+        const checkUser = await db.query('SELECT id FROM users WHERE id = ?', [Number(uid)]);
+        if (checkUser.rows && checkUser.rows.length > 0) validCreatedBy = checkUser.rows[0].id;
+      } catch (e) { validCreatedBy = null; }
+    }
+
     const { rows } = await db.query(
       `INSERT INTO imaging_studies (
         order_id, accession_number, patient_id, patient_name, modality, sub_unit,
@@ -89,7 +116,7 @@ class ImagingStudy {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
       RETURNING *`,
       [
-        data.order_id || null,
+        validOrderId,
         data.accession_number || null,
         data.patient_id || null,
         data.patient_name || null,
@@ -97,7 +124,7 @@ class ImagingStudy {
         data.sub_unit || (modality ? MODALITY_LABELS[modality] || modality : null),
         data.room || null,
         data.equipment || null,
-        data.performed_by || null,
+        validPerformedBy,
         data.scheduled_at || null,
         data.technical_notes || null,
         JSON.stringify(data.consent || {}),
@@ -110,7 +137,7 @@ class ImagingStudy {
         data.patient_age != null ? String(data.patient_age) : null,
         data.patient_sex || null,
         data.status || 'scheduled',
-        (user && user.id) || null,
+        validCreatedBy,
       ]
     );
     return rows[0];

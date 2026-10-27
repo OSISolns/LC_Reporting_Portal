@@ -216,6 +216,18 @@ export default function LabUnitsHub() {
               </h1>
               <span style={{
                 padding: '3px 10px',
+                borderRadius: '8px',
+                fontSize: '0.72rem',
+                fontFamily: 'monospace',
+                fontWeight: 800,
+                backgroundColor: '#fef3c7',
+                color: '#78350f',
+                border: '1px solid #fcd34d'
+              }}>
+                Control No: LEG/PATHLAB/MSD/FM-12-VERS-004
+              </span>
+              <span style={{
+                padding: '3px 10px',
                 borderRadius: '12px',
                 fontSize: '0.72rem',
                 fontWeight: 700,

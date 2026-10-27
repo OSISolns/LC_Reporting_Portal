@@ -111,7 +111,12 @@ export default function LabManagerDashboard() {
             <FlaskConical className="text-blue-100" size={22} />
           </div>
           <div>
-            <h1 className="text-lg font-bold tracking-tight text-white">Laboratory Manager Dashboard</h1>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-lg font-bold tracking-tight text-white">Laboratory Manager Dashboard</h1>
+              <span className="px-2 py-0.5 bg-amber-400/20 text-amber-200 border border-amber-400/40 rounded font-mono text-[10px] font-bold">
+                Control No: LEG/PATHLAB/MSD/FM-12-VERS-004
+              </span>
+            </div>
             <p className="text-xs text-blue-200/80">Pathology Quality Control &amp; Operational Analytics</p>
           </div>
         </div>

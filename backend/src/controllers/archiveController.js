@@ -138,6 +138,10 @@ async function ensureArchiveTablesExist() {
       )
     `);
     archiveTablesEnsured = true;
+    try {
+      await db.query("ALTER TABLE lab_documents ADD COLUMN control_number TEXT DEFAULT 'LEG/PATHLAB/MSD/FM-12-VERS-004'");
+    } catch (e) {}
+    await db.query("UPDATE lab_documents SET control_number = 'LEG/PATHLAB/MSD/FM-12-VERS-004' WHERE control_number IS NULL OR control_number = ''").catch(() => {});
   } catch (e) {
     console.warn('ensureArchiveTablesExist warning:', e.message);
   }
@@ -155,7 +159,7 @@ exports.listDocuments = async (req, res, next) => {
 
     let sql = `SELECT id, title, description, category, classification, file_name, file_type,
                       file_extension, file_size_bytes, tags, document_date, expiry_date,
-                      version, reference_number, department, uploaded_by_name,
+                      version, reference_number, control_number, department, uploaded_by_name,
                       view_count, download_count, last_accessed_at, created_at, updated_at
                FROM lab_documents WHERE 1=1`;
     const params = [];
@@ -174,9 +178,9 @@ exports.listDocuments = async (req, res, next) => {
     }
 
     if (search) {
-      sql += ` AND (title LIKE ? OR description LIKE ? OR ocr_text LIKE ? OR tags LIKE ? OR reference_number LIKE ?)`;
+      sql += ` AND (title LIKE ? OR description LIKE ? OR ocr_text LIKE ? OR tags LIKE ? OR reference_number LIKE ? OR control_number LIKE ?)`;
       const term = `%${search}%`;
-      params.push(term, term, term, term, term);
+      params.push(term, term, term, term, term, term);
     }
     if (category) { sql += ' AND category = ?'; params.push(category); }
     if (classification) { sql += ' AND LOWER(classification) = ?'; params.push(classification.toLowerCase()); }
@@ -246,7 +250,7 @@ exports.uploadDocument = async (req, res, next) => {
 
     const {
       title, description, category, classification, document_date, expiry_date,
-      version, reference_number, department, tags
+      version, reference_number, control_number, department, tags
     } = req.body;
 
     const insertedDocs = [];
@@ -277,13 +281,15 @@ exports.uploadDocument = async (req, res, next) => {
         finalRefNum = `DOC-LAB-${todayStr}-${String(seq++).padStart(4, '0')}`;
       }
 
+      const finalControlNum = (control_number && control_number.trim()) || 'LEG/PATHLAB/MSD/FM-12-VERS-004';
+
       await db.query(
         `INSERT INTO lab_documents (
           title, description, category, classification, file_name, file_type, file_extension,
           file_size_bytes, file_base64, ocr_text, tags, document_date, expiry_date,
-          version, reference_number, department, uploaded_by, uploaded_by_name,
+          version, reference_number, control_number, department, uploaded_by, uploaded_by_name,
           storage_provider, file_url
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [
           docTitle,
           description || null,
@@ -300,6 +306,7 @@ exports.uploadDocument = async (req, res, next) => {
           expiry_date || null,
           version || null,
           finalRefNum,
+          finalControlNum,
           department || null,
           req.user?.id || null,
           req.user?.full_name || req.user?.username || 'Lab Staff',
@@ -336,7 +343,7 @@ exports.getDocumentMeta = async (req, res, next) => {
     const { rows } = await db.query(
       `SELECT id, title, description, category, classification, file_name, file_type,
               file_extension, file_size_bytes, ocr_text, tags, document_date, expiry_date,
-              version, reference_number, department, uploaded_by_name,
+              version, reference_number, control_number, department, uploaded_by_name,
               view_count, download_count, last_accessed_at, created_at, updated_at
        FROM lab_documents WHERE id = ?`, [id]
     );
@@ -397,7 +404,7 @@ exports.updateDocumentMeta = async (req, res, next) => {
     const userRole = (req.user?.role || '').toLowerCase();
     const {
       title, description, category, classification, document_date, expiry_date,
-      version, reference_number, department, tags
+      version, reference_number, control_number, department, tags
     } = req.body;
 
     const { rows } = await db.query('SELECT * FROM lab_documents WHERE id = ?', [id]);
@@ -414,7 +421,7 @@ exports.updateDocumentMeta = async (req, res, next) => {
       `UPDATE lab_documents SET
         title = ?, description = ?, category = ?, classification = ?,
         document_date = ?, expiry_date = ?, version = ?, reference_number = ?,
-        department = ?, tags = ?,
+        control_number = ?, department = ?, tags = ?,
         updated_at = (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
        WHERE id = ?`,
       [
@@ -422,6 +429,7 @@ exports.updateDocumentMeta = async (req, res, next) => {
         category ?? doc.category, classification ?? doc.classification,
         document_date ?? doc.document_date, expiry_date ?? doc.expiry_date,
         version ?? doc.version, reference_number ?? doc.reference_number,
+        control_number ?? doc.control_number ?? 'LEG/PATHLAB/MSD/FM-12-VERS-004',
         department ?? doc.department, tags ?? doc.tags, id
       ]
     );

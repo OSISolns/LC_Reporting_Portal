@@ -46,10 +46,12 @@ router.get('/studies/:id/report/pdf', checkPermission('imaging', 'view'), imagin
 router.get('/dicom/status', checkPermission('imaging', 'view'), imagingController.dicomStatus);
 router.post('/studies/:id/dicom/link', checkPermission('imaging', 'acquire'), imagingController.linkDicom);
 router.get('/studies/:id/dicom', checkPermission('imaging', 'view'), imagingController.getDicomImages);
+router.get('/studies/:id/dicom/rendered', checkPermission('imaging', 'view'), imagingController.renderedFrame);
 
 // ── Medical Imaging Archiving & Vault (CT, MRI, OPG, X-Ray, etc.) ──────────────
 router.get('/archives', checkPermission('imaging', 'view'), imagingController.listArchives);
 router.get('/archives/:id', checkPermission('imaging', 'view'), imagingController.getArchiveById);
+router.get('/archives/:id/file', checkPermission('imaging', 'view'), imagingController.getArchiveFile);
 router.get('/archives/study/:studyId', checkPermission('imaging', 'view'), imagingController.getArchivesByStudy);
 router.post('/archives/upload', checkPermission('imaging', 'create'), imagingController.archiveUpload.array('files', 500), imagingController.uploadArchiveFiles);
 router.delete('/archives/:id', checkPermission('imaging', 'edit'), imagingController.deleteArchive);

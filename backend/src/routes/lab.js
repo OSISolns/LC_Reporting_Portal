@@ -103,5 +103,8 @@ router.post('/unit-stock', authorizeRoles(ALL_LAB_ROLES), labController.addUnitS
 router.post('/unit-stock/:id/consume', authorizeRoles(ALL_LAB_ROLES), labController.consumeUnitStockItem);
 router.get('/unit-stock/logs', authorizeRoles([...ALL_LAB_ROLES, 'stock-manager', 'stock_manager']), labController.getUnitConsumptionLogs);
 
+// ── General Stock Laboratory Items ───────────────────────────────────────────
+router.get('/general-stock-items', authorizeRoles([...ALL_LAB_ROLES, 'stock-manager', 'stock_manager', 'general_manager']), labController.getGeneralStockLabItems);
+
 module.exports = router;
 

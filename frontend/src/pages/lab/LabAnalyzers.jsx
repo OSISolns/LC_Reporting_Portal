@@ -279,6 +279,9 @@ export default function LabAnalyzers() {
               ) : (
                 <span className="px-2 py-0.5 bg-slate-400/20 text-slate-100 rounded-full text-[10px] font-medium">Read-Only Staff</span>
               )}
+              <span className="px-2 py-0.5 bg-amber-400/20 text-amber-200 border border-amber-400/40 rounded font-mono text-[10px] font-bold">
+                Control No: LEG/PATHLAB/MSD/FM-12-VERS-004
+              </span>
             </div>
             <p className="text-xs text-blue-200/80">Manage laboratory instruments &amp; calibration schedules</p>
           </div>

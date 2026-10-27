@@ -554,6 +554,7 @@ exports.linkDicom = async (req, res, next) => {
     if (!studyUID) return res.status(400).json({ success: false, message: 'study_instance_uid is required.' });
 
     const result = await ImagingDicom.linkFromPacs(study.id, studyUID);
+    if (result.error === 'invalid_study') return res.status(404).json({ success: false, message: 'Invalid or missing study.' });
     if (result.error === 'pacs_not_configured') return res.status(503).json({ success: false, message: 'No PACS/DICOMweb endpoint configured (ORTHANC_DICOMWEB_URL).' });
     if (result.error === 'no_series') return res.status(404).json({ success: false, message: 'No series found on the PACS for that StudyInstanceUID.' });
 
@@ -660,9 +661,31 @@ exports.listArchives = async (req, res, next) => {
 
 exports.getArchiveById = async (req, res, next) => {
   try {
-    const archive = await ImagingArchive.getById(req.params.id);
+    const archive = await ImagingArchive.getById(req.params.id, true);
     if (!archive) return res.status(404).json({ success: false, message: 'Archive not found.' });
     res.json({ success: true, data: archive });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getArchiveFile = async (req, res, next) => {
+  try {
+    const archive = await ImagingArchive.getById(req.params.id, true);
+    if (!archive) return res.status(404).json({ success: false, message: 'Archive record not found.' });
+
+    const raw = archive.file_base64 || archive.thumbnail_base64;
+    if (!raw) return res.status(404).json({ success: false, message: 'Archive has no file data stored.' });
+
+    const cleanBase64 = raw.includes('base64,') ? raw.split('base64,')[1] : raw;
+    const buf = Buffer.from(cleanBase64, 'base64');
+    const mimeType = archive.file_type || (archive.file_name?.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/png');
+
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Length', buf.length);
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(archive.file_name || 'image')}"`);
+    res.setHeader('Cache-Control', 'private, max-age=86400');
+    return res.send(buf);
   } catch (err) {
     next(err);
   }
@@ -1066,7 +1089,12 @@ exports.getViewerBundle = async (req, res, next) => {
 
     const [report, archives, dicoms, sharesRes] = await Promise.all([
       ImagingReport.findByStudyId(studyId).catch(() => null),
-      ImagingArchive.getByStudyId(studyId).catch(() => []),
+      ImagingArchive.getByStudyOrMatch({
+        studyId,
+        accessionNumber: study.accession_number,
+        patientId: study.patient_id,
+        modality: study.modality,
+      }).catch(() => []),
       ImagingDicom.findByStudyId(studyId).catch(() => []),
       ImagingShare.getAll({ studyId, limit: 10 }).catch(() => ({ shares: [] })),
     ]);
@@ -1111,11 +1139,16 @@ exports.getShareViewerBundle = async (req, res, next) => {
         report = await ImagingReport.findByStudyId(share.study_id).catch(() => null);
       }
       if (share.can_view_images) {
-        archives = await ImagingArchive.getByStudyId(share.study_id).catch(() => []);
+        archives = await ImagingArchive.getByStudyOrMatch({
+          studyId: share.study_id,
+          accessionNumber: study?.accession_number,
+          patientId: study?.patient_id,
+          modality: study?.modality,
+        }).catch(() => []);
         dicoms = await ImagingDicom.findByStudyId(share.study_id).catch(() => []);
       }
     } else if (share.archive_id && share.can_view_images) {
-      const arch = await ImagingArchive.getById(share.archive_id);
+      const arch = await ImagingArchive.getById(share.archive_id, true);
       if (arch) archives = [arch];
     }
 

@@ -1641,15 +1641,30 @@ exports.createLabRequisition = async (req, res, next) => {
 
     const requestedBy = req.user?.id || null;
     const requestedByName = req.user?.full_name || req.user?.username || 'Lab User';
+    const userRole = (req.user?.role || '').toLowerCase();
+    const isLabStockManager = [
+      'lab_stock_officer', 'lab_manager', 'lab_hod', 'admin', 'deputy_coo', 'coo', 'general_manager', 'chairman'
+    ].includes(userRole);
     const refNumber = generateLabReqRef();
     const source = stock_source || 'lab_stock'; // 'lab_stock' or 'general_stock'
 
+    // If stock_source is general_stock and requested by Laboratory Stock Officer / Manager,
+    // route directly to Forwarded so General Stock Manager receives it immediately
+    const initialStatus = (source === 'general_stock' && isLabStockManager) ? 'Forwarded' : 'Pending';
+
     const { rows: newReq } = await db.query(
       `INSERT INTO lab_requisitions (ref_number, requesting_unit, requested_by, requested_by_name, urgency, notes, status, stock_source)
-       VALUES (?, ?, ?, ?, ?, ?, 'Pending', ?) RETURNING id`,
-      [refNumber, requesting_unit, requestedBy, requestedByName, urgency || 'Normal', notes || null, source]
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+      [refNumber, requesting_unit, requestedBy, requestedByName, urgency || 'Normal', notes || null, initialStatus, source]
     );
     const reqId = newReq[0].id;
+
+    if (initialStatus === 'Forwarded') {
+      await db.query(
+        `UPDATE lab_requisitions SET lab_manager_action = 'forward_to_general', lab_manager_name = ?, lab_manager_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        [requestedByName, reqId]
+      );
+    }
 
     for (const item of items) {
       await db.query(
@@ -1796,6 +1811,17 @@ exports.generalManagerReviewLabRequisition = async (req, res, next) => {
       for (const item of reqItems) {
         const approvedQty = Number(item.approved_quantity || item.requested_quantity || 0);
         if (approvedQty > 0) {
+          // If requisition was sourced from General Stock, safely deduct from Central Store batch
+          if (req_.stock_source === 'general_stock') {
+            await db.query(
+              `UPDATE stock_batches 
+               SET quantity = MAX(0, quantity - ?) 
+               WHERE item_id = (SELECT id FROM master_inventory WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1)
+                 AND department_id = (SELECT id FROM departments WHERE UPPER(name) = 'LABORATORY' LIMIT 1)`,
+              [approvedQty, item.item_name]
+            ).catch(() => {});
+          }
+
           const { rows: existingUnitStock } = await db.query(
             'SELECT id, quantity_in_use FROM lab_unit_stock_in_use WHERE unit_name = ? AND item_name = ?',
             [req_.requesting_unit, item.item_name]
@@ -1965,5 +1991,57 @@ exports.getUnitConsumptionLogs = async (req, res, next) => {
     res.json({ success: true, data: rows });
   } catch (err) { next(err); }
 };
+
+// ─── General Stock Laboratory Items ──────────────────────────────────────────
+// Avails General Stock (Central Store) items designated exclusively for the Laboratory.
+// Strictly filters by departments.name = 'LABORATORY' so no non-lab items are ever exposed.
+exports.getGeneralStockLabItems = async (req, res, next) => {
+  try {
+    const { search, category } = req.query;
+    const conditions = ["UPPER(d.name) = 'LABORATORY'"];
+    const params = [];
+
+    if (search) {
+      conditions.push('(mi.name LIKE ? OR mi.sku LIKE ? OR sb.batch_number LIKE ?)');
+      const s = `%${search}%`;
+      params.push(s, s, s);
+    }
+    if (category && category !== 'All') {
+      conditions.push('mi.category = ?');
+      params.push(category);
+    }
+
+    const where = ' WHERE ' + conditions.join(' AND ');
+
+    const { rows } = await db.query(
+      `SELECT 
+        mi.id,
+        mi.name,
+        mi.sku,
+        COALESCE(mi.sku, '') || COALESCE(sb.lot_number, '01') as full_sku,
+        mi.unit_of_measure,
+        mi.category,
+        sb.id as batch_id,
+        sb.batch_number,
+        sb.lot_number,
+        sb.expiry_date,
+        COALESCE(sb.quantity, 0) as quantity,
+        sb.storage,
+        d.name as department,
+        d.id as department_id,
+        v.name as vendor
+      FROM master_inventory mi
+      JOIN stock_batches sb ON mi.id = sb.item_id
+      JOIN departments d ON sb.department_id = d.id
+      LEFT JOIN vendors v ON sb.vendor_id = v.id
+      ${where}
+      ORDER BY mi.name ASC`,
+      params
+    );
+
+    res.json({ success: true, data: rows });
+  } catch (err) { next(err); }
+};
+
 
 

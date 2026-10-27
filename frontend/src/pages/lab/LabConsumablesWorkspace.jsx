@@ -479,8 +479,9 @@ export default function LabConsumablesWorkspace({ user }) {
   // ── Handler: Export CSV ────────────────────────────────────────────────────
   const handleExportLogsCSV = () => {
     try {
-      const headers = ['Timestamp', 'Laboratory Unit', 'Item Name', 'Action', 'Quantity', 'Remaining Balance', 'Purpose / Remarks', 'Recorded By'];
+      const headers = ['Control Number', 'Timestamp', 'Laboratory Unit', 'Item Name', 'Action', 'Quantity', 'Remaining Balance', 'Purpose / Remarks', 'Recorded By'];
       const rows = consumptionLogs.map(l => [
+        'LEG/PATHLAB/MSD/FM-12-VERS-004',
         l.created_at ? new Date(l.created_at).toLocaleString() : '',
         l.unit_name || activeUnit,
         l.item_name,
@@ -592,6 +593,9 @@ export default function LabConsumablesWorkspace({ user }) {
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
                 Active Unit: {activeUnit}
               </span>
+              <span className="text-[11px] font-mono font-bold text-amber-900 bg-amber-50 px-2.5 py-0.5 rounded border border-amber-300 flex items-center gap-1 shadow-2xs">
+                Control No: LEG/PATHLAB/MSD/FM-12-VERS-004
+              </span>
             </div>
 
             <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
@@ -640,11 +644,10 @@ export default function LabConsumablesWorkspace({ user }) {
               <button
                 key={unit.id}
                 onClick={() => setActiveUnit(unit.id)}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all shrink-0 cursor-pointer ${
-                  isSelected
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all shrink-0 cursor-pointer ${isSelected
                     ? 'text-white shadow-xs'
                     : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'
-                }`}
+                  }`}
                 style={isSelected ? { backgroundColor: unit.color } : {}}
               >
                 <Icon size={14} />
@@ -687,11 +690,10 @@ export default function LabConsumablesWorkspace({ user }) {
         <div className="flex items-center gap-1.5 flex-wrap">
           <button
             onClick={() => setActiveTab('stock')}
-            className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-2 ${
-              activeTab === 'stock'
+            className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-2 ${activeTab === 'stock'
                 ? 'bg-[#1B669E] text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
+              }`}
           >
             <Package size={14} />
             <span>Stock In Use ({filteredStock.length})</span>
@@ -699,11 +701,10 @@ export default function LabConsumablesWorkspace({ user }) {
 
           <button
             onClick={() => setActiveTab('storage')}
-            className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-2 ${
-              activeTab === 'storage'
+            className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-2 ${activeTab === 'storage'
                 ? 'bg-[#1B669E] text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
+              }`}
           >
             <Refrigerator size={14} />
             <span>Fridges &amp; Room Temp ({storageInventory.length})</span>
@@ -711,11 +712,10 @@ export default function LabConsumablesWorkspace({ user }) {
 
           <button
             onClick={() => setActiveTab('requisitions')}
-            className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-2 ${
-              activeTab === 'requisitions'
+            className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-2 ${activeTab === 'requisitions'
                 ? 'bg-[#1B669E] text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
+              }`}
           >
             <ClipboardList size={14} />
             <span>Unit Requisitions ({requisitions.length})</span>
@@ -723,11 +723,10 @@ export default function LabConsumablesWorkspace({ user }) {
 
           <button
             onClick={() => setActiveTab('logs')}
-            className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-2 ${
-              activeTab === 'logs'
+            className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-2 ${activeTab === 'logs'
                 ? 'bg-[#1B669E] text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
+              }`}
           >
             <Clock size={14} />
             <span>Consumption Audit Logs ({consumptionLogs.length})</span>
@@ -782,11 +781,10 @@ export default function LabConsumablesWorkspace({ user }) {
 
               <button
                 onClick={() => setShowLowStockOnly(v => !v)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors flex items-center gap-1.5 ${
-                  showLowStockOnly
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors flex items-center gap-1.5 ${showLowStockOnly
                     ? 'bg-amber-500 text-white border-amber-600'
                     : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                }`}
+                  }`}
               >
                 <AlertTriangle size={13} />
                 <span>Low Stock Only</span>
@@ -943,22 +941,20 @@ export default function LabConsumablesWorkspace({ user }) {
             <div className="flex items-center gap-1.5 flex-wrap w-full lg:w-auto">
               <button
                 onClick={() => setStorageTabType('all')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
-                  storageTabType === 'all'
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${storageTabType === 'all'
                     ? 'bg-[#1B669E] text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200'
-                }`}
+                  }`}
               >
                 All Storage Units ({storageUnits.length})
               </button>
 
               <button
                 onClick={() => setStorageTabType('unit')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
-                  storageTabType === 'unit'
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${storageTabType === 'unit'
                     ? 'bg-[#1B669E] text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200'
-                }`}
+                  }`}
               >
                 <currentUnitConfig.icon size={13} />
                 <span>{activeUnit} Units ({storageUnits.filter(u => activeUnitStorageUnitIds.includes(u.id)).length})</span>
@@ -966,11 +962,10 @@ export default function LabConsumablesWorkspace({ user }) {
 
               <button
                 onClick={() => setStorageTabType('fridge')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
-                  storageTabType === 'fridge'
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${storageTabType === 'fridge'
                     ? 'bg-sky-700 text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200'
-                }`}
+                  }`}
               >
                 <Refrigerator size={13} className="text-sky-600" />
                 <span>Fridges 2°C–8°C ({storageUnits.filter(u => u.type === 'fridge').length})</span>
@@ -978,11 +973,10 @@ export default function LabConsumablesWorkspace({ user }) {
 
               <button
                 onClick={() => setStorageTabType('room_temp')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
-                  storageTabType === 'room_temp'
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${storageTabType === 'room_temp'
                     ? 'bg-amber-600 text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200'
-                }`}
+                  }`}
               >
                 <Thermometer size={13} className="text-amber-600" />
                 <span>Room Temp 20°C–25°C ({storageUnits.filter(u => u.type === 'room_temp').length})</span>
@@ -990,11 +984,10 @@ export default function LabConsumablesWorkspace({ user }) {
 
               <button
                 onClick={() => setStorageTabType('freezer')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
-                  storageTabType === 'freezer'
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${storageTabType === 'freezer'
                     ? 'bg-indigo-700 text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200'
-                }`}
+                  }`}
               >
                 <Snowflake size={13} className="text-indigo-600" />
                 <span>Deep Freezers ({storageUnits.filter(u => u.type === 'freezer').length})</span>
@@ -1031,7 +1024,7 @@ export default function LabConsumablesWorkspace({ user }) {
 
               // Get all reagents assigned to this unit
               const allUnitReagents = storageInventory.filter(i => i.storage_unit_id === unit.id);
-              
+
               // Filter by user search query if present
               const displayedReagents = allUnitReagents.filter(i => {
                 if (!storageSearchQuery.trim()) return true;
@@ -1052,30 +1045,27 @@ export default function LabConsumablesWorkspace({ user }) {
               return (
                 <div key={unit.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
                   {/* Unit Header Bar */}
-                  <div className={`p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                    isFridge ? 'bg-sky-50/70 border-sky-100' :
-                    isFreezer ? 'bg-indigo-50/70 border-indigo-100' :
-                    'bg-amber-50/70 border-amber-100'
-                  }`}>
+                  <div className={`p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${isFridge ? 'bg-sky-50/70 border-sky-100' :
+                      isFreezer ? 'bg-indigo-50/70 border-indigo-100' :
+                        'bg-amber-50/70 border-amber-100'
+                    }`}>
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-xl ${
-                        isFridge ? 'bg-sky-100 text-sky-700' :
-                        isFreezer ? 'bg-indigo-100 text-indigo-700' :
-                        'bg-amber-100 text-amber-700'
-                      }`}>
+                      <div className={`p-2 rounded-xl ${isFridge ? 'bg-sky-100 text-sky-700' :
+                          isFreezer ? 'bg-indigo-100 text-indigo-700' :
+                            'bg-amber-100 text-amber-700'
+                        }`}>
                         {isFridge ? <Refrigerator size={18} /> :
-                         isFreezer ? <Snowflake size={18} /> :
-                         <Thermometer size={18} />}
+                          isFreezer ? <Snowflake size={18} /> :
+                            <Thermometer size={18} />}
                       </div>
 
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-extrabold text-sm text-slate-900">{unit.label}</h3>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-black border ${
-                            isFridge ? 'bg-white text-sky-800 border-sky-200' :
-                            isFreezer ? 'bg-white text-indigo-800 border-indigo-200' :
-                            'bg-white text-amber-800 border-amber-200'
-                          }`}>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-black border ${isFridge ? 'bg-white text-sky-800 border-sky-200' :
+                              isFreezer ? 'bg-white text-indigo-800 border-indigo-200' :
+                                'bg-white text-amber-800 border-amber-200'
+                            }`}>
                             {unit.temp_range || (isFridge ? '2°C to 8°C' : isFreezer ? '-20°C to -80°C' : '20°C to 25°C')}
                           </span>
                           <span className="text-[10px] font-mono text-slate-400">ID: {unit.id}</span>
@@ -1100,7 +1090,7 @@ export default function LabConsumablesWorkspace({ user }) {
                   {/* Reagents Table inside this Unit */}
                   {displayedReagents.length === 0 ? (
                     <div className="p-8 text-center text-xs text-slate-400 italic">
-                      {unit.id === 'fridge_samples' 
+                      {unit.id === 'fridge_samples'
                         ? 'Reserved for clinical patient specimen pre/post-analytical holding (No stock reagents).'
                         : 'No reagents currently recorded in this storage unit.'}
                     </div>
@@ -1148,11 +1138,10 @@ export default function LabConsumablesWorkspace({ user }) {
                                 </td>
 
                                 <td className="py-3 px-4 text-center">
-                                  <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
-                                    isStockout ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                                    isLow ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                                    'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                  }`}>
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${isStockout ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                      isLow ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                        'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    }`}>
                                     {isStockout ? 'Depleted' : isLow ? 'Low Stock' : 'Adequate'}
                                   </span>
                                 </td>
@@ -1239,11 +1228,10 @@ export default function LabConsumablesWorkspace({ user }) {
                         <td className="py-3 px-4 font-mono font-bold text-[#1B669E]">{r.ref_number || `REQ-${r.id}`}</td>
                         <td className="py-3 px-4">{r.created_at ? new Date(r.created_at).toLocaleDateString() : 'N/A'}</td>
                         <td className="py-3 px-4">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
-                            r.urgency === 'STAT' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                            r.urgency === 'Urgent' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                            'bg-slate-50 text-slate-600 border-slate-200'
-                          }`}>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${r.urgency === 'STAT' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                              r.urgency === 'Urgent' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                'bg-slate-50 text-slate-600 border-slate-200'
+                            }`}>
                             {r.urgency || 'Normal'}
                           </span>
                         </td>
@@ -1254,15 +1242,14 @@ export default function LabConsumablesWorkspace({ user }) {
                           </span>
                         </td>
                         <td className="py-3 px-4">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                            r.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                            r.status === 'Rejected' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                            r.status === 'Forwarded' ? 'bg-sky-50 text-sky-700 border-sky-200' :
-                            'bg-amber-50 text-amber-700 border-amber-200'
-                          }`}>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${r.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                              r.status === 'Rejected' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                r.status === 'Forwarded' ? 'bg-sky-50 text-sky-700 border-sky-200' :
+                                  'bg-amber-50 text-amber-700 border-amber-200'
+                            }`}>
                             {r.status === 'Pending' ? 'Pending Lab Review' :
-                             r.status === 'Forwarded' ? 'Forwarded to General Manager' :
-                             r.status}
+                              r.status === 'Forwarded' ? 'Forwarded to General Manager' :
+                                r.status}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-right">
@@ -1313,11 +1300,10 @@ export default function LabConsumablesWorkspace({ user }) {
                         </td>
                         <td className="py-3 px-4 font-semibold text-slate-900">{log.item_name}</td>
                         <td className="py-3 px-4">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                            log.action_type === 'CONSUMPTION' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                            log.action_type === 'RESTOCK_RECEIVED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                            'bg-slate-50 text-slate-700 border-slate-200'
-                          }`}>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${log.action_type === 'CONSUMPTION' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                              log.action_type === 'RESTOCK_RECEIVED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                'bg-slate-50 text-slate-700 border-slate-200'
+                            }`}>
                             {log.action_type === 'CONSUMPTION' ? 'Usage Logged' : 'Restock Received'}
                           </span>
                         </td>
@@ -1480,11 +1466,10 @@ export default function LabConsumablesWorkspace({ user }) {
                             </div>
                           </div>
                           <div className="text-right shrink-0">
-                            <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              item.storage_stock > 0
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${item.storage_stock > 0
                                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                 : 'bg-slate-100 text-slate-500'
-                            }`}>
+                              }`}>
                               {item.storage_stock} {item.unit_of_measure} in Storage
                             </span>
                             {item.bench_stock > 0 && (
@@ -1664,11 +1649,10 @@ export default function LabConsumablesWorkspace({ user }) {
                     <button
                       type="button"
                       onClick={() => setShowCatalogPicker(!showCatalogPicker)}
-                      className={`text-xs font-semibold px-2.5 py-1 rounded-lg border transition-colors flex items-center gap-1.5 ${
-                        showCatalogPicker
+                      className={`text-xs font-semibold px-2.5 py-1 rounded-lg border transition-colors flex items-center gap-1.5 ${showCatalogPicker
                           ? 'bg-blue-50 border-blue-200 text-[#1B669E]'
                           : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                      }`}
+                        }`}
                     >
                       <Refrigerator size={13} className="text-[#1B669E]" />
                       <span>{showCatalogPicker ? 'Hide Catalog' : 'Browse Catalog Stock'}</span>
@@ -1730,11 +1714,10 @@ export default function LabConsumablesWorkspace({ user }) {
                             </div>
                             <div className="flex items-center gap-3 shrink-0">
                               <div className="text-right">
-                                <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                  item.storage_stock > 0
+                                <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${item.storage_stock > 0
                                     ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                     : 'bg-slate-100 text-slate-400'
-                                }`}>
+                                  }`}>
                                   {item.storage_stock} {item.unit_of_measure} Storage
                                 </span>
                                 {item.bench_stock > 0 && (
@@ -1812,11 +1795,10 @@ export default function LabConsumablesWorkspace({ user }) {
                                         <span className="text-[10px] text-slate-500">{item.category} • {item.storage_location}</span>
                                       </div>
                                       <div className="text-right shrink-0">
-                                        <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                          item.storage_stock > 0
+                                        <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${item.storage_stock > 0
                                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                             : 'bg-slate-100 text-slate-400'
-                                        }`}>
+                                          }`}>
                                           {item.storage_stock} {item.unit_of_measure} Storage
                                         </span>
                                         {item.bench_stock > 0 && (

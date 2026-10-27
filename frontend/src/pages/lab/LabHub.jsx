@@ -1115,6 +1115,9 @@ const LabHub = () => {
                 <FlaskConical size={12} className="text-slate-500" /> Lab Staff
               </span>
             )}
+            <span className="px-2.5 py-0.5 bg-amber-50 text-amber-900 border border-amber-300 rounded font-mono text-[10px] font-bold">
+              Control No: LEG/PATHLAB/MSD/FM-12-VERS-004
+            </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5 font-normal">
             Outpatient Specimen Diagnostics & Worklist Management

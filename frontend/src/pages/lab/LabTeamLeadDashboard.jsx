@@ -217,9 +217,12 @@ export default function LabTeamLeadDashboard() {
       {/* ── TOP HEADER ── */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-gradient-to-r from-[#0d47a1] via-[#1565c0] to-[#1976d2] p-6 rounded-2xl text-white shadow-lg border border-blue-900">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-white/20 text-white border border-white/30 backdrop-blur-sm">
               Operational Command
+            </span>
+            <span className="px-2.5 py-0.5 rounded font-mono text-[10px] font-extrabold bg-amber-400/25 text-amber-100 border border-amber-300/40">
+              Control No: LEG/PATHLAB/MSD/FM-12-VERS-004
             </span>
             <span className="flex items-center gap-1 text-[11px] text-blue-100 font-medium">
               <Clock size={12} />

@@ -52,6 +52,8 @@ export const downloadOmopSqlUrl = (schema = 'cdm') => `/api/imaging/omop/export-
 // Medical Image Archives & Organized Vault (CT, MRI, OPG, X-Ray, etc.)
 export const getArchives = (params) => api.get('/imaging/archives', { params });
 export const getArchive = (id) => api.get(`/imaging/archives/${id}`);
+export const getArchiveFileUrl = (id) => `/api/imaging/archives/${id}/file`;
+export const getArchiveFileBlob = (id) => api.get(`/imaging/archives/${id}/file`, { responseType: 'blob' });
 export const getArchivesByStudy = (studyId) => api.get(`/imaging/archives/study/${studyId}`);
 export const uploadArchiveFiles = (formData) => api.post('/imaging/archives/upload', formData, {
   headers: { 'Content-Type': 'multipart/form-data' }

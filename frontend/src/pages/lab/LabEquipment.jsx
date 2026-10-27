@@ -461,6 +461,7 @@ export default function LabEquipment() {
     try {
       const exportRows = filteredEquipment.map((eq) => ({
         'SN': eq.sn || eq.id,
+        'Control Number': 'LEG/PATHLAB/MSD/FM-12-VERS-004',
         'Equipment Name': eq.name,
         'Model': eq.model || '',
         'Serial Number': eq.serial_number || '',
@@ -549,6 +550,9 @@ export default function LabEquipment() {
             ) : (
               <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-full text-[10px] font-medium lowercase first-letter:uppercase">Staff View</span>
             )}
+            <span className="px-2 py-0.5 bg-amber-50 text-amber-900 border border-amber-300 rounded font-mono text-[10px] font-bold">
+              Control No: LEG/PATHLAB/MSD/FM-12-VERS-004
+            </span>
           </div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
             <Wrench className="text-sky-700" size={24} /> Equipment & Planned Maintenance (PPM)

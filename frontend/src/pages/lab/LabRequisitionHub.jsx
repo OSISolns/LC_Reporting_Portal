@@ -11,7 +11,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   getUnitRequisitions, getUnitRequisitionItems,
   createUnitRequisition, labManagerReview, generalManagerReview,
-  getInhandInventory
+  getInhandInventory, getGeneralStockLabItems
 } from '../../api/lab';
 
 // ── Role Helpers ──────────────────────────────────────────────────────────────
@@ -36,6 +36,7 @@ const LAB_UNITS = [
   { id: 'Phlebotomy', label: 'Phlebotomy', icon: Droplet, color: '#0284c7', bgColor: '#e0f2fe' },
   { id: 'Histopathology', label: 'Histopathology', icon: Archive, color: '#d97706', bgColor: '#fef3c7' },
   { id: 'Molecular Biology', label: 'Molecular Biology', icon: Dna, color: '#7c3aed', bgColor: '#ede9fe' },
+  { id: 'General Laboratory', label: 'General Laboratory', icon: Building2, color: '#0f766e', bgColor: '#ccfbf1' },
 ];
 
 // ── Status Config ─────────────────────────────────────────────────────────────
@@ -76,6 +77,7 @@ export default function LabRequisitionHub({ embedded = false }) {
   // ── State ──
   const [requisitions, setRequisitions] = useState([]);
   const [inventory, setInventory] = useState([]);
+  const [generalStockItems, setGeneralStockItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -97,7 +99,7 @@ export default function LabRequisitionHub({ embedded = false }) {
     requesting_unit: '',
     urgency: 'Normal',
     notes: '',
-    stock_source: 'lab_stock',
+    stock_source: 'general_stock',
   });
   const [formItems, setFormItems] = useState([]);
   const [tempItem, setTempItem] = useState({ item_name: '', item_category: 'Reagents', unit_of_measure: 'pack', requested_quantity: '', inventory_ref_id: '' });
@@ -113,9 +115,10 @@ export default function LabRequisitionHub({ embedded = false }) {
       if (!silent) setLoading(true);
       else setRefreshing(true);
 
-      const [reqRes, invRes] = await Promise.allSettled([
+      const [reqRes, invRes, genStockRes] = await Promise.allSettled([
         getUnitRequisitions(),
-        getInhandInventory()
+        getInhandInventory(),
+        getGeneralStockLabItems()
       ]);
 
       if (reqRes.status === 'fulfilled' && reqRes.value.data.success) {
@@ -123,6 +126,9 @@ export default function LabRequisitionHub({ embedded = false }) {
       }
       if (invRes.status === 'fulfilled' && invRes.value.data.success) {
         setInventory(invRes.value.data.data || []);
+      }
+      if (genStockRes.status === 'fulfilled' && genStockRes.value.data?.success) {
+        setGeneralStockItems(genStockRes.value.data.data || []);
       }
     } catch (err) {
       console.error(err);
@@ -288,10 +294,15 @@ export default function LabRequisitionHub({ embedded = false }) {
               <ClipboardList size={26} />
             </div>
             <div>
-              <h1 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 900, color: '#0f172a' }}>
-                Laboratory Requisition Hub
-              </h1>
-              <p style={{ margin: '2px 0 0', fontSize: '0.82rem', color: '#64748b' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <h1 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 900, color: '#0f172a' }}>
+                  Laboratory Requisition Hub
+                </h1>
+                <span style={{ fontSize: '0.72rem', fontFamily: 'monospace', fontWeight: 800, color: '#78350f', background: '#fef3c7', padding: '2px 8px', borderRadius: 6, border: '1px solid #fcd34d' }}>
+                  Control No: LEG/PATHLAB/MSD/FM-12-VERS-004
+                </span>
+              </div>
+              <p style={{ margin: '3px 0 0', fontSize: '0.82rem', color: '#64748b' }}>
                 Lab units submit consumable &amp; reagent requests · Lab Stock Manager reviews · General Manager approves forwarded items
               </p>
             </div>
@@ -504,6 +515,7 @@ export default function LabRequisitionHub({ embedded = false }) {
             {/* Meta */}
             <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               {[
+                { label: 'Control Number', val: 'LEG/PATHLAB/MSD/FM-12-VERS-004' },
                 { label: 'Requesting Unit', val: selected.requesting_unit },
                 { label: 'Urgency', val: selected.urgency },
                 { label: 'Stock Source', val: selected.stock_source === 'general_stock' ? 'General Store' : 'Lab Stock' },
@@ -511,7 +523,7 @@ export default function LabRequisitionHub({ embedded = false }) {
               ].map(m => (
                 <div key={m.label} style={{ background: '#f8fafc', borderRadius: 8, padding: '10px 12px' }}>
                   <div style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase' }}>{m.label}</div>
-                  <div style={{ fontSize: '0.86rem', fontWeight: 800, color: '#0f172a', marginTop: 2 }}>{m.val || '—'}</div>
+                  <div style={{ fontSize: '0.86rem', fontWeight: 800, color: '#0f172a', marginTop: 2, fontFamily: m.label === 'Control Number' ? 'monospace' : 'inherit' }}>{m.val || '—'}</div>
                 </div>
               ))}
             </div>
@@ -721,8 +733,15 @@ export default function LabRequisitionHub({ embedded = false }) {
             {/* Modal Header */}
             <div style={{ background: '#1B669E', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ color: '#fff', fontWeight: 900, fontSize: '1.1rem' }}>New Lab Requisition</div>
-                <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.78rem', marginTop: 2 }}>Submit a consumable or reagent request to the Lab Stock Manager</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <div style={{ color: '#fff', fontWeight: 900, fontSize: '1.1rem' }}>New Lab Requisition</div>
+                  <span style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', fontSize: '0.72rem', fontFamily: 'monospace', fontWeight: 800, padding: '2px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.35)' }}>
+                    Control No: LEG/PATHLAB/MSD/FM-12-VERS-004
+                  </span>
+                </div>
+                <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.78rem', marginTop: 3 }}>
+                  Submit consumable or reagent request to the Lab Stock Manager or General Store
+                </div>
               </div>
               <button onClick={() => setShowModal(false)} style={{ padding: 6, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.15)', color: '#fff', cursor: 'pointer' }}>
                 <X size={18} />
@@ -807,24 +826,54 @@ export default function LabRequisitionHub({ embedded = false }) {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     <div>
                       <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', marginBottom: 4 }}>ITEM NAME *</div>
-                      {/* Linked from inventory dropdown */}
+                      {/* Linked from inventory or general stock dropdown */}
                       <select
                         value={tempItem.inventory_ref_id}
                         onChange={e => {
-                          const invId = e.target.value;
-                          const inv = inventory.find(i => String(i.id) === invId);
-                          if (inv) {
-                            setTempItem(t => ({ ...t, inventory_ref_id: invId, item_name: inv.item_name, item_category: inv.category || 'Reagents', unit_of_measure: inv.unit_of_measure || 'pack' }));
+                          const refId = e.target.value;
+                          if (form.stock_source === 'general_stock') {
+                            const genItem = generalStockItems.find(i => String(i.id) === refId);
+                            if (genItem) {
+                              setTempItem(t => ({
+                                ...t,
+                                inventory_ref_id: refId,
+                                item_name: genItem.name,
+                                item_category: genItem.category || 'Reagents',
+                                unit_of_measure: genItem.unit_of_measure || 'pcs'
+                              }));
+                            } else {
+                              setTempItem(t => ({ ...t, inventory_ref_id: '' }));
+                            }
                           } else {
-                            setTempItem(t => ({ ...t, inventory_ref_id: '' }));
+                            const inv = inventory.find(i => String(i.id) === refId);
+                            if (inv) {
+                              setTempItem(t => ({
+                                ...t,
+                                inventory_ref_id: refId,
+                                item_name: inv.item_name,
+                                item_category: inv.category || 'Reagents',
+                                unit_of_measure: inv.unit_of_measure || 'pack'
+                              }));
+                            } else {
+                              setTempItem(t => ({ ...t, inventory_ref_id: '' }));
+                            }
                           }
                         }}
                         style={{ width: '100%', padding: '8px 10px', borderRadius: 7, border: '1px solid #e2e8f0', fontSize: '0.83rem', background: '#fff', color: '#334155' }}
                       >
-                        <option value="">— Select from inventory or enter manually —</option>
-                        {inventory.map(inv => (
-                          <option key={inv.id} value={inv.id}>{inv.item_name} ({inv.quantity_in_hand} {inv.unit_of_measure})</option>
-                        ))}
+                        <option value="">— Select {form.stock_source === 'general_stock' ? 'from Central Store Lab items' : 'from Lab stock'} or enter manually —</option>
+                        {form.stock_source === 'general_stock'
+                          ? generalStockItems.map(it => (
+                              <option key={it.id} value={it.id}>
+                                {it.sku ? `[${it.sku}] ` : ''}{it.name} (Central Store: {it.central_store_quantity} {it.unit_of_measure || 'pcs'})
+                              </option>
+                            ))
+                          : inventory.map(inv => (
+                              <option key={inv.id} value={inv.id}>
+                                {inv.item_name} ({inv.quantity_in_hand} {inv.unit_of_measure})
+                              </option>
+                            ))
+                        }
                       </select>
                     </div>
                     <div>

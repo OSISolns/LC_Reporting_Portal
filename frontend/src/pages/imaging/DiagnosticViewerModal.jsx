@@ -25,7 +25,16 @@ import {
   ShieldCheck,
   CheckCircle2
 } from 'lucide-react';
-import { getViewerBundle, getShareViewerBundle, reportPdfUrl } from '../../api/imaging';
+import {
+  getViewerBundle,
+  getShareViewerBundle,
+  reportPdfUrl,
+  getArchive,
+  getArchives,
+  getArchiveFileUrl
+} from '../../api/imaging';
+import api from '../../api/axios';
+import { isDicomFile, renderDicomToDataUrl } from '../../utils/dicomHelper';
 import { toast } from 'react-hot-toast';
 
 const MODALITY_COLORS = {
@@ -82,6 +91,11 @@ export default function DiagnosticViewerModal({
   const [caliperPoints, setCaliperPoints] = useState([]);
   const [measurements, setMeasurements] = useState([]);
 
+  // DICOM Rendering State
+  const [renderedDicomMap, setRenderedDicomMap] = useState({});
+  const [dicomLoading, setDicomLoading] = useState(false);
+  const [dicomError, setDicomError] = useState(null);
+
   const containerRef = useRef(null);
 
   // Fetch Viewer Bundle
@@ -98,16 +112,61 @@ export default function DiagnosticViewerModal({
           const res = await getViewerBundle(studyId);
           setData(res.data.data);
         } else if (archiveItem) {
+          let fullItem = { ...archiveItem };
+          let relatedArchives = [fullItem];
+
+          // Fetch full archive record with base64 if not present
+          if (archiveItem.id && !archiveItem.file_base64) {
+            try {
+              const res = await getArchive(archiveItem.id);
+              if (res.data?.data) {
+                fullItem = res.data.data;
+                relatedArchives = [fullItem];
+              }
+            } catch (err) {
+              console.warn('Could not fetch full archive payload:', err);
+            }
+          }
+
+          // If linked to a study, also fetch companion archives from the study bundle
+          if (archiveItem.study_id) {
+            try {
+              const bRes = await getViewerBundle(archiveItem.study_id);
+              if (bRes.data?.data?.archives?.length > 0) {
+                relatedArchives = bRes.data.data.archives.map((a) =>
+                  a.id === fullItem.id ? fullItem : a
+                );
+              }
+            } catch { /* ignore */ }
+          } else if (archiveItem.patient_id) {
+            // Also retrieve companion folder/patient archives for slice navigation
+            try {
+              const pRes = await getArchives({
+                patientId: archiveItem.patient_id,
+                folderPath: archiveItem.folder_path || undefined,
+                limit: 100,
+              });
+              if (pRes.data?.data?.archives?.length > 1) {
+                relatedArchives = pRes.data.data.archives.map((a) =>
+                  a.id === fullItem.id ? fullItem : a
+                );
+              }
+            } catch { /* ignore */ }
+          }
+
+          const matchedIdx = relatedArchives.findIndex((a) => a.id === archiveItem.id);
+          if (matchedIdx >= 0) setSelectedSliceIndex(matchedIdx);
+
           setData({
             study: {
-              patient_id: archiveItem.patient_id,
-              patient_name: archiveItem.patient_name,
-              modality: archiveItem.modality,
-              body_part: archiveItem.body_region,
-              study_date: archiveItem.created_at,
-              accession_number: archiveItem.accession_number || `ARC-${archiveItem.id}`,
+              patient_id: fullItem.patient_id,
+              patient_name: fullItem.patient_name,
+              modality: fullItem.modality,
+              body_part: fullItem.body_region,
+              study_date: fullItem.created_at,
+              accession_number: fullItem.accession_number || `ARC-${fullItem.id}`,
             },
-            archives: [archiveItem],
+            archives: relatedArchives,
             dicoms: [],
             report: null,
           });
@@ -128,18 +187,31 @@ export default function DiagnosticViewerModal({
     if (!data) return [];
     const list = [];
 
-    // Archives (direct base64 uploaded files)
+    // Archives (direct base64 uploaded files or stream fallback)
     if (data.archives && data.archives.length > 0) {
       data.archives.forEach((arc, i) => {
         let src = '';
+        const hasFull = !!arc.file_base64;
         if (arc.file_base64) {
-          src = arc.file_base64.startsWith('data:')
-            ? arc.file_base64
-            : `data:${arc.file_type || 'image/png'};base64,${arc.file_base64}`;
+          const clean = arc.file_base64.trim();
+          src = clean.startsWith('data:')
+            ? clean
+            : `data:${arc.file_type || 'image/png'};base64,${clean}`;
+        } else if (arc.thumbnail_base64) {
+          const clean = arc.thumbnail_base64.trim();
+          src = clean.startsWith('data:')
+            ? clean
+            : `data:${arc.file_type || 'image/png'};base64,${clean}`;
+        } else if (arc.id) {
+          src = getArchiveFileUrl(arc.id);
         }
+
         list.push({
           id: `arc-${arc.id || i}`,
+          archiveId: arc.id,
+          hasFullBase64: hasFull,
           type: 'archive',
+          fileType: arc.file_type,
           title: arc.file_name || `Series Slice ${arc.slice_index || i + 1}`,
           series: arc.series_name || 'Standard Series',
           sliceIndex: arc.slice_index || i + 1,
@@ -154,13 +226,17 @@ export default function DiagnosticViewerModal({
     // DICOM proxy instances if available
     if (data.dicoms && data.dicoms.length > 0) {
       data.dicoms.forEach((d, i) => {
+        let dcmSrc = d.thumbnail_base64 ? `data:image/jpeg;base64,${d.thumbnail_base64}` : null;
+        if (!dcmSrc && data.study?.id && d.series_instance_uid && d.sop_instance_uid) {
+          dcmSrc = `/api/imaging/studies/${data.study.id}/dicom/rendered?series=${encodeURIComponent(d.series_instance_uid)}&sop=${encodeURIComponent(d.sop_instance_uid)}`;
+        }
         list.push({
           id: `dcm-${d.id || i}`,
           type: 'dicom',
           title: `DICOM Frame ${i + 1}`,
           series: d.series_instance_uid || 'PACS Series',
           sliceIndex: i + 1,
-          src: d.thumbnail_base64 ? `data:image/jpeg;base64,${d.thumbnail_base64}` : null,
+          src: dcmSrc,
           modality: data.study?.modality || 'CT',
         });
       });
@@ -169,7 +245,87 @@ export default function DiagnosticViewerModal({
     return list;
   }, [data]);
 
+  // On demand fetch full file_base64 if selected slice only has thumbnail
+  useEffect(() => {
+    const cur = slices[selectedSliceIndex];
+    if (!cur) return;
+    if (cur.type === 'archive' && cur.archiveId && !cur.hasFullBase64) {
+      getArchive(cur.archiveId)
+        .then((res) => {
+          const fresh = res.data?.data;
+          if (fresh?.file_base64) {
+            setData((prev) => {
+              if (!prev || !prev.archives) return prev;
+              const nextArchives = prev.archives.map((a) =>
+                a.id === fresh.id ? { ...a, file_base64: fresh.file_base64 } : a
+              );
+              return { ...prev, archives: nextArchives };
+            });
+          }
+        })
+        .catch(() => {});
+    }
+  }, [selectedSliceIndex, slices]);
+
   const currentSlice = slices[selectedSliceIndex] || slices[0];
+
+  // Decode and render DICOM slices when selected
+  useEffect(() => {
+    if (!currentSlice) return;
+    const isDcm = isDicomFile(currentSlice.title, currentSlice.fileType, currentSlice.src);
+    if (!isDcm) return;
+
+    if (renderedDicomMap[currentSlice.id]) return;
+
+    let cancelled = false;
+    setDicomLoading(true);
+    setDicomError(null);
+
+    const processDicom = async () => {
+      try {
+        let inputData = null;
+        if (currentSlice.src && currentSlice.src.startsWith('data:')) {
+          inputData = currentSlice.src;
+        } else if (currentSlice.archiveId) {
+          const archRes = await getArchive(currentSlice.archiveId);
+          if (archRes.data?.data?.file_base64) {
+            inputData = archRes.data.data.file_base64;
+          } else {
+            const binRes = await api.get(`/imaging/archives/${currentSlice.archiveId}/file`, {
+              responseType: 'arraybuffer',
+            });
+            inputData = binRes.data;
+          }
+        } else if (currentSlice.src) {
+          const res = await api.get(currentSlice.src, { responseType: 'arraybuffer' });
+          inputData = res.data;
+        }
+
+        if (!inputData) throw new Error('No DICOM data available.');
+
+        const result = await renderDicomToDataUrl(inputData);
+        if (cancelled) return;
+        setRenderedDicomMap((prev) => ({
+          ...prev,
+          [currentSlice.id]: result.dataUrl,
+        }));
+      } catch (err) {
+        if (!cancelled) {
+          console.error('DICOM render error:', err);
+          setDicomError(err.message || 'Could not parse DICOM image.');
+        }
+      } finally {
+        if (!cancelled) setDicomLoading(false);
+      }
+    };
+
+    processDicom();
+    return () => { cancelled = true; };
+  }, [currentSlice?.id, currentSlice?.src, currentSlice?.archiveId, currentSlice?.title, currentSlice?.fileType, renderedDicomMap]);
+
+  const activeDisplaySrc = (currentSlice && renderedDicomMap[currentSlice.id])
+    ? renderedDicomMap[currentSlice.id]
+    : currentSlice?.src;
 
   const resetViewport = () => {
     setZoom(1);
@@ -471,25 +627,42 @@ export default function DiagnosticViewerModal({
             onMouseUp={handleMouseUp}
             onClick={handleViewportClick}
           >
-            {loading ? (
-              <div className="flex flex-col items-center gap-3 text-slate-400">
+            {(loading || dicomLoading) ? (
+              <div className="flex flex-col items-center gap-3 text-slate-300">
                 <RefreshCw size={32} className="animate-spin text-[#1C69A0]" />
-                <p className="text-sm">Loading diagnostic series & DICOM data...</p>
+                <p className="text-sm font-medium">
+                  {dicomLoading ? 'Decoding & rendering diagnostic DICOM pixel data...' : 'Loading diagnostic series & DICOM data...'}
+                </p>
               </div>
-            ) : currentSlice?.src ? (
-              <div
-                className="relative transition-transform duration-75"
-                style={{
-                  transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom}) rotate(${rotation}deg) scaleX(${flipH ? -1 : 1}) scaleY(${flipV ? -1 : 1})`,
-                  filter: `brightness(${brightness}%) contrast(${contrast}%) ${invert ? 'invert(100%)' : ''}`,
-                }}
-              >
-                <img
-                  src={currentSlice.src}
-                  alt={currentSlice.title}
-                  className="max-h-[75vh] max-w-[70vw] object-contain pointer-events-none rounded shadow-2xl"
-                  draggable={false}
-                />
+            ) : dicomError ? (
+              <div className="flex flex-col items-center gap-2 text-rose-400 p-6 text-center">
+                <AlertCircle size={36} />
+                <p className="text-sm font-semibold">{dicomError}</p>
+                <p className="text-xs text-slate-500">Could not extract diagnostic image frames from this DICOM object.</p>
+              </div>
+            ) : activeDisplaySrc ? (
+              (currentSlice.fileType === 'application/pdf' || currentSlice.title?.toLowerCase().endsWith('.pdf')) ? (
+                <div className="w-full h-full max-w-5xl max-h-[78vh] bg-white rounded-lg shadow-2xl overflow-hidden flex flex-col">
+                  <iframe
+                    src={activeDisplaySrc}
+                    title={currentSlice.title}
+                    className="w-full h-full border-none rounded-lg"
+                  />
+                </div>
+              ) : (
+                <div
+                  className="relative transition-transform duration-75"
+                  style={{
+                    transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom}) rotate(${rotation}deg) scaleX(${flipH ? -1 : 1}) scaleY(${flipV ? -1 : 1})`,
+                    filter: `brightness(${brightness}%) contrast(${contrast}%) ${invert ? 'invert(100%)' : ''}`,
+                  }}
+                >
+                  <img
+                    src={activeDisplaySrc}
+                    alt={currentSlice.title}
+                    className="max-h-[75vh] max-w-[70vw] object-contain pointer-events-none rounded shadow-2xl"
+                    draggable={false}
+                  />
 
                 {/* Caliper Measurement Lines & Markers Overlay */}
                 {measurements.map((m, idx) => (
@@ -533,14 +706,15 @@ export default function DiagnosticViewerModal({
                   </svg>
                 ))}
 
-                {/* Active caliper start marker */}
-                {caliperPoints.length === 1 && (
-                  <div
-                    className="absolute w-3 h-3 bg-amber-400 rounded-full border-2 border-slate-950 -translate-x-1/2 -translate-y-1/2 animate-ping"
-                    style={{ left: caliperPoints[0].x, top: caliperPoints[0].y }}
-                  />
-                )}
-              </div>
+                  {/* Active caliper start marker */}
+                  {caliperPoints.length === 1 && (
+                    <div
+                      className="absolute w-3 h-3 bg-amber-400 rounded-full border-2 border-slate-950 -translate-x-1/2 -translate-y-1/2 animate-ping"
+                      style={{ left: caliperPoints[0].x, top: caliperPoints[0].y }}
+                    />
+                  )}
+                </div>
+              )
             ) : (
               <div className="flex flex-col items-center gap-3 text-slate-500 p-8 text-center max-w-md">
                 <AlertCircle size={40} className="text-slate-600" />

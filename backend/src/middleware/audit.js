@@ -27,10 +27,18 @@ async function logAction(req, action, entityType, entityId, details = {}) {
       ipAddress = ipAddress.substring(7);
     }
 
+    let validUserId = null;
+    if (userId && Number.isInteger(Number(userId)) && Number(userId) > 0) {
+      try {
+        const { rows } = await db.query('SELECT id FROM users WHERE id = ?', [Number(userId)]);
+        if (rows && rows.length > 0) validUserId = rows[0].id;
+      } catch (_) { validUserId = null; }
+    }
+
     await db.query(
       `INSERT INTO audit_logs (user_id, user_name, user_role, action, entity_type, entity_id, details, ip_address)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [userId, userName, userRole, action, entityType, entityId, JSON.stringify(details), ipAddress]
+      [validUserId, userName, userRole, action, entityType, entityId, JSON.stringify(details), ipAddress]
     );
   } catch (err) {
     console.error('Audit Log Error:', err);
