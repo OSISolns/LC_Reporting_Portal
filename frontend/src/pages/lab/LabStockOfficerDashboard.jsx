@@ -5,7 +5,7 @@ import {
   Trash2, Box, Refrigerator,
   Snowflake, Thermometer, X, Database, Send, CheckCircle2, ArrowRight,
   Building2, FlaskConical, Check, Minus, ShieldCheck, Sparkles, Info,
-  Calendar, Filter, ChevronRight
+  Calendar, Filter, ChevronRight, ChevronLeft
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
@@ -154,6 +154,8 @@ export default function LabStockOfficerDashboard() {
   const [deptFilter, setDeptFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [stockStatusFilter, setStockStatusFilter] = useState('all'); // 'all' | 'low' | 'depleted' | 'good'
+  const [inventoryPage, setInventoryPage] = useState(1);
+  const inventoryItemsPerPage = 25;
 
   // Cold Chain Tab Filter: 'all' | 'fridge' | 'room_temp' | 'freezer'
   const [storageTabType, setStorageTabType] = useState('all');
@@ -339,6 +341,18 @@ export default function LabStockOfficerDashboard() {
       return true;
     });
   }, [inventory, searchQuery, equipFilter, storageUnitFilter, tempFilter, deptFilter, categoryFilter, stockStatusFilter]);
+
+  // Reset page to 1 when filters or search change
+  useEffect(() => {
+    setInventoryPage(1);
+  }, [searchQuery, equipFilter, storageUnitFilter, tempFilter, deptFilter, categoryFilter, stockStatusFilter]);
+
+  // ── Paginated Inventory (25 items per page) ───────────────────────────────
+  const totalInventoryPages = Math.max(1, Math.ceil(filteredInventory.length / inventoryItemsPerPage));
+  const paginatedInventory = useMemo(() => {
+    const startIndex = (inventoryPage - 1) * inventoryItemsPerPage;
+    return filteredInventory.slice(startIndex, startIndex + inventoryItemsPerPage);
+  }, [filteredInventory, inventoryPage, inventoryItemsPerPage]);
 
   // ── Filtered Storage Units for Tab 3 ────────────────────────────────────────
   const filteredStorageUnits = useMemo(() => {
@@ -1145,7 +1159,7 @@ export default function LabStockOfficerDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700">
-                    {filteredInventory.map((item) => {
+                    {paginatedInventory.map((item) => {
                       const qty = Number(item.quantity_in_hand) || 0;
                       const min = Number(item.min_threshold) || 1;
                       const percentage = Math.min(100, Math.round((qty / (min * 2)) * 100));
@@ -1272,6 +1286,70 @@ export default function LabStockOfficerDashboard() {
                     })}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {/* Pagination Controls Bar */}
+            {filteredInventory.length > 0 && (
+              <div className="bg-slate-50/90 border-t border-slate-200 px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                <div className="text-slate-500 font-medium">
+                  Showing <span className="font-bold text-slate-800">
+                    {Math.min(filteredInventory.length, (inventoryPage - 1) * inventoryItemsPerPage + 1)}
+                  </span> to <span className="font-bold text-slate-800">
+                    {Math.min(filteredInventory.length, inventoryPage * inventoryItemsPerPage)}
+                  </span> of <span className="font-bold text-slate-800">{filteredInventory.length}</span> reagents (25 per page)
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setInventoryPage(p => Math.max(1, p - 1))}
+                    disabled={inventoryPage <= 1}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-semibold text-xs shadow-2xs transition-colors"
+                  >
+                    <ChevronLeft size={14} /> Previous
+                  </button>
+
+                  <div className="flex items-center gap-1 px-2">
+                    {Array.from({ length: totalInventoryPages }, (_, i) => i + 1)
+                      .filter(p => p === 1 || p === totalInventoryPages || Math.abs(p - inventoryPage) <= 1)
+                      .reduce((acc, p, idx, arr) => {
+                        if (idx > 0 && p - arr[idx - 1] > 1) {
+                          acc.push('ellipsis-' + p);
+                        }
+                        acc.push(p);
+                        return acc;
+                      }, [])
+                      .map((item) => {
+                        if (typeof item === 'string') {
+                          return (
+                            <span key={item} className="px-1 text-slate-400 font-bold">…</span>
+                          );
+                        }
+                        const isCurrent = item === inventoryPage;
+                        return (
+                          <button
+                            key={item}
+                            onClick={() => setInventoryPage(item)}
+                            className={`min-w-[28px] h-7 rounded-lg text-xs font-bold transition-colors ${
+                              isCurrent
+                                ? 'bg-[#1B669E] text-white shadow-xs'
+                                : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                            }`}
+                          >
+                            {item}
+                          </button>
+                        );
+                      })}
+                  </div>
+
+                  <button
+                    onClick={() => setInventoryPage(p => Math.min(totalInventoryPages, p + 1))}
+                    disabled={inventoryPage >= totalInventoryPages}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-semibold text-xs shadow-2xs transition-colors"
+                  >
+                    Next <ChevronRight size={14} />
+                  </button>
+                </div>
               </div>
             )}
           </div>
