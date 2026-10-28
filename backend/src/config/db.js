@@ -1241,6 +1241,57 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         console.warn('  ⚠️ Failed to verify/create imaging_shares:', err.message);
       });
 
+      // Ensure shift_sessions CHECK constraint supports all current roles ('customer_care', 'rn_midwife', etc.)
+      try {
+        const shiftTableInfo = await client.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='shift_sessions'");
+        const shiftSql = shiftTableInfo?.rows?.[0]?.sql || '';
+        if (shiftSql && (!shiftSql.includes('customer_care') || !shiftSql.includes('rn_midwife'))) {
+          console.log('⚙️ Migrating shift_sessions CHECK constraint to include customer_care & rn_midwife...');
+          const countBefore = (await client.execute('SELECT COUNT(*) as c FROM shift_sessions')).rows[0].c;
+          await client.execute('PRAGMA foreign_keys=OFF;');
+          await client.execute(`
+            CREATE TABLE IF NOT EXISTS shift_sessions_new (
+              id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id             INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+              shift_role          TEXT NOT NULL CHECK (shift_role IN ('cashier', 'helpdesk', 'customer_care', 'call_center', 'nurse', 'rn_midwife', 'vip_lounge', 'imaging', 'rama_rssb')),
+              status              TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'draft', 'closed')),
+              opened_at           DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+              closed_at           DATETIME,
+              handover_notes      TEXT,
+              reviewed_by         INTEGER REFERENCES users(id) ON DELETE SET NULL,
+              reviewed_at         DATETIME,
+              is_flagged          INTEGER NOT NULL DEFAULT 0,
+              flag_reasons        TEXT,
+              created_at          DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+              updated_at          DATETIME DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+              start_hour          TEXT,
+              wave                TEXT,
+              nursing_ward        TEXT,
+              transferred_from_shift_id INTEGER,
+              transfer_reason     TEXT,
+              transferred_by      INTEGER,
+              transfer_status     TEXT,
+              transferred_to_role TEXT
+            )
+          `);
+          await client.execute('INSERT INTO shift_sessions_new SELECT * FROM shift_sessions;');
+          const countNew = (await client.execute('SELECT COUNT(*) as c FROM shift_sessions_new')).rows[0].c;
+          if (countNew === countBefore) {
+            await client.execute('DROP TABLE shift_sessions;');
+            await client.execute('ALTER TABLE shift_sessions_new RENAME TO shift_sessions;');
+            await client.execute('CREATE INDEX IF NOT EXISTS idx_shift_user_id     ON shift_sessions(user_id);');
+            await client.execute('CREATE INDEX IF NOT EXISTS idx_shift_status      ON shift_sessions(status);');
+            await client.execute('CREATE INDEX IF NOT EXISTS idx_shift_role        ON shift_sessions(shift_role);');
+            await client.execute('CREATE INDEX IF NOT EXISTS idx_shift_opened_at   ON shift_sessions(opened_at DESC);');
+            await client.execute('CREATE INDEX IF NOT EXISTS idx_shift_is_flagged  ON shift_sessions(is_flagged);');
+            console.log('✅ shift_sessions CHECK constraint migrated successfully.');
+          }
+          await client.execute('PRAGMA foreign_keys=ON;');
+        }
+      } catch (err) {
+        console.warn('  ⚠️ shift_sessions constraint migration check skipped:', err.message);
+      }
+
       console.log('⚙️ Running lab_orders, lab_results, and lab_qc_logs table migrations...');
       await client.execute(`
         CREATE TABLE IF NOT EXISTS lab_orders (
