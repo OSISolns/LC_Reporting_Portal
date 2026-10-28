@@ -20,7 +20,7 @@ router.post(
   '/open',
   validate([
     body('shift_role')
-      .isIn(['cashier', 'helpdesk', 'call_center', 'nurse', 'rn_midwife', 'vip_lounge', 'imaging', 'rama_rssb'])
+      .isIn(['cashier', 'helpdesk', 'customer_care', 'call_center', 'nurse', 'rn_midwife', 'vip_lounge', 'imaging', 'rama_rssb'])
       .withMessage('Invalid shift role'),
     body('equipment')
       .isArray({ min: 1 })
@@ -162,7 +162,7 @@ router.post(
   validate([
     param('id').isInt().withMessage('Invalid shift ID'),
     body('new_shift_role')
-      .isIn(['cashier', 'helpdesk', 'call_center', 'nurse', 'rn_midwife', 'vip_lounge', 'imaging', 'rama_rssb'])
+      .isIn(['cashier', 'helpdesk', 'customer_care', 'call_center', 'nurse', 'rn_midwife', 'vip_lounge', 'imaging', 'rama_rssb'])
       .withMessage('Invalid target shift role'),
     body('transfer_reason').notEmpty().withMessage('Transfer reason is required'),
     body('password').notEmpty().withMessage('Password confirmation is required'),

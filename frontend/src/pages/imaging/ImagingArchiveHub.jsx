@@ -343,6 +343,14 @@ export default function ImagingArchiveHub() {
     }
   };
 
+  const handleOpenNewTab = (item) => {
+    if (!item?.id) return;
+    const pid = item.patient_id || '';
+    const url = `/imaging/viewer?archiveId=${item.id}${pid ? `&patientId=${encodeURIComponent(pid)}` : ''}`;
+    window.open(url, '_blank');
+    toast.success('Viewer opened in a new tab!');
+  };
+
   const handleDetachWorkstation = (item) => {
     if (!item?.id) return;
     const pid = item.patient_id || '';
@@ -798,9 +806,9 @@ export default function ImagingArchiveHub() {
                               View in Lumina
                             </button>
                             <button
-                              onClick={() => handleDetachWorkstation(item)}
-                              className="p-1 rounded text-slate-600 hover:text-sky-700 hover:bg-sky-50 border border-slate-200 transition-colors"
-                              title="Detach to Standalone Dual-Monitor Workstation"
+                              onClick={() => handleOpenNewTab(item)}
+                              className="p-1 rounded text-teal-600 hover:text-teal-700 hover:bg-teal-50 border border-slate-200 transition-colors"
+                              title="Open Viewer in New Tab"
                             >
                               <ExternalLink size={13} />
                             </button>
@@ -995,9 +1003,9 @@ export default function ImagingArchiveHub() {
                           <Eye size={13} /> View in Lumina
                         </button>
                         <button
-                          onClick={() => handleDetachWorkstation(item)}
-                          className="p-1.5 rounded-lg text-slate-600 hover:text-sky-700 hover:bg-sky-50 border border-slate-200 transition-colors"
-                          title="Detach to Standalone Dual-Monitor Workstation"
+                          onClick={() => handleOpenNewTab(item)}
+                          className="p-1.5 rounded-lg text-teal-600 hover:text-teal-700 hover:bg-teal-50 border border-slate-200 transition-colors"
+                          title="Open Viewer in New Tab"
                         >
                           <ExternalLink size={14} />
                         </button>
@@ -1119,9 +1127,9 @@ export default function ImagingArchiveHub() {
                         <Share2 size={14} />
                       </button>
                       <button
-                        onClick={() => handleDetachWorkstation(item)}
-                        className="p-1.5 rounded text-sky-600 hover:bg-sky-50 transition-colors"
-                        title="Detach to Standalone Dual-Monitor Workstation"
+                        onClick={() => handleOpenNewTab(item)}
+                        className="p-1.5 rounded text-teal-600 hover:bg-teal-50 transition-colors"
+                        title="Open Viewer in New Tab"
                       >
                         <ExternalLink size={14} />
                       </button>

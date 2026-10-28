@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   ZoomIn,
@@ -40,7 +41,8 @@ import {
   EyeOff,
   Sparkles,
   Monitor,
-  Move
+  Move,
+  GripHorizontal
 } from 'lucide-react';
 import {
   getViewerBundle,
@@ -91,6 +93,135 @@ export default function DiagnosticViewerModal({
   const [secondarySliceIndex, setSecondarySliceIndex] = useState(1);
   const [showReport, setShowReport] = useState(!isStandalone);
   const [isFullscreen, setIsFullscreen] = useState(isStandalone);
+
+  // Window Drag & Move and Window Resize state
+  const [windowPos, setWindowPos] = useState({ x: 0, y: 0 });
+  const [isDraggingWindow, setIsDraggingWindow] = useState(false);
+  const dragStartRef = useRef({ mouseX: 0, mouseY: 0, posX: 0, posY: 0 });
+
+  const [windowSize, setWindowSize] = useState(() => {
+    if (typeof window === 'undefined') return { width: 1320, height: 860 };
+    return {
+      width: Math.min(1380, Math.max(760, window.innerWidth - 64)),
+      height: Math.min(920, Math.max(540, window.innerHeight - 48)),
+    };
+  });
+  const [isResizingWindow, setIsResizingWindow] = useState(false);
+  const resizeStartRef = useRef({ mouseX: 0, mouseY: 0, width: 0, height: 0 });
+
+  // Reset window position and size whenever modal is opened
+  useEffect(() => {
+    if (isOpen) {
+      setWindowPos({ x: 0, y: 0 });
+      if (typeof window !== 'undefined') {
+        setWindowSize({
+          width: Math.min(1380, Math.max(760, window.innerWidth - 64)),
+          height: Math.min(920, Math.max(540, window.innerHeight - 48)),
+        });
+      }
+    }
+  }, [isOpen]);
+
+  // Window Drag & Move Handlers
+  const handleHeaderMouseDown = (e) => {
+    if (isFullscreen || isStandalone) return;
+    if (e.target.closest('button, a, input, select, textarea, [data-no-drag]')) return;
+    setIsDraggingWindow(true);
+    dragStartRef.current = {
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      posX: windowPos.x,
+      posY: windowPos.y,
+    };
+  };
+
+  useEffect(() => {
+    if (!isDraggingWindow) return;
+
+    const handleMouseMove = (e) => {
+      const dx = e.clientX - dragStartRef.current.mouseX;
+      const dy = e.clientY - dragStartRef.current.mouseY;
+      setWindowPos({
+        x: dragStartRef.current.posX + dx,
+        y: dragStartRef.current.posY + dy,
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingWindow(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingWindow]);
+
+  // Window Resize Handlers (Corner Drag)
+  const handleResizeMouseDown = (e) => {
+    if (isFullscreen || isStandalone) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizingWindow(true);
+    resizeStartRef.current = {
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      width: windowSize.width,
+      height: windowSize.height,
+    };
+  };
+
+  useEffect(() => {
+    if (!isResizingWindow) return;
+
+    const handleMouseMove = (e) => {
+      const dx = e.clientX - resizeStartRef.current.mouseX;
+      const dy = e.clientY - resizeStartRef.current.mouseY;
+      setWindowSize({
+        width: Math.max(700, Math.min(window.innerWidth - 20, resizeStartRef.current.width + dx)),
+        height: Math.max(480, Math.min(window.innerHeight - 20, resizeStartRef.current.height + dy)),
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingWindow(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizingWindow]);
+
+  // Window Zoom In / Out / Reset
+  const handleWindowZoomIn = () => {
+    if (isFullscreen) return;
+    setWindowSize((prev) => ({
+      width: Math.min(window.innerWidth - 20, Math.round(prev.width * 1.1)),
+      height: Math.min(window.innerHeight - 20, Math.round(prev.height * 1.1)),
+    }));
+  };
+
+  const handleWindowZoomOut = () => {
+    if (isFullscreen) return;
+    setWindowSize((prev) => ({
+      width: Math.max(680, Math.round(prev.width * 0.9)),
+      height: Math.max(480, Math.round(prev.height * 0.9)),
+    }));
+  };
+
+  const handleResetWindow = () => {
+    setWindowPos({ x: 0, y: 0 });
+    setWindowSize({
+      width: Math.min(1380, Math.max(760, window.innerWidth - 64)),
+      height: Math.min(920, Math.max(540, window.innerHeight - 48)),
+    });
+    setIsFullscreen(false);
+  };
 
   // Split-screen comparison (1-Up vs 2-Up)
   const [splitMode, setSplitMode] = useState(1); // 1 = Single, 2 = Dual Side-by-Side
@@ -630,16 +761,27 @@ export default function DiagnosticViewerModal({
     }
   };
 
-  // Detach / Pop Out Viewer to Standalone Workstation Window
-  const handleDetach = () => {
+  // Helper to build standalone/new-tab workstation URL
+  const getWorkstationUrl = useCallback(() => {
     const params = new URLSearchParams();
     if (studyId) params.set('studyId', studyId);
     else if (archiveItem?.id) params.set('archiveId', archiveItem.id);
     else if (currentSlice?.archiveId) params.set('archiveId', currentSlice.archiveId);
     if (shareToken) params.set('shareToken', shareToken);
     if (data?.study?.patient_id) params.set('patientId', data.study.patient_id);
+    return `/imaging/viewer?${params.toString()}`;
+  }, [studyId, archiveItem, currentSlice, shareToken, data?.study?.patient_id]);
 
-    const url = `/imaging/viewer?${params.toString()}`;
+  // Open Viewer in a standard full new browser tab
+  const handleOpenNewTab = () => {
+    const url = getWorkstationUrl();
+    window.open(url, '_blank');
+    toast.success('Workstation opened in a new tab!');
+  };
+
+  // Detach / Pop Out Viewer to Standalone Workstation Window
+  const handleDetach = () => {
+    const url = getWorkstationUrl();
     const screenW = window.screen.availWidth || 1600;
     const screenH = window.screen.availHeight || 1000;
     window.open(url, '_blank', `width=${screenW},height=${screenH},menubar=no,toolbar=no,location=no,status=no,resizable=yes`);
@@ -794,30 +936,54 @@ export default function DiagnosticViewerModal({
 
   if (!isOpen) return null;
 
-  return (
+  const modalContent = (
     <div
       className={
         isStandalone
-          ? 'fixed inset-0 w-screen h-screen z-50 flex flex-col bg-slate-950 text-slate-100 overflow-hidden'
-          : `fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md transition-all ${
-              isFullscreen ? 'p-0' : 'p-2 sm:p-4'
-            }`
+          ? 'fixed inset-0 w-screen h-screen z-[99999] flex flex-col bg-slate-950 text-slate-100 overflow-hidden'
+          : `fixed inset-0 z-[99999] flex items-center justify-center bg-black/85 backdrop-blur-md overflow-hidden pointer-events-auto`
       }
     >
       <div
+        style={
+          !isStandalone && !isFullscreen
+            ? {
+                width: `${windowSize.width}px`,
+                height: `${windowSize.height}px`,
+                transform: `translate(${windowPos.x}px, ${windowPos.y}px)`,
+                maxWidth: '99vw',
+                maxHeight: '98vh',
+              }
+            : undefined
+        }
         className={
           isStandalone
             ? 'relative flex-1 flex flex-col bg-slate-950 text-slate-100 overflow-hidden'
-            : `relative flex flex-col bg-slate-950 text-slate-100 border border-slate-800 shadow-2xl overflow-hidden transition-all duration-200 ${
+            : `relative flex flex-col bg-slate-950 text-slate-100 border border-slate-800 shadow-2xl overflow-hidden ${
                 isFullscreen
                   ? 'w-full h-full rounded-none'
-                  : 'w-full max-w-7xl h-[94vh] rounded-2xl border-slate-700/60'
+                  : 'rounded-2xl border-slate-700/60 shadow-black/80'
               }`
         }
       >
         {/* ── Top Header Bar ──────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900 border-b border-slate-800 shrink-0">
-          <div className="flex items-center gap-3">
+        <div
+          onMouseDown={handleHeaderMouseDown}
+          onDoubleClick={() => !isStandalone && setIsFullscreen((f) => !f)}
+          className={`flex items-center justify-between px-4 py-2.5 bg-slate-900 border-b border-slate-800 shrink-0 select-none ${
+            !isFullscreen && !isStandalone ? 'cursor-grab active:cursor-grabbing' : ''
+          }`}
+          title={!isFullscreen && !isStandalone ? 'Click and drag to move window • Double-click to toggle fullscreen' : ''}
+        >
+          <div className="flex items-center gap-2.5">
+            {!isFullscreen && !isStandalone && (
+              <div
+                className="hidden sm:flex items-center text-slate-500 hover:text-slate-300 transition-colors p-1 rounded hover:bg-slate-800 cursor-grab active:cursor-grabbing"
+                title="Drag to move viewer window"
+              >
+                <GripHorizontal size={18} />
+              </div>
+            )}
             <span
               className={`px-2.5 py-1 text-xs font-bold uppercase rounded-md border tracking-wider ${modalityBadgeClass}`}
             >
@@ -890,15 +1056,27 @@ export default function DiagnosticViewerModal({
               </div>
             )}
 
+            {/* Open in New Tab Button */}
+            {!isStandalone && (
+              <button
+                onClick={handleOpenNewTab}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-teal-950/80 hover:bg-teal-900 border border-teal-500/30 text-teal-300 hover:text-white transition-colors shadow-sm"
+                title="Open viewer in a new browser tab"
+              >
+                <ExternalLink size={14} />
+                <span className="hidden sm:inline">New Tab</span>
+              </button>
+            )}
+
             {/* Detach / Pop Out Window Button */}
             {!isStandalone && (
               <button
                 onClick={handleDetach}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-sky-950/80 hover:bg-sky-900 border border-sky-500/30 text-sky-300 transition-colors"
+                className="hidden lg:inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-sky-950/80 hover:bg-sky-900 border border-sky-500/30 text-sky-300 transition-colors"
                 title="Detach viewer into separate window (Ideal for dual-monitor radiology workstations)"
               >
-                <ExternalLink size={14} />
-                <span className="hidden md:inline">Detach Viewer</span>
+                <Monitor size={14} />
+                <span className="hidden md:inline">Pop Out</span>
               </button>
             )}
 
@@ -944,7 +1122,45 @@ export default function DiagnosticViewerModal({
               <span className="hidden md:inline">Report</span>
             </button>
 
+            {/* Window Resizing & Controls Group (Shrink, Center/Reset, Enlarge, Fullscreen) */}
             {!isStandalone && (
+              <div className="flex items-center bg-slate-800/90 rounded-lg p-0.5 border border-slate-700/80 text-xs">
+                <button
+                  onClick={handleWindowZoomOut}
+                  disabled={isFullscreen}
+                  className="p-1.5 rounded text-slate-300 hover:text-white hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                  title="Shrink Window (Zoom Out Modal Size)"
+                >
+                  <ZoomOut size={14} />
+                </button>
+                <button
+                  onClick={handleResetWindow}
+                  disabled={isFullscreen}
+                  className="p-1.5 rounded text-slate-300 hover:text-white hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                  title="Reset Window Size & Center Position"
+                >
+                  <RefreshCw size={13} />
+                </button>
+                <button
+                  onClick={handleWindowZoomIn}
+                  disabled={isFullscreen}
+                  className="p-1.5 rounded text-slate-300 hover:text-white hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                  title="Enlarge Window (Zoom In Modal Size)"
+                >
+                  <ZoomIn size={14} />
+                </button>
+                <div className="h-4 w-[1px] bg-slate-700 mx-0.5" />
+                <button
+                  onClick={() => setIsFullscreen(!isFullscreen)}
+                  className="p-1.5 rounded text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
+                  title={isFullscreen ? 'Restore Window Size' : 'Maximize Window (Fullscreen)'}
+                >
+                  {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                </button>
+              </div>
+            )}
+
+            {isStandalone && (
               <button
                 onClick={() => setIsFullscreen(!isFullscreen)}
                 className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
@@ -1806,7 +2022,22 @@ export default function DiagnosticViewerModal({
             </div>
           </div>
         )}
+
+        {/* Interactive Bottom-Right Corner Resize Handle */}
+        {!isFullscreen && !isStandalone && (
+          <div
+            onMouseDown={handleResizeMouseDown}
+            className="absolute bottom-1 right-1 w-6 h-6 cursor-se-resize flex items-center justify-center text-slate-500 hover:text-cyan-400 select-none z-50 transition-colors group"
+            title="Click and drag to resize window"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="group-hover:scale-125 transition-transform">
+              <path d="M10 2L2 10M10 6L6 10M10 10H10.01" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+            </svg>
+          </div>
+        )}
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 }

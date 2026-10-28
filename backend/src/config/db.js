@@ -1236,6 +1236,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         await client.execute('CREATE INDEX IF NOT EXISTS idx_imaging_shares_provider ON imaging_shares(provider_name)').catch(() => { });
         await client.execute('CREATE INDEX IF NOT EXISTS idx_imaging_shares_study ON imaging_shares(study_id)').catch(() => { });
         await client.execute('CREATE INDEX IF NOT EXISTS idx_imaging_shares_token ON imaging_shares(share_token)').catch(() => { });
+        await client.execute("DELETE FROM imaging_shares WHERE patient_id = 'PID-CT-001' OR patient_name = 'Test Patient CT'").catch(() => { });
       }).catch((err) => {
         console.warn('  ⚠️ Failed to verify/create imaging_shares:', err.message);
       });
