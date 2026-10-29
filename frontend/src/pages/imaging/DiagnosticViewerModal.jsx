@@ -2089,7 +2089,7 @@ export default function DiagnosticViewerModal({
 
               {/* Reset Transforms */}
               <button
-                onClick={resetTransforms}
+                onClick={resetViewport}
                 className="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
                 title="Reset View (100% Zoom & Centered)"
               >
