@@ -2,7 +2,8 @@ import { useState as useLocalState } from 'react';
 import { INSURANCES, CLINICAL_SERVICES } from '../constants';
 import { Info, Receipt, Save, Phone, Calendar, Users, X as XIcon, Stethoscope } from 'lucide-react';
 import PatientAutocomplete from '../../../components/PatientAutocomplete';
-import { getGroupedProvidersForService, guessServiceFromProvider, formatProviderOptionLabel, formatProviderFullName } from '../../../utils/serviceProviderMapping';
+import ProviderAutocomplete from '../../../components/ProviderAutocomplete';
+import { guessServiceFromProvider } from '../../../utils/serviceProviderMapping';
 
 const inputStyle = {
   padding: '10px',
@@ -28,29 +29,23 @@ const fieldStyle = { display: 'flex', flexDirection: 'column', gap: '6px' };
 const labelStyle = { fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-dark)' };
 
 const RefundFormFields = ({ formData, handleChange, setFormData, handleSubmit, onSaveDraft, loading, onCancel, hasRestoredDraft, onClearDraft, providers = [] }) => {
-  const { matching: matchingProviders, others: otherProviders, hasFilter } = getGroupedProvidersForService(formData.serviceName, providers);
-
   const handleServiceSelect = (e) => {
     handleChange(e);
   };
 
-  const handleProviderSelect = (e) => {
-    const pId = e.target.value;
-    const prov = providers.find(p => p.id.toString() === pId.toString());
-    const provName = prov ? formatProviderFullName(prov) : '';
-
+  const handleProviderSelect = ({ id, name, provider }) => {
     if (setFormData) {
       setFormData(prev => {
-        const next = { ...prev, providerId: pId, providerName: provName };
-        if (!prev.serviceName && prov) {
-          const guessed = guessServiceFromProvider(prov);
+        const next = { ...prev, providerId: id, providerName: name };
+        if (!prev.serviceName && provider) {
+          const guessed = guessServiceFromProvider(provider);
           if (guessed) next.serviceName = guessed;
         }
         return next;
       });
     } else {
-      handleChange({ target: { name: 'providerId', value: pId } });
-      handleChange({ target: { name: 'providerName', value: provName } });
+      handleChange({ target: { name: 'providerId', value: id } });
+      handleChange({ target: { name: 'providerName', value: name } });
     }
   };
 
@@ -202,50 +197,17 @@ const RefundFormFields = ({ formData, handleChange, setFormData, handleSubmit, o
                 <Stethoscope size={14} style={{ color: 'var(--primary)' }} />
                 Attending Provider *
               </span>
-              {hasFilter && (
-                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--primary)', backgroundColor: 'rgba(0,123,138,0.08)', padding: '1px 6px', borderRadius: '4px' }}>
-                  {matchingProviders.length} specialist{matchingProviders.length !== 1 ? 's' : ''} for {formData.serviceName}
-                </span>
-              )}
             </label>
-            <select
-              name="providerId"
+            <ProviderAutocomplete
+              providerId={formData.providerId}
+              providerName={formData.providerName}
+              serviceName={formData.serviceName}
+              providers={providers}
+              onProviderSelect={handleProviderSelect}
               required
-              value={formData.providerId || ''}
-              onChange={handleProviderSelect}
-              style={{
-                ...selectStyle,
-                border: (!formData.providerId && !formData.providerName) ? '1.5px solid #cbd5e1' : '1.5px solid #0284c7'
-              }}
-            >
-              <option value="">Select Attending Provider</option>
-              {hasFilter ? (
-                <>
-                  <optgroup label={`🩺 Specialists for ${formData.serviceName}`}>
-                    {matchingProviders.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {formatProviderOptionLabel(p)}
-                      </option>
-                    ))}
-                  </optgroup>
-                  {otherProviders.length > 0 && (
-                    <optgroup label="🏥 Other Clinic Providers">
-                      {otherProviders.map(p => (
-                        <option key={p.id} value={p.id}>
-                          {formatProviderOptionLabel(p)}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                </>
-              ) : (
-                providers.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {formatProviderOptionLabel(p)}
-                  </option>
-                ))
-              )}
-            </select>
+              placeholder="Search by name, title, or specialization..."
+              inputStyle={inputStyle}
+            />
           </div>
 
         </div>
