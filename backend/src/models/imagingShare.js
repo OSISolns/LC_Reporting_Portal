@@ -202,24 +202,107 @@ class ImagingShare {
   }
 
   static async getSharedForProvider(providerIdentifier, limit = 50) {
-    // Matches by provider_name or provider_email or provider_id
+    let name = '';
+    let email = '';
+    let id = -1;
+    let username = '';
+    let role = '';
+
+    if (typeof providerIdentifier === 'object' && providerIdentifier !== null) {
+      name = providerIdentifier.name || '';
+      email = providerIdentifier.email || '';
+      id = providerIdentifier.id && !isNaN(providerIdentifier.id) ? Number(providerIdentifier.id) : -1;
+      username = providerIdentifier.username || '';
+      role = providerIdentifier.role || '';
+    } else if (typeof providerIdentifier === 'string') {
+      name = providerIdentifier;
+      email = providerIdentifier;
+      id = !isNaN(providerIdentifier) ? Number(providerIdentifier) : -1;
+      username = providerIdentifier;
+    }
+
+    const isAdminOrDirector = ['admin', 'medical_director', 'clinical_director', 'coo', 'deputy_coo'].includes(role);
+
+    let whereClause = `WHERE (s.expires_at IS NULL OR s.expires_at > (strftime('%Y-%m-%dT%H:%M:%fZ','now'))) AND s.status != 'revoked'`;
+    const params = [];
+
+    if (!isAdminOrDirector || (name || email || id > 0 || username)) {
+      const conds = [];
+      if (id > 0) {
+        conds.push(`s.provider_id = ?`);
+        params.push(id);
+      }
+      if (email) {
+        conds.push(`LOWER(s.provider_email) = LOWER(?)`);
+        params.push(email);
+      }
+      if (name) {
+        conds.push(`LOWER(s.provider_name) LIKE LOWER(?)`);
+        params.push(`%${name}%`);
+      }
+      if (username) {
+        conds.push(`LOWER(s.provider_name) LIKE LOWER(?)`);
+        params.push(`%${username}%`);
+      }
+
+      if (conds.length > 0) {
+        whereClause += ` AND (${conds.join(' OR ')})`;
+      }
+    }
+
+    params.push(Number(limit) || 100);
+
     const { rows } = await db.query(
       `SELECT 
         s.*,
         st.accession_number,
         st.exam_region as body_part,
         st.status as study_status,
-        st.scheduled_at as study_date
+        st.scheduled_at as study_date,
+        st.clinical_notes as study_clinical_notes,
+        r.id as report_id,
+        r.status as report_status,
+        r.technique,
+        r.findings_narrative,
+        r.findings_code_json,
+        r.impression,
+        r.diagnosis_code_json,
+        r.recommendations,
+        r.created_at as reported_at,
+        r.updated_at as report_updated_at,
+        u.full_name as radiologist_name,
+        uv.full_name as verified_by_name,
+        a.original_filename as archive_filename,
+        a.file_size_bytes as archive_size,
+        a.frame_count as archive_frame_count,
+        a.modality as archive_modality
        FROM imaging_shares s
        LEFT JOIN imaging_studies st ON s.study_id = st.id
-       WHERE (s.provider_name LIKE ? OR s.provider_email = ? OR s.provider_id = ?)
-         AND (s.expires_at IS NULL OR s.expires_at > (strftime('%Y-%m-%dT%H:%M:%fZ','now')))
-         AND s.status != 'revoked'
+       LEFT JOIN imaging_reports r ON s.study_id = r.study_id
+       LEFT JOIN users u ON r.radiologist_id = u.id
+       LEFT JOIN users uv ON r.verified_by = uv.id
+       LEFT JOIN imaging_archives a ON s.archive_id = a.id
+       ${whereClause}
        ORDER BY s.created_at DESC
        LIMIT ?`,
-      [`%${providerIdentifier}%`, providerIdentifier, isNaN(providerIdentifier) ? -1 : Number(providerIdentifier), Number(limit)]
+      params
     );
-    return rows || [];
+
+    return (rows || []).map(row => {
+      let findings_codes = [];
+      let diagnosis_codes = [];
+      try {
+        if (row.findings_code_json) findings_codes = JSON.parse(row.findings_code_json);
+      } catch (_) {}
+      try {
+        if (row.diagnosis_code_json) diagnosis_codes = JSON.parse(row.diagnosis_code_json);
+      } catch (_) {}
+      return {
+        ...row,
+        findings_codes,
+        diagnosis_codes,
+      };
+    });
   }
 
   static async recordView(idOrToken) {

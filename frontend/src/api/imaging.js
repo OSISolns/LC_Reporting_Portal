@@ -71,3 +71,6 @@ export const revokeShare = (id) => api.delete(`/imaging/shares/${id}`);
 // In-Lumina Diagnostic Viewer Bundles
 export const getViewerBundle = (studyId) => api.get(`/imaging/studies/${studyId}/viewer-bundle`);
 export const getShareViewerBundle = (token) => api.get(`/imaging/shares/viewer-bundle/${token}`);
+export const shareReportPdfUrl = (token) => `/imaging/shares/report/pdf/${token}`;
+export const downloadShareReportPdf = (token) => api.get(`/imaging/shares/report/pdf/${token}`, { responseType: 'blob' });
+

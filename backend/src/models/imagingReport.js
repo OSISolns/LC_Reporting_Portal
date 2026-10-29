@@ -50,6 +50,10 @@ class ImagingReport {
     };
   }
 
+  static async findByStudyId(studyId) {
+    return this.getByStudy(studyId);
+  }
+
   // Create or update the (single) draft report for a study.
   static async save(studyId, data, user) {
     const existing = await this.getByStudy(studyId);

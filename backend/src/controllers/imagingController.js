@@ -1033,12 +1033,45 @@ exports.listShares = async (req, res, next) => {
 
 exports.getMySharedStudies = async (req, res, next) => {
   try {
-    const userIdentifier = req.user ? (req.user.name || req.user.username || req.user.email) : '';
-    const shares = await ImagingShare.getSharedForProvider(userIdentifier, 100);
+    const user = req.user || {};
+    const shares = await ImagingShare.getSharedForProvider({
+      id: user.id,
+      name: user.full_name || user.name,
+      email: user.email,
+      username: user.username,
+      role: user.role,
+    }, 150);
     res.json({ success: true, data: shares });
   } catch (err) {
     next(err);
   }
+};
+
+exports.shareReportPdf = async (req, res, next) => {
+  try {
+    const share = await ImagingShare.getByToken(req.params.token);
+    if (!share) return res.status(404).json({ success: false, message: 'Share link not found or expired.' });
+    if (!share.can_view_report) return res.status(403).json({ success: false, message: 'Report access not permitted for this share.' });
+
+    let study = null;
+    let report = null;
+    if (share.study_id) {
+      study = await ImagingStudy.findById(share.study_id);
+      report = await ImagingReport.getByStudy(share.study_id);
+    }
+    const data = assembleReportData(study || {
+      id: share.id,
+      patient_name: share.patient_name,
+      patient_id: share.patient_id,
+      modality: share.modality,
+      accession_number: share.accession_number || ('EXT-' + share.id),
+      scheduled_at: share.created_at,
+    }, report);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Imaging_Report_${(share.patient_name || 'Share').replace(/\s+/g, '_')}.pdf"`);
+    await generateImagingReportPDF(data, res);
+  } catch (err) { next(err); }
 };
 
 exports.getShareByToken = async (req, res, next) => {

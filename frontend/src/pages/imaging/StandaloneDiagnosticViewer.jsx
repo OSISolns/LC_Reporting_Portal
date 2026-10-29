@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import DiagnosticViewerModal from './DiagnosticViewerModal';
 
 /**
@@ -10,6 +11,7 @@ import DiagnosticViewerModal from './DiagnosticViewerModal';
 export default function StandaloneDiagnosticViewer() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const studyId = searchParams.get('studyId');
   const archiveId = searchParams.get('archiveId');
@@ -28,7 +30,12 @@ export default function StandaloneDiagnosticViewer() {
     if (window.opener) {
       window.close();
     } else {
-      navigate('/imaging?tab=archive');
+      const isClinician = ['doctor', 'consultant', 'physiotherapist', 'physio', 'dentist'].includes(user?.role);
+      if (isClinician || shareToken) {
+        navigate('/shared-imaging');
+      } else {
+        navigate('/imaging?tab=archive');
+      }
     }
   };
 

@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   ChevronLeft, ChevronRight, LayoutDashboard, FileText, ReceiptText,
   AlertTriangle, Users, UserCheck, History, LogOut, Key, Brain, X, RefreshCw, Shield, Database, Award, Clock, PenTool, Stethoscope, MessageSquare, Activity, Building, Mail, ShieldAlert, TrendingDown, ShieldCheck, Server, ScanLine, ClipboardList, FlaskConical, Heart, Dumbbell, Settings, PackageCheck, AlertOctagon, Archive,
-  Truck, Zap, Wrench, Package, DollarSign, BarChart3, BadgeDollarSign, FileSpreadsheet, Microscope, Cpu
+  Truck, Zap, Wrench, Package, DollarSign, BarChart3, BadgeDollarSign, FileSpreadsheet, Microscope, Cpu, FileSearch
 } from 'lucide-react';
 import Modal from './Modal';
 import ChangePasswordModal from './ChangePasswordModal';
@@ -86,7 +86,8 @@ const Sidebar = ({ onClose }) => {
         { configKey: 'lab_manager_hub', name: 'Lab Manager Hub', icon: <BarChart3 size={18} />, path: '/lab-manager', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'general_manager', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm'] },
         { configKey: 'lab_archive', name: 'Document Archive', icon: <Archive size={18} />, path: '/lab/archive', requiredPerm: null, allowedRoles: ALL_LAB_ROLES },
         { configKey: 'ncr_hub', name: 'Non-Conformance (NCR)', icon: <AlertOctagon size={18} />, path: '/ncr', requiredPerm: null, allowedRoles: ALL_LAB_ROLES },
-        { configKey: 'imaging', name: 'Imaging Hub', icon: <ScanLine size={18} />, path: '/imaging', requiredPerm: { mod: 'imaging', act: 'view' }, allowedRoles: ['imaging_tech', 'imaging_manager', 'admin', 'deputy_coo', 'coo', 'doctor', 'consultant', 'dentist', 'dental_hod', 'medical_director', 'clinical_director', 'chairman'] },
+        { configKey: 'imaging', name: 'Imaging Hub', icon: <ScanLine size={18} />, path: '/imaging', requiredPerm: { mod: 'imaging', act: 'view' }, allowedRoles: ['imaging_tech', 'imaging_manager', 'sono', 'radiologist', 'imaging', 'admin', 'deputy_coo', 'coo', 'medical_director', 'clinical_director', 'chairman'] },
+        { configKey: 'shared_imaging', name: 'Shared Imaging', icon: <FileSearch size={18} />, path: '/shared-imaging', requiredPerm: null, allowedRoles: ['doctor', 'consultant', 'physiotherapist', 'physio', 'dentist', 'dental_hod', 'medical_director', 'clinical_director', 'admin', 'deputy_coo', 'coo', 'chairman'] },
         { configKey: 'dental_hub', name: 'Dental Hub', icon: <Heart size={18} />, path: '/dental', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager', 'chairman'] },
         { configKey: 'physio_hub', name: 'Physio Workspace', icon: <Dumbbell size={18} />, path: '/physio', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'physiotherapist', 'physio'] },
         { configKey: 'physio_manager', name: 'Physio Manager Hub', icon: <BarChart3 size={18} />, path: '/physio/manager-dashboard', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'physio_manager', 'chairman'] },
