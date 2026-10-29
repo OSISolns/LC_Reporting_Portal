@@ -499,6 +499,12 @@ export default function DiagnosticViewerModal({
   const currentSlice = slices[selectedSliceIndex] || slices[0] || null;
   const secondarySlice = slices[secondarySliceIndex] || slices[1] || currentSlice;
 
+  const study = data?.study || {};
+  const report = data?.report;
+  const share = data?.share;
+  const modality = study.modality || currentSlice?.modality || 'X-Ray';
+  const modalityBadgeClass = MODALITY_COLORS[modality] || 'bg-blue-500/20 text-blue-400 border-blue-500/40';
+
   // Handle DICOM parsing client-side if needed
   useEffect(() => {
     if (!currentSlice) return;
@@ -1220,12 +1226,6 @@ export default function DiagnosticViewerModal({
       toast.error('Failed to export snapshot.', { id: toastId });
     }
   };
-
-  const study = data?.study || {};
-  const report = data?.report;
-  const share = data?.share;
-  const modality = study.modality || currentSlice?.modality || 'X-Ray';
-  const modalityBadgeClass = MODALITY_COLORS[modality] || 'bg-blue-500/20 text-blue-400 border-blue-500/40';
 
   // CSS Filter string for image
   const filterString = useMemo(() => {
@@ -2208,7 +2208,7 @@ export default function DiagnosticViewerModal({
 
               {/* Zoom In */}
               <button
-                onClick={() => handleZoom(0.2)}
+                onClick={handleZoomIn}
                 className="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
                 title="Zoom In"
               >
@@ -2217,7 +2217,7 @@ export default function DiagnosticViewerModal({
 
               {/* Zoom Out */}
               <button
-                onClick={() => handleZoom(-0.2)}
+                onClick={handleZoomOut}
                 className="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
                 title="Zoom Out"
               >
