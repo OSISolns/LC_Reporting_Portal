@@ -86,8 +86,9 @@ const Sidebar = ({ onClose }) => {
         { configKey: 'lab_manager_hub', name: 'Lab Manager Hub', icon: <BarChart3 size={18} />, path: '/lab-manager', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'general_manager', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm'] },
         { configKey: 'lab_archive', name: 'Document Archive', icon: <Archive size={18} />, path: '/lab/archive', requiredPerm: null, allowedRoles: ALL_LAB_ROLES },
         { configKey: 'ncr_hub', name: 'Non-Conformance (NCR)', icon: <AlertOctagon size={18} />, path: '/ncr', requiredPerm: null, allowedRoles: ALL_LAB_ROLES },
-        { configKey: 'imaging', name: 'Imaging Hub', icon: <ScanLine size={18} />, path: '/imaging', requiredPerm: { mod: 'imaging', act: 'view' }, allowedRoles: ['imaging_tech', 'imaging_manager', 'sono', 'radiologist', 'imaging', 'admin', 'deputy_coo', 'coo', 'medical_director', 'clinical_director', 'chairman'] },
-        { configKey: 'shared_imaging', name: 'Shared Imaging', icon: <FileSearch size={18} />, path: '/shared-imaging', requiredPerm: null, allowedRoles: ['doctor', 'consultant', 'physiotherapist', 'physio', 'dentist', 'dental_hod', 'medical_director', 'clinical_director', 'admin', 'deputy_coo', 'coo', 'chairman'] },
+        { configKey: 'imaging', name: 'Imaging Hub', icon: <ScanLine size={18} />, path: '/imaging', requiredPerm: { mod: 'imaging', act: 'view' }, allowedRoles: ['imaging_tech', 'imaging_manager', 'sono', 'radiologist', 'imaging', 'admin', 'deputy_coo', 'coo', 'chairman'] },
+        { configKey: 'pacs_archives', name: 'PACS and Archives', icon: <Archive size={18} />, path: '/pacs-archives', requiredPerm: null, allowedRoles: ['imaging_tech', 'imaging_manager', 'sono', 'radiologist', 'imaging', 'admin', 'deputy_coo', 'coo', 'chairman', 'doctor', 'consultant', 'dentist', 'dental_hod', 'medical_director', 'clinical_director'] },
+        { configKey: 'shared_imaging', name: 'Imaging Data', icon: <FileSearch size={18} />, path: '/shared-imaging', requiredPerm: null, allowedRoles: ['doctor', 'consultant', 'physiotherapist', 'physio', 'dentist', 'dental_hod', 'medical_director', 'clinical_director', 'admin', 'deputy_coo', 'coo', 'chairman'] },
         { configKey: 'dental_hub', name: 'Dental Hub', icon: <Heart size={18} />, path: '/dental', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager', 'chairman'] },
         { configKey: 'physio_hub', name: 'Physio Workspace', icon: <Dumbbell size={18} />, path: '/physio', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'physiotherapist', 'physio'] },
         { configKey: 'physio_manager', name: 'Physio Manager Hub', icon: <BarChart3 size={18} />, path: '/physio/manager-dashboard', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'physio_manager', 'chairman'] },
@@ -146,9 +147,13 @@ const Sidebar = ({ onClose }) => {
 
   // Helper to check item permission / config visibility
   const isItemVisible = (item) => {
+    // Providers (Doctors, Physio, Dentists, Medical/Clinical Directors) only use Imaging Data, never full Imaging Hub
+    const isProvider = ['doctor', 'consultant', 'physiotherapist', 'physio', 'dentist', 'dental_hod', 'medical_director', 'clinical_director'].includes(user?.role);
+    if (item.configKey === 'imaging' && isProvider) return false;
+
     if (item.allowedRoles && !item.allowedRoles.includes(user?.role)) return false;
     if (item.requiredPerm && !hasPermission(item.requiredPerm.mod, item.requiredPerm.act)) return false;
-    
+
     const roleCfg = sidebarConfigState[user?.role];
     if (roleCfg && item.configKey && roleCfg[item.configKey] === false) {
       const isHsfpsCore = user?.role === 'hsfp' && ['incidents', 'safety', 'risk', 'infection', 'compliance'].includes(item.configKey);
@@ -240,98 +245,98 @@ const Sidebar = ({ onClose }) => {
         padding: isCollapsed ? '1.25rem 0.75rem' : '1.25rem 1.5rem',
       }}>
 
-      {/* ── Logo + mobile close button ── */}
-      <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {/* ── Logo + mobile close button ── */}
+        <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {!isCollapsed ? (
+              <img src="/logo.png" alt="Legacy Clinics" style={{ height: '36px', objectFit: 'contain' }} />
+            ) : (
+              <div style={{ width: '36px', height: '36px', overflow: 'hidden', display: 'flex', alignItems: 'center' }}>
+                <img src="/logo.png" alt="Legacy Clinics" style={{ height: '36px', minWidth: '150px', objectFit: 'cover', objectPosition: 'left' }} />
+              </div>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="sidebar-close-btn"
+            style={{
+              background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)',
+              cursor: 'pointer', padding: '4px', borderRadius: '6px',
+              display: 'none', alignItems: 'center', justifyContent: 'center',
+            }}
+            aria-label="Close menu"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* ── Sectional Navigation ── */}
+        <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {menuSections.map((section, idx) => {
+            const visibleItems = section.items.filter(isItemVisible);
+            if (visibleItems.length === 0) return null;
+
+            return (
+              <div key={section.title || idx} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                {section.title && (
+                  <div style={{
+                    fontSize: '0.65rem',
+                    fontWeight: 800,
+                    color: 'rgba(255,255,255,0.4)',
+                    letterSpacing: '0.08em',
+                    padding: isCollapsed ? '0 0 0.35rem 0' : '0 0.9rem 0.35rem 0.9rem',
+                    textTransform: 'uppercase',
+                    textAlign: isCollapsed ? 'center' : 'left',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}>
+                    {isCollapsed ? '•••' : section.title}
+                  </div>
+                )}
+                {visibleItems.map((item) => (
+                  <Link key={item.path} to={item.path} style={linkStyle(item.path)} title={isCollapsed ? item.name : ''}>
+                    {cloneElement(item.icon, { size: isCollapsed ? 22 : 18 })}
+                    {!isCollapsed && <span>{item.name}</span>}
+                  </Link>
+                ))}
+              </div>
+            );
+          })}
+        </nav>
+
+        {/* ── User actions ── */}
+        <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <a href="https://legacyclinics.rw/webmail" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'flex-start', gap: '10px', padding: isCollapsed ? '0.6rem 0' : '0.6rem 0.9rem', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.7)', fontWeight: 500, cursor: 'pointer', fontSize: '0.85rem', textDecoration: 'none' }} title="Webmail">
+            <Mail size={isCollapsed ? 22 : 18} /> {!isCollapsed && "Webmail"}
+          </a>
+
+          <button onClick={() => setIsPasswordModalOpen(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'flex-start', gap: '10px', padding: isCollapsed ? '0.6rem 0' : '0.6rem 0.9rem', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.7)', fontWeight: 500, cursor: 'pointer', fontSize: '0.85rem', textAlign: 'left' }} title="Update Password">
+            <Key size={isCollapsed ? 22 : 18} /> {!isCollapsed && "Update Password"}
+          </button>
+
+          <button onClick={logout} style={{ display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'flex-start', gap: '10px', padding: isCollapsed ? '0.6rem 0' : '0.6rem 0.9rem', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', color: '#ef4444', fontWeight: 500, cursor: 'pointer', fontSize: '0.85rem', textAlign: 'left' }} title="Logout">
+            <LogOut size={isCollapsed ? 22 : 18} /> {!isCollapsed && "Logout"}
+          </button>
+        </div>
+
+        {/* ── User profile card ── */}
+        <div style={{ marginTop: '0.75rem', padding: isCollapsed ? '0.75rem 0.25rem' : '0.85rem', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', alignItems: isCollapsed ? 'center' : 'flex-start', textAlign: isCollapsed ? 'center' : 'left' }}>
           {!isCollapsed ? (
-            <img src="/logo.png" alt="Legacy Clinics" style={{ height: '36px', objectFit: 'contain' }} />
+            <>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#ffffff', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>{user?.fullName}</div>
+              <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', fontFamily: 'monospace' }}>@{user?.username}</div>
+              <div style={{ marginTop: '4px', display: 'inline-block', padding: '2px 8px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '99px', fontSize: '0.68rem', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {user?.role?.replace(/_/g, ' ')}
+              </div>
+            </>
           ) : (
-            <div style={{ width: '36px', height: '36px', overflow: 'hidden', display: 'flex', alignItems: 'center' }}>
-              <img src="/logo.png" alt="Legacy Clinics" style={{ height: '36px', minWidth: '150px', objectFit: 'cover', objectPosition: 'left' }} />
+            <div title={`${user?.fullName} (@${user?.username})
+${user?.role}`} style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '14px' }}>
+              {user?.fullName?.charAt(0)?.toUpperCase() || 'U'}
             </div>
           )}
         </div>
-        <button
-          onClick={onClose}
-          className="sidebar-close-btn"
-          style={{
-            background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)',
-            cursor: 'pointer', padding: '4px', borderRadius: '6px',
-            display: 'none', alignItems: 'center', justifyContent: 'center',
-          }}
-          aria-label="Close menu"
-        >
-          <X size={20} />
-        </button>
-      </div>
-
-      {/* ── Sectional Navigation ── */}
-      <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-        {menuSections.map((section, idx) => {
-          const visibleItems = section.items.filter(isItemVisible);
-          if (visibleItems.length === 0) return null;
-
-          return (
-            <div key={section.title || idx} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              {section.title && (
-                <div style={{
-                  fontSize: '0.65rem',
-                  fontWeight: 800,
-                  color: 'rgba(255,255,255,0.4)',
-                  letterSpacing: '0.08em',
-                  padding: isCollapsed ? '0 0 0.35rem 0' : '0 0.9rem 0.35rem 0.9rem',
-                  textTransform: 'uppercase',
-                  textAlign: isCollapsed ? 'center' : 'left',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis'
-                }}>
-                  {isCollapsed ? '•••' : section.title}
-                </div>
-              )}
-              {visibleItems.map((item) => (
-                <Link key={item.path} to={item.path} style={linkStyle(item.path)} title={isCollapsed ? item.name : ''}>
-                  {cloneElement(item.icon, { size: isCollapsed ? 22 : 18 })}
-                  {!isCollapsed && <span>{item.name}</span>}
-                </Link>
-              ))}
-            </div>
-          );
-        })}
-      </nav>
-
-      {/* ── User actions ── */}
-      <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-        <a href="https://legacyclinics.rw/webmail" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'flex-start', gap: '10px', padding: isCollapsed ? '0.6rem 0' : '0.6rem 0.9rem', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.7)', fontWeight: 500, cursor: 'pointer', fontSize: '0.85rem', textDecoration: 'none' }} title="Webmail">
-          <Mail size={isCollapsed ? 22 : 18} /> {!isCollapsed && "Webmail"}
-        </a>
-
-        <button onClick={() => setIsPasswordModalOpen(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'flex-start', gap: '10px', padding: isCollapsed ? '0.6rem 0' : '0.6rem 0.9rem', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.7)', fontWeight: 500, cursor: 'pointer', fontSize: '0.85rem', textAlign: 'left' }} title="Update Password">
-          <Key size={isCollapsed ? 22 : 18} /> {!isCollapsed && "Update Password"}
-        </button>
-
-        <button onClick={logout} style={{ display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'flex-start', gap: '10px', padding: isCollapsed ? '0.6rem 0' : '0.6rem 0.9rem', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', color: '#ef4444', fontWeight: 500, cursor: 'pointer', fontSize: '0.85rem', textAlign: 'left' }} title="Logout">
-          <LogOut size={isCollapsed ? 22 : 18} /> {!isCollapsed && "Logout"}
-        </button>
-      </div>
-
-      {/* ── User profile card ── */}
-      <div style={{ marginTop: '0.75rem', padding: isCollapsed ? '0.75rem 0.25rem' : '0.85rem', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', alignItems: isCollapsed ? 'center' : 'flex-start', textAlign: isCollapsed ? 'center' : 'left' }}>
-        {!isCollapsed ? (
-          <>
-            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#ffffff', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>{user?.fullName}</div>
-            <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', fontFamily: 'monospace' }}>@{user?.username}</div>
-            <div style={{ marginTop: '4px', display: 'inline-block', padding: '2px 8px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '99px', fontSize: '0.68rem', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              {user?.role?.replace(/_/g, ' ')}
-            </div>
-          </>
-        ) : (
-          <div title={`${user?.fullName} (@${user?.username})
-${user?.role}`} style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '14px' }}>
-            {user?.fullName?.charAt(0)?.toUpperCase() || 'U'}
-          </div>
-        )}
-      </div>
       </div>
 
       <Modal isOpen={isPasswordModalOpen} onClose={() => setIsPasswordModalOpen(false)} title="Account Security" maxWidth="500px">

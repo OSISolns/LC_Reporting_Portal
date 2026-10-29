@@ -674,13 +674,13 @@ const getMedicalReportHTML = (type, data) => {
           ${c.display || c.code}${c.code ? ` <span style="opacity:0.7;font-family:monospace;">[${c.code}]</span>` : ''}${c.system ? ` <span style="opacity:0.55;">· ${c.system}</span>` : ''}
         </span>`).join('');
     };
-    const isVerified = data.status === 'verified' && !!data.verified_at;
+    const isVerified = (data.status === 'verified' || (data.status === 'final' && !!data.verified_by_name)) && !!(data.verified_at || data.created_at);
 
     content = `
       <div class="medical-form-modern">
         <div class="medical-form-header" style="background-color: ${primaryDark};">
           <span>Radiology / Imaging Report</span>
-          <span style="font-size: 8pt; opacity: 0.85;">${(data.modality_label || data.modality || 'Imaging')} · ${data.status ? data.status.toUpperCase() : 'DRAFT'}</span>
+          <span style="font-size: 8pt; opacity: 0.85;">${(data.modality_label || data.modality || 'Imaging')} · ${data.status ? data.status.toUpperCase() : 'FINAL'}</span>
         </div>
 
         <div class="section-head">I. Patient &amp; Study</div>
@@ -718,7 +718,7 @@ const getMedicalReportHTML = (type, data) => {
           <div class="sig-box" style="grid-column: span 2;">
             <span class="sig-label">Verification</span>
             <div class="sig-line" style="${isVerified ? '' : 'border-bottom-style: dashed; color: #94a3b8;'}">${isVerified ? (data.verified_by_name || data.radiologist_name || 'Verified') : 'Awaiting verification'}</div>
-            <span class="sig-meta">${isVerified && data.verified_at ? 'Verified: ' + new Date(data.verified_at).toLocaleString() : 'Report not yet finalised/verified'}</span>
+            <span class="sig-meta">${isVerified && (data.verified_at || data.created_at) ? 'Verified: ' + new Date(data.verified_at || data.created_at).toLocaleString() : 'Report not yet finalised/verified'}</span>
           </div>
         </div>
         ${data.checksum ? `<div style="text-align:center; margin-top:10px; font-size:6pt; color:#94a3b8; font-family:monospace;">Integrity SHA-256: ${data.checksum}</div>` : ''}

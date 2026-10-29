@@ -314,6 +314,12 @@ export default function DiagnosticViewerModal({
   const [dicomLoading, setDicomLoading] = useState(false);
   const [dicomError, setDicomError] = useState(null);
 
+  // Zoom ref for cursor-anchored wheel zoom (avoids nested state setters)
+  const zoomRef = useRef(1);
+  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+  const panRef = useRef({ x: 0, y: 0 });
+  useEffect(() => { panRef.current = pan; }, [pan]);
+
   // Physical Calibration & Spatial Metrics State
   const [dicomMetadataMap, setDicomMetadataMap] = useState({});
   const [customCalibrationMap, setCustomCalibrationMap] = useState({});
@@ -603,6 +609,8 @@ export default function DiagnosticViewerModal({
 
   // Viewport reset
   const resetViewport = () => {
+    zoomRef.current = 1;
+    panRef.current = { x: 0, y: 0 };
     setZoom(1);
     setPan({ x: 0, y: 0 });
     setSecZoom(1);
@@ -628,7 +636,8 @@ export default function DiagnosticViewerModal({
   // Zoom controls
   const handleZoomIn = () => {
     setZoom((z) => {
-      const next = Math.min(5, +(z + 0.25).toFixed(2));
+      const next = Math.min(8, +(z * 1.2).toFixed(3));
+      zoomRef.current = next;
       if (syncTransforms) setSecZoom(next);
       return next;
     });
@@ -636,13 +645,16 @@ export default function DiagnosticViewerModal({
 
   const handleZoomOut = () => {
     setZoom((z) => {
-      const next = Math.max(0.3, +(z - 0.25).toFixed(2));
+      const next = Math.max(0.1, +(z * 0.83).toFixed(3));
+      zoomRef.current = next;
       if (syncTransforms) setSecZoom(next);
       return next;
     });
   };
 
   const handleActualSize = () => {
+    zoomRef.current = 1;
+    panRef.current = { x: 0, y: 0 };
     setZoom(1);
     setPan({ x: 0, y: 0 });
     if (syncTransforms) {
@@ -652,6 +664,8 @@ export default function DiagnosticViewerModal({
   };
 
   const handleFitScreen = () => {
+    zoomRef.current = 0.85;
+    panRef.current = { x: 0, y: 0 };
     setZoom(0.85);
     setPan({ x: 0, y: 0 });
     if (syncTransforms) {
@@ -660,15 +674,31 @@ export default function DiagnosticViewerModal({
     }
   };
 
-  const handleWheel = (e) => {
+  const handleWheel = useCallback((e) => {
     e.preventDefault();
-    const delta = e.deltaY > 0 ? -0.15 : 0.15;
-    setZoom((z) => {
-      const next = Math.min(5, Math.max(0.3, +(z + delta).toFixed(2)));
-      if (syncTransforms) setSecZoom(next);
-      return next;
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Multiplicative zoom anchored to cursor position
+    const factor = e.deltaY > 0 ? 0.88 : 1.14;
+    const rect = container.getBoundingClientRect();
+    // Cursor offset from viewport center
+    const cx = e.clientX - rect.left - rect.width / 2;
+    const cy = e.clientY - rect.top - rect.height / 2;
+
+    const prevZoom = zoomRef.current;
+    const nextZoom = Math.min(8, Math.max(0.1, +(prevZoom * factor).toFixed(3)));
+    const prevPan = panRef.current;
+
+    zoomRef.current = nextZoom;
+    setZoom(nextZoom);
+    if (syncTransforms) setSecZoom(nextZoom);
+    // Adjust pan so the point under the cursor stays fixed
+    setPan({
+      x: cx - (cx - prevPan.x) * (nextZoom / prevZoom),
+      y: cy - (cy - prevPan.y) * (nextZoom / prevZoom),
     });
-  };
+  }, [syncTransforms]);
 
   // Precise SVG Local Coordinates Helper
   const getSVGCoordinates = useCallback((e) => {
@@ -1882,17 +1912,26 @@ export default function DiagnosticViewerModal({
                 </div>
               ) : (
                 <div
-                  className="relative transition-transform duration-75"
+                  className="relative"
                   style={{
-                    transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom}) rotate(${rotation}deg) scaleX(${flipH ? -1 : 1}) scaleY(${flipV ? -1 : 1})`,
+                    transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom}) rotate(${rotation}deg) scale(${flipH ? -1 : 1}, ${flipV ? -1 : 1})`,
                     filter: filterString,
+                    willChange: 'transform',
                   }}
                 >
                   <img
                     ref={imageElementRef}
                     src={activeDisplaySrc}
                     alt={currentSlice?.title}
-                    className="max-h-[75vh] max-w-[70vw] object-contain pointer-events-none rounded shadow-2xl"
+                    className="block object-contain pointer-events-none"
+                    style={{
+                      maxHeight: isFullscreen || isStandalone
+                        ? 'calc(100vh - 190px)'
+                        : 'calc(100vh - 230px)',
+                      maxWidth: isFullscreen || isStandalone
+                        ? 'calc(100vw - 70px)'
+                        : 'calc(100vw - 100px)',
+                    }}
                     draggable={false}
                   />
 
@@ -2156,7 +2195,7 @@ export default function DiagnosticViewerModal({
                 </div>
 
                 {/* Top-Right: Facility & Image Status */}
-                <div className="absolute top-3 right-16 pointer-events-none text-[11px] font-mono text-cyan-300/90 bg-slate-950/75 p-2.5 rounded-lg backdrop-blur-sm border border-slate-800/80 text-right shadow-lg">
+                <div className="absolute top-3 right-[68px] pointer-events-none text-[11px] font-mono text-cyan-300/90 bg-slate-950/75 p-2.5 rounded-lg backdrop-blur-sm border border-slate-800/80 text-right shadow-lg">
                   <div className="text-[#60A5FA] font-bold">LEGACY CLINICS KIGALI</div>
                   <div>FRAME: {selectedSliceIndex + 1} / {slices.length || 1}</div>
                   <div>ZOOM: {Math.round(zoom * 100)}%</div>
@@ -2175,7 +2214,7 @@ export default function DiagnosticViewerModal({
                 </div>
 
                 {/* Bottom-Right: Series & Image Index Standard Indicator */}
-                <div className="absolute bottom-3 right-16 pointer-events-none text-[11px] font-mono text-right bg-slate-950/75 p-2 rounded-lg backdrop-blur-sm border border-slate-800/80 shadow-lg">
+                <div className="absolute bottom-3 right-[68px] pointer-events-none text-[11px] font-mono text-right bg-slate-950/75 p-2 rounded-lg backdrop-blur-sm border border-slate-800/80 shadow-lg">
                   <div className="text-slate-300 font-bold">SE: 1</div>
                   <div className="text-slate-300 font-bold">IM: {selectedSliceIndex + 1}/{slices.length || 1}</div>
                 </div>
@@ -2346,7 +2385,11 @@ export default function DiagnosticViewerModal({
                   <img
                     src={secondaryDisplaySrc}
                     alt={secondarySlice?.title}
-                    className="max-h-[75vh] max-w-[35vw] object-contain pointer-events-none rounded shadow-2xl"
+                    className="block object-contain pointer-events-none"
+                    style={{
+                      maxHeight: 'calc(100vh - 220px)',
+                      maxWidth: 'calc(50vw - 50px)',
+                    }}
                     draggable={false}
                   />
                 </div>
@@ -2488,7 +2531,7 @@ export default function DiagnosticViewerModal({
         </div>
 
         {/* ── Bottom Filmstrip & Cine Player Bar ──────────────────────────── */}
-        {slices.length > 0 && (
+        {slices.length > 1 && (
           <div className="h-28 bg-slate-950 border-t border-slate-800 px-4 py-2 flex items-center gap-4 overflow-x-auto shrink-0 select-none">
             {/* Cine Loop Player Controls */}
             {slices.length > 1 && (

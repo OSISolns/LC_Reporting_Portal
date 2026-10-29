@@ -79,7 +79,7 @@ export default function ImagingProviderShares({ initialToken = null }) {
         if (res.data.stats) setStats(res.data.stats);
       }
     } catch {
-      toast.error('Failed to load shared imaging studies.');
+      toast.error('Failed to load Imaging Data studies.');
     } finally {
       setLoading(false);
     }
@@ -175,17 +175,15 @@ export default function ImagingProviderShares({ initialToken = null }) {
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs font-semibold">
             <button
               onClick={() => setTab('all')}
-              className={`px-3 py-1.5 rounded-md transition-colors ${
-                tab === 'all' ? 'bg-white shadow-sm text-[#1C69A0] font-bold' : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`px-3 py-1.5 rounded-md transition-colors ${tab === 'all' ? 'bg-white shadow-sm text-[#1C69A0] font-bold' : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               All Shared Studies
             </button>
             <button
               onClick={() => setTab('my')}
-              className={`px-3 py-1.5 rounded-md transition-colors ${
-                tab === 'my' ? 'bg-white shadow-sm text-[#1C69A0] font-bold' : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`px-3 py-1.5 rounded-md transition-colors ${tab === 'my' ? 'bg-white shadow-sm text-[#1C69A0] font-bold' : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               Shared with Me (My Consultations)
             </button>
@@ -333,13 +331,12 @@ export default function ImagingProviderShares({ initialToken = null }) {
                     <td className="py-3 px-4 whitespace-nowrap">
                       <div className="flex items-center gap-1.5">
                         <span
-                          className={`w-2 h-2 rounded-full ${
-                            item.status === 'viewed'
+                          className={`w-2 h-2 rounded-full ${item.status === 'viewed'
                               ? 'bg-emerald-500'
                               : item.status === 'revoked'
-                              ? 'bg-rose-500'
-                              : 'bg-amber-500'
-                          }`}
+                                ? 'bg-rose-500'
+                                : 'bg-amber-500'
+                            }`}
                         />
                         <span className="font-semibold capitalize text-slate-700">{item.status}</span>
                       </div>

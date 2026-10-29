@@ -54,6 +54,7 @@ import ConsumablesLog from './pages/ConsumablesLog';
 import ImagingHub from './pages/imaging/ImagingHub';
 import StandaloneDiagnosticViewer from './pages/imaging/StandaloneDiagnosticViewer';
 import ProviderSharedStudies from './pages/imaging/ProviderSharedStudies';
+import PacsArchivesPage from './pages/imaging/PacsArchivesPage';
 import LabHub from './pages/lab/LabHub';
 import NCRManagement from './pages/lab/NCRManagement';
 import LabManagerDashboard from './pages/lab/LabManagerDashboard';
@@ -334,7 +335,16 @@ function App() {
               </ProtectedRoute>
             } />
 
-            <Route path="/imaging" element={<ProtectedRoute allowedRoles={['imaging_tech', 'imaging_manager', 'sono', 'radiologist', 'imaging', 'admin', 'medical_director', 'clinical_director', 'chairman', 'coo', 'deputy_coo']}><ImagingHub /></ProtectedRoute>} />
+            <Route path="/imaging" element={<ProtectedRoute allowedRoles={['imaging_tech', 'imaging_manager', 'sono', 'radiologist', 'imaging', 'admin', 'chairman', 'coo', 'deputy_coo']}><ImagingHub /></ProtectedRoute>} />
+            <Route path="/pacs-archives" element={
+              <ProtectedRoute allowedRoles={[
+                'imaging_tech', 'imaging_manager', 'sono', 'radiologist', 'imaging', 'admin', 'chairman', 'coo', 'deputy_coo',
+                'doctor', 'consultant', 'dentist', 'dental_hod', 'medical_director', 'clinical_director'
+              ]}>
+                <PacsArchivesPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/imaging/archive" element={<Navigate to="/pacs-archives" replace />} />
             <Route path="/imaging/viewer" element={<StandaloneDiagnosticViewer />} />
             <Route path="/shared-imaging" element={<ProtectedRoute allowedRoles={['doctor', 'consultant', 'physiotherapist', 'physio', 'dentist', 'dental_hod', 'medical_director', 'clinical_director', 'admin', 'deputy_coo', 'coo', 'chairman']}><ProviderSharedStudies /></ProtectedRoute>} />
 

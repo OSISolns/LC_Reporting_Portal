@@ -372,12 +372,16 @@ model providers {
   specialization_id    Int?
   specialization       String?
   is_active            Int?                   @default(1)
+  user_id              Int?
   daily_report_metrics daily_report_metrics[]
   specializations      specializations?       @relation(fields: [specialization_id], references: [id], onUpdate: NoAction)
+  users                users?                 @relation(fields: [user_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([is_active], map: "idx_providers_active")
   @@index([specialization_id], map: "idx_providers_spec_id")
+  @@index([user_id], map: "idx_providers_user_id")
 }
+
 
 model refund_requests {
   id                                       Int     @id @default(autoincrement())

@@ -11,6 +11,8 @@ router.get('/physiotherapists', providerController.getPhysiotherapists);
 router.get('/active', (req, res, next) => { req.query.activeOnly = 'true'; providerController.getAllProviders(req, res, next); });
 router.get('/', providerController.getAllProviders);
 router.get('/specializations', providerController.getSpecializations);
+router.get('/linkable-users', checkPermission('user_management', 'view'), providerController.getLinkableUsers);
+router.post('/:id/link-user', checkPermission('user_management', 'edit'), providerController.linkUser);
 router.post('/', checkPermission('user_management', 'edit'), providerController.createProvider);
 router.patch('/:id', checkPermission('user_management', 'edit'), providerController.updateProvider);
 router.delete('/:id', checkPermission('user_management', 'edit'), providerController.deleteProvider);

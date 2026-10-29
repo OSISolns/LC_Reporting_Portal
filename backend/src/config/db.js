@@ -2795,6 +2795,17 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
     }
 
     try {
+      await client.execute(`ALTER TABLE providers ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE SET NULL`);
+      console.log('✅ SQLite Schema Migration: ensured user_id column on providers');
+    } catch (_) {
+      // Column already exists
+    }
+    try {
+      await client.execute(`CREATE INDEX IF NOT EXISTS idx_providers_user_id ON providers(user_id)`);
+    } catch (_) {}
+
+
+    try {
       await client.execute(`
       CREATE TABLE IF NOT EXISTS services (
         id                  INTEGER PRIMARY KEY AUTOINCREMENT,

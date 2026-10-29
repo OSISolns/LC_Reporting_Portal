@@ -13,7 +13,7 @@ import ImagingProviderShares from './ImagingProviderShares';
 const TABS = [
   { key: 'board',       label: 'Daily Exam Log',              icon: LayoutGrid,    perm: 'view',    Component: ImagingDailyBoard },
   { key: 'worklist',    label: 'Worklist',                    icon: ClipboardList, perm: 'create',  Component: ImagingWorklist },
-  { key: 'archive',     label: 'Diagnostic Vault & Archives', icon: Archive,       perm: 'view',    Component: ImagingArchiveHub },
+  { key: 'archive',     label: 'PACS and Archives',           icon: Archive,       perm: 'view',    Component: ImagingArchiveHub },
   { key: 'shares',      label: 'Shared with Providers',       icon: Share2,        perm: 'view',    Component: ImagingProviderShares },
   { key: 'console',     label: 'Console',                     icon: MonitorPlay,   perm: 'acquire', Component: ModalityConsole },
   { key: 'reporting',   label: 'Reporting',                   icon: FileText,      perm: 'report',  Component: ImagingReporting },

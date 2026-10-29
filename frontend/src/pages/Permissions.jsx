@@ -9,7 +9,7 @@ import {
   Server, Database, Sliders, UserCheck, CheckSquare, Square, RotateCcw,
   FlaskConical, Heart, Dumbbell, Settings, ScanLine, ArrowRight,
   Layers, Truck, Menu, UserPlus, FileSpreadsheet, BarChart3, Microscope,
-  AlertOctagon, Undo2, Filter, CheckCheck, ChevronDown
+  AlertOctagon, Undo2, Filter, CheckCheck, ChevronDown, FileSearch, Archive
 } from 'lucide-react';
 import {
   getModules, getRoleMatrix, updateRolePermissions, createRole,
@@ -164,7 +164,9 @@ const SIDEBAR_ITEMS = [
   { key: 'performance', name: 'Staff Performance', Icon: Award, allowedRoles: ['sales_manager', 'coo', 'chairman', 'admin', 'deputy_coo', 'cashier', 'principal_cashier', 'customer_care', 'chef-nurse', 'medical_director', 'clinical_director'] },
   { key: 'nursing_hub', name: 'Nursing Hub', Icon: Stethoscope, allowedRoles: ['nurse', 'admin', 'chef-nurse', 'coo', 'deputy_coo'] },
   { key: 'doctor_hub', name: 'Doctor Hub', Icon: Stethoscope, allowedRoles: ['doctor', 'consultant', 'admin', 'medical_director', 'clinical_director', 'coo', 'deputy_coo'] },
-  { key: 'imaging', name: 'Imaging Hub', Icon: ScanLine, allowedRoles: ['imaging_tech', 'imaging_manager', 'sono', 'radiologist', 'admin', 'medical_director', 'clinical_director', 'coo', 'deputy_coo'] },
+  { key: 'imaging', name: 'Imaging Hub', Icon: ScanLine, allowedRoles: ['imaging_tech', 'imaging_manager', 'sono', 'radiologist', 'admin', 'coo', 'deputy_coo'] },
+  { key: 'pacs_archives', name: 'PACS and Archives', Icon: Archive, allowedRoles: ['imaging_tech', 'imaging_manager', 'sono', 'radiologist', 'admin', 'coo', 'deputy_coo', 'doctor', 'consultant', 'dentist', 'dental_hod', 'medical_director', 'clinical_director'] },
+  { key: 'shared_imaging', name: 'Imaging Data', Icon: FileSearch, allowedRoles: ['doctor', 'consultant', 'physiotherapist', 'physio', 'dentist', 'dental_hod', 'medical_director', 'clinical_director', 'admin', 'deputy_coo', 'coo', 'chairman'] },
   { key: 'lab_hub', name: 'Laboratory Hub', Icon: FlaskConical, allowedRoles: ['admin', 'deputy_coo', 'lab_team_lead', 'lab_lead', 'lab_manager', 'lab_hod', 'head_biochemistry', 'head_microbiology', 'head_hematology', 'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology', 'lab_micro_specialist', 'lab_scientist', 'lab_safety_officer', 'lab_stock_officer', 'lab_tech', 'lab'] },
   { key: 'lab_team_lead_hub', name: 'Lab Team Lead Hub', Icon: Microscope, allowedRoles: ['admin', 'deputy_coo', 'general_manager', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm', 'lab_team_lead', 'lab_lead', 'head_biochemistry', 'head_microbiology', 'head_hematology', 'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology', 'lab_safety_officer', 'lab_stock_officer', 'lab_micro_specialist'] },
   { key: 'lab_manager_hub', name: 'Lab Manager Hub', Icon: BarChart3, allowedRoles: ['admin', 'deputy_coo', 'general_manager', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm'] },
@@ -984,8 +986,8 @@ export default function Permissions() {
                       key={dept}
                       onClick={() => setRoleDeptFilter(dept)}
                       className={`px-2 py-0.5 text-[9px] font-bold rounded-lg transition-colors whitespace-nowrap ${isSel
-                          ? 'bg-slate-800 text-white shadow-2xs'
-                          : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                        ? 'bg-slate-800 text-white shadow-2xs'
+                        : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
                         }`}
                     >
                       {label}
@@ -1024,8 +1026,8 @@ export default function Permissions() {
                                 key={role}
                                 onClick={() => setSelectedRole(role)}
                                 className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-left transition-all ${sel
-                                    ? 'bg-blue-600 text-white shadow-sm font-bold'
-                                    : 'text-slate-700 hover:bg-slate-50 font-semibold'
+                                  ? 'bg-blue-600 text-white shadow-sm font-bold'
+                                  : 'text-slate-700 hover:bg-slate-50 font-semibold'
                                   }`}
                               >
                                 <span
@@ -1036,8 +1038,8 @@ export default function Permissions() {
                                 {stagedCount > 0 && (
                                   <span
                                     className={`text-[9px] font-black px-1.5 py-0.2 rounded-full border flex-shrink-0 ${sel
-                                        ? 'bg-amber-400 text-slate-900 border-amber-300'
-                                        : 'bg-amber-100 text-amber-800 border-amber-300'
+                                      ? 'bg-amber-400 text-slate-900 border-amber-300'
+                                      : 'bg-amber-100 text-amber-800 border-amber-300'
                                       }`}
                                   >
                                     +{stagedCount}
@@ -2113,8 +2115,8 @@ export default function Permissions() {
                           </td>
                           <td className="px-3 py-2.5 text-center">
                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black border ${diff.to
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                : 'bg-red-50 text-red-700 border-red-200'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-red-50 text-red-700 border-red-200'
                               }`}>
                               {diff.to ? <Check size={11} strokeWidth={3} /> : <X size={11} strokeWidth={3} />}
                               {diff.to ? 'Granted' : 'Denied'}

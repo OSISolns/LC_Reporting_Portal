@@ -27,9 +27,18 @@ exports.getSpecializations = async (req, res, next) => {
   }
 };
 
+exports.getLinkableUsers = async (req, res, next) => {
+  try {
+    const users = await Provider.getLinkableUsers();
+    res.json({ success: true, data: users });
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.createProvider = async (req, res, next) => {
   try {
-    const { name, title, specializationId, specialization, isActive } = req.body;
+    const { name, title, specializationId, specialization, isActive, userId, user_id } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, message: 'Provider name is required.' });
@@ -40,10 +49,16 @@ exports.createProvider = async (req, res, next) => {
       title,
       specializationId,
       specialization,
-      isActive: isActive !== undefined ? isActive : 1
+      isActive: isActive !== undefined ? isActive : 1,
+      userId: userId !== undefined ? userId : user_id
     });
 
-    await logAction(req, 'CREATE', 'provider', provider.id, { name: provider.name, title: provider.title, specialization: provider.specialization });
+    await logAction(req, 'CREATE', 'provider', provider.id, { 
+      name: provider.name, 
+      title: provider.title, 
+      specialization: provider.specialization,
+      user_id: provider.user_id 
+    });
 
     res.status(201).json({
       success: true,
@@ -64,11 +79,42 @@ exports.updateProvider = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Provider not found.' });
     }
 
-    await logAction(req, 'UPDATE', 'provider', provider.id, { name: provider.name, is_active: provider.is_active });
+    await logAction(req, 'UPDATE', 'provider', provider.id, { 
+      name: provider.name, 
+      is_active: provider.is_active,
+      user_id: provider.user_id 
+    });
 
     res.json({
       success: true,
       message: 'Provider updated successfully.',
+      data: provider
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.linkUser = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { userId, user_id } = req.body;
+    const targetUserId = userId !== undefined ? userId : user_id;
+
+    const provider = await Provider.linkUser(id, targetUserId);
+    if (!provider) {
+      return res.status(404).json({ success: false, message: 'Provider not found.' });
+    }
+
+    await logAction(req, 'LINK_USER', 'provider', provider.id, {
+      name: provider.name,
+      user_id: provider.user_id,
+      user_username: provider.user_username
+    });
+
+    res.json({
+      success: true,
+      message: targetUserId ? 'Provider linked to user successfully.' : 'Provider unlinked from user successfully.',
       data: provider
     });
   } catch (err) {

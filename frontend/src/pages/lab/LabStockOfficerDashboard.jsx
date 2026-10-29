@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Package, AlertTriangle, Search, Plus, RefreshCw,
   ClipboardList, Cpu, Download, Edit3,
   Trash2, Box, Refrigerator,
   Snowflake, Thermometer, X, Database, Send, CheckCircle2, ArrowRight,
   Building2, FlaskConical, Check, Minus, ShieldCheck, Sparkles, Info,
-  Calendar, Filter, ChevronRight, ChevronLeft, FileSpreadsheet
+  Calendar, Filter, ChevronRight, ChevronLeft, FileSpreadsheet,
+  GripHorizontal
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
@@ -175,12 +177,14 @@ export default function LabStockOfficerDashboard() {
   const [isStorageModalOpen, setIsStorageModalOpen] = useState(false);
   const [isReqModalOpen, setIsReqModalOpen] = useState(false);
 
-  // Form State: Add/Edit Item (No Expiry Date, No Lot Number)
+  // Form State: Add/Edit Item
   const [itemForm, setItemForm] = useState({
     item_name: '',
     category: 'Reagents',
     equipment_group: 'Cobas C311 Reagents',
     department: 'Biochemistry',
+    lot_number: '',
+    expiry_date: '',
     storage_temp: 'room_temp',
     storage_unit_id: 'room_temp_biochem',
     quantity_in_hand: 10,
@@ -212,6 +216,46 @@ export default function LabStockOfficerDashboard() {
     requesting_unit: 'General Laboratory',
     items: [{ item_name: '', quantity_requested: 5, unit: 'pcs', category: 'Reagents', remarks: '', inventory_ref_id: null }]
   });
+
+  // Draggable Modal State (Non-centered, moves and floats with the screen)
+  const [modalPos, setModalPos] = useState({ x: 0, y: 0 });
+  const [isDraggingModal, setIsDraggingModal] = useState(false);
+  const dragStartRef = useRef({ mouseX: 0, mouseY: 0, posX: 0, posY: 0 });
+
+  const handleModalHeaderMouseDown = (e) => {
+    if (e.target.closest('button, a, input, select, textarea, [data-no-drag]')) return;
+    setIsDraggingModal(true);
+    dragStartRef.current = {
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      posX: modalPos.x,
+      posY: modalPos.y,
+    };
+  };
+
+  useEffect(() => {
+    if (!isDraggingModal) return;
+
+    const handleMouseMove = (e) => {
+      const dx = e.clientX - dragStartRef.current.mouseX;
+      const dy = e.clientY - dragStartRef.current.mouseY;
+      setModalPos({
+        x: dragStartRef.current.posX + dx,
+        y: dragStartRef.current.posY + dy,
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingModal(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingModal]);
 
   // ── Load All Data ──────────────────────────────────────────────────────────
   const fetchAllData = useCallback(async (isManual = false) => {
@@ -303,7 +347,8 @@ export default function LabStockOfficerDashboard() {
         const matchesName = item.item_name?.toLowerCase().includes(q);
         const matchesEquip = item.equipment_group?.toLowerCase().includes(q);
         const matchesDept = item.department?.toLowerCase().includes(q);
-        if (!matchesName && !matchesEquip && !matchesDept) return false;
+        const matchesLot = item.lot_number?.toLowerCase().includes(q);
+        if (!matchesName && !matchesEquip && !matchesDept && !matchesLot) return false;
       }
 
       // Equipment / Analyzer filter
@@ -503,11 +548,14 @@ export default function LabStockOfficerDashboard() {
   // ── Handler: Open Add/Edit Item Modal ─────────────────────────────────────────
   const handleOpenAddModal = () => {
     setEditingItem(null);
+    setModalPos({ x: 0, y: 0 });
     setItemForm({
       item_name: '',
       category: 'Reagents',
       equipment_group: 'Cobas C311 Reagents',
       department: 'Biochemistry',
+      lot_number: '',
+      expiry_date: '',
       storage_temp: 'room_temp',
       storage_unit_id: storageUnits[0]?.id || 'room_temp_biochem',
       quantity_in_hand: 10,
@@ -519,11 +567,14 @@ export default function LabStockOfficerDashboard() {
 
   const handleOpenEditModal = (item) => {
     setEditingItem(item);
+    setModalPos({ x: 0, y: 0 });
     setItemForm({
       item_name: item.item_name || '',
       category: item.category || 'Reagents',
       equipment_group: item.equipment_group || 'General Laboratory Supplies',
       department: item.department || 'Biochemistry',
+      lot_number: item.lot_number || '',
+      expiry_date: item.expiry_date || '',
       storage_temp: item.storage_temp || 'room_temp',
       storage_unit_id: item.storage_unit_id || storageUnits[0]?.id || 'room_temp_biochem',
       quantity_in_hand: item.quantity_in_hand ?? 0,
@@ -545,8 +596,8 @@ export default function LabStockOfficerDashboard() {
       setSavingItem(true);
       const payload = {
         ...itemForm,
-        expiry_date: null,
-        lot_number: null
+        expiry_date: itemForm.expiry_date || null,
+        lot_number: itemForm.lot_number ? itemForm.lot_number.trim() : null
       };
 
       if (editingItem) {
@@ -591,6 +642,7 @@ export default function LabStockOfficerDashboard() {
   // ── Handler: Quick Stock Adjustment ──────────────────────────────────────────
   const handleOpenAdjustModal = (item) => {
     setAdjustingItem(item);
+    setModalPos({ x: 0, y: 0 });
     setAdjustForm({
       change_type: 'deduct',
       quantity: 1,
@@ -623,8 +675,8 @@ export default function LabStockOfficerDashboard() {
       const updatedPayload = {
         ...adjustingItem,
         quantity_in_hand: newQty,
-        lot_number: null,
-        expiry_date: null
+        lot_number: adjustingItem.lot_number || null,
+        expiry_date: adjustingItem.expiry_date || null
       };
 
       const res = await updateInhandInventory(adjustingItem.id, updatedPayload);
@@ -764,6 +816,18 @@ export default function LabStockOfficerDashboard() {
         { header: 'Category', key: 'category', width: 18 },
         { header: 'Department / Bench', key: 'department', width: 22 },
         { header: 'Equipment Group / Analyzer', key: 'equipment_group', width: 26 },
+        {
+          header: 'Batch / Lot No.',
+          key: 'lot_number',
+          width: 18,
+          render: (item) => item.lot_number || '—'
+        },
+        {
+          header: 'Expiry Date',
+          key: 'expiry_date',
+          width: 16,
+          render: (item) => item.expiry_date || '—'
+        },
         {
           header: 'Storage Unit',
           key: 'storage_unit',
@@ -1179,6 +1243,8 @@ export default function LabStockOfficerDashboard() {
                       <th className="py-3 px-4">Item &amp; Category</th>
                       <th className="py-3 px-4">Equipment Group / Analyzer</th>
                       <th className="py-3 px-4">Bench / Discipline</th>
+                      <th className="py-3 px-4">Batch / Lot No.</th>
+                      <th className="py-3 px-4">Expiry Date</th>
                       <th className="py-3 px-4">Storage Unit &amp; Temp</th>
                       <th className="py-3 px-4 text-center">Stock Level</th>
                       <th className="py-3 px-4 text-center">Status</th>
@@ -1222,6 +1288,55 @@ export default function LabStockOfficerDashboard() {
                           {/* Bench / Discipline */}
                           <td className="py-3.5 px-4 font-semibold text-slate-800">
                             {item.department || 'Biochemistry'}
+                          </td>
+
+                          {/* Batch / Lot No. */}
+                          <td className="py-3.5 px-4">
+                            {item.lot_number ? (
+                              <span className="text-[11px] font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 inline-block">
+                                {item.lot_number}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 font-mono text-xs">—</span>
+                            )}
+                          </td>
+
+                          {/* Expiry Date */}
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            {item.expiry_date ? (() => {
+                              const today = new Date();
+                              today.setHours(0, 0, 0, 0);
+                              const exp = new Date(item.expiry_date);
+                              const diffDays = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
+                              const isExpired = diffDays <= 0;
+                              const isNearExpiry = diffDays > 0 && diffDays <= 30;
+
+                              return (
+                                <div className="inline-flex items-center gap-1.5">
+                                  <span className={`text-[11px] font-mono font-semibold px-2 py-0.5 rounded border ${
+                                    isExpired
+                                      ? 'bg-rose-50 text-rose-700 border-rose-200 font-bold'
+                                      : isNearExpiry
+                                      ? 'bg-amber-50 text-amber-700 border-amber-200 font-bold'
+                                      : 'bg-slate-50 text-slate-700 border-slate-200'
+                                  }`}>
+                                    {item.expiry_date}
+                                  </span>
+                                  {isExpired && (
+                                    <span className="text-[10px] font-bold text-rose-700 bg-rose-100 px-1.5 py-0.5 rounded border border-rose-200">
+                                      Expired
+                                    </span>
+                                  )}
+                                  {isNearExpiry && (
+                                    <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200">
+                                      {diffDays}d
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })() : (
+                              <span className="text-slate-400 font-mono text-xs">—</span>
+                            )}
                           </td>
 
                           {/* Storage Unit & Temp */}
@@ -1357,11 +1472,10 @@ export default function LabStockOfficerDashboard() {
                           <button
                             key={item}
                             onClick={() => setInventoryPage(item)}
-                            className={`min-w-[28px] h-7 rounded-lg text-xs font-bold transition-colors ${
-                              isCurrent
-                                ? 'bg-[#1B669E] text-white shadow-xs'
-                                : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
-                            }`}
+                            className={`min-w-[28px] h-7 rounded-lg text-xs font-bold transition-colors ${isCurrent
+                              ? 'bg-[#1B669E] text-white shadow-xs'
+                              : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                              }`}
                           >
                             {item}
                           </button>
@@ -1391,7 +1505,7 @@ export default function LabStockOfficerDashboard() {
             <div>
               <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <span className="text-[11px] font-bold text-[#1B669E] bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                  MoH Rwanda • ISO 15189 Pathology Analyzer Registry
+
                 </span>
                 <span className="text-[10px] font-mono font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-300">
                   Control No: LEG/PATHLAB/MSD/FM-12-VERS-004
@@ -1587,21 +1701,19 @@ export default function LabStockOfficerDashboard() {
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span
-                                className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                                  depletedItems.length > 0
-                                    ? 'bg-rose-50 text-rose-700 border-rose-200 font-bold'
-                                    : 'bg-slate-50 text-slate-400 border-slate-200'
-                                }`}
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold border ${depletedItems.length > 0
+                                  ? 'bg-rose-50 text-rose-700 border-rose-200 font-bold'
+                                  : 'bg-slate-50 text-slate-400 border-slate-200'
+                                  }`}
                                 title="Depleted reagents (Stockout)"
                               >
                                 {depletedItems.length} Stockout
                               </span>
                               <span
-                                className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                                  lowItems.length > 0
-                                    ? 'bg-amber-50 text-amber-700 border-amber-200 font-bold'
-                                    : 'bg-slate-50 text-slate-400 border-slate-200'
-                                }`}
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold border ${lowItems.length > 0
+                                  ? 'bg-amber-50 text-amber-700 border-amber-200 font-bold'
+                                  : 'bg-slate-50 text-slate-400 border-slate-200'
+                                  }`}
                                 title="Low stock reagents"
                               >
                                 {lowItems.length} Low
@@ -1685,7 +1797,10 @@ export default function LabStockOfficerDashboard() {
 
             <div className="flex items-center gap-2 flex-wrap">
               <button
-                onClick={() => setIsStorageModalOpen(true)}
+                onClick={() => {
+                  setModalPos({ x: 0, y: 0 });
+                  setIsStorageModalOpen(true);
+                }}
                 className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-[#1B669E] hover:bg-[#155280] rounded-lg transition-colors shadow-xs"
               >
                 <Plus size={14} /> Add Storage Unit
@@ -1799,27 +1914,26 @@ export default function LabStockOfficerDashboard() {
                       const typeColor = isFridge
                         ? 'bg-sky-50 text-sky-800 border-sky-200'
                         : isFreezer
-                        ? 'bg-indigo-50 text-indigo-800 border-indigo-200'
-                        : 'bg-amber-50 text-amber-800 border-amber-200';
+                          ? 'bg-indigo-50 text-indigo-800 border-indigo-200'
+                          : 'bg-amber-50 text-amber-800 border-amber-200';
 
                       const typeLabel = isFridge
                         ? 'Cold Chain (2°C–8°C)'
                         : isFreezer
-                        ? 'Deep Freeze (-20°C/-80°C)'
-                        : 'Ambient (20°C–25°C)';
+                          ? 'Deep Freeze (-20°C/-80°C)'
+                          : 'Ambient (20°C–25°C)';
 
                       return (
                         <tr key={unit.id} className="hover:bg-slate-50/70 transition-colors">
                           {/* Unit Identifier & Name */}
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2.5">
-                              <div className={`p-2 rounded-lg shrink-0 border ${
-                                isFridge
-                                  ? 'bg-sky-50 text-sky-700 border-sky-100'
-                                  : isFreezer
+                              <div className={`p-2 rounded-lg shrink-0 border ${isFridge
+                                ? 'bg-sky-50 text-sky-700 border-sky-100'
+                                : isFreezer
                                   ? 'bg-indigo-50 text-indigo-700 border-indigo-100'
                                   : 'bg-amber-50 text-amber-700 border-amber-100'
-                              }`}>
+                                }`}>
                                 {isFridge ? <Refrigerator size={16} /> : isFreezer ? <Snowflake size={16} /> : <Thermometer size={16} />}
                               </div>
                               <div>
@@ -1870,21 +1984,19 @@ export default function LabStockOfficerDashboard() {
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span
-                                className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                                  depletedItems.length > 0
-                                    ? 'bg-rose-50 text-rose-700 border-rose-200 font-bold'
-                                    : 'bg-slate-50 text-slate-400 border-slate-200'
-                                }`}
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold border ${depletedItems.length > 0
+                                  ? 'bg-rose-50 text-rose-700 border-rose-200 font-bold'
+                                  : 'bg-slate-50 text-slate-400 border-slate-200'
+                                  }`}
                                 title="Depleted reagents (Stockout)"
                               >
                                 {depletedItems.length} Stockout
                               </span>
                               <span
-                                className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                                  lowItems.length > 0
-                                    ? 'bg-amber-50 text-amber-700 border-amber-200 font-bold'
-                                    : 'bg-slate-50 text-slate-400 border-slate-200'
-                                }`}
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold border ${lowItems.length > 0
+                                  ? 'bg-amber-50 text-amber-700 border-amber-200 font-bold'
+                                  : 'bg-slate-50 text-slate-400 border-slate-200'
+                                  }`}
                                 title="Low stock reagents"
                               >
                                 {lowItems.length} Low
@@ -1994,15 +2106,12 @@ export default function LabStockOfficerDashboard() {
                     Central Store Laboratory Inventory (General Stock)
                   </h3>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-teal-100 text-teal-900 border border-teal-200">
-                    Strictly Department: LABORATORY
+                    Department: LABORATORY
                   </span>
                   <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-300">
                     LEG/PATHLAB/MSD/FM-12-VERS-004
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Live stock levels held at Central Store for Laboratory consumables &amp; reagents. Laboratory Stock Manager can make direct requisitions to the General Stock Manager.
-                </p>
               </div>
             </div>
 
@@ -2139,16 +2248,30 @@ export default function LabStockOfficerDashboard() {
         </div>
       )}
 
-      {/* ── MODAL: Add / Edit Reagent (No Expiry Date, No Lot Number) ── */}
-      {isAddEditModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-xl overflow-hidden my-8">
-            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/60">
-              <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+      {/* ── MODAL: Add / Edit Reagent ── */}
+      {isAddEditModalOpen && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-slate-900/30 backdrop-blur-[2px] flex items-start justify-center pt-6 sm:pt-12 p-4 overflow-y-auto">
+          <div
+            style={{
+              transform: `translate(${modalPos.x}px, ${modalPos.y}px)`,
+              transition: isDraggingModal ? 'none' : 'transform 0.05s ease-out'
+            }}
+            className="bg-white rounded-xl border border-slate-300 shadow-2xl w-full max-w-xl overflow-hidden select-none sm:select-auto"
+          >
+            <div
+              onMouseDown={handleModalHeaderMouseDown}
+              className="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50/90 cursor-grab active:cursor-grabbing select-none"
+              title="Click and drag anywhere on this header to move the window across your screen"
+            >
+              <div className="flex items-center gap-2">
+                <GripHorizontal size={16} className="text-slate-400" />
                 <Package className="text-[#1B669E]" size={16} />
-                {editingItem ? `Edit Reagent: ${editingItem.item_name}` : 'Register In-Hand Reagent'}
-              </h3>
+                <h3 className="font-bold text-sm text-slate-900">
+                  {editingItem ? `Edit Reagent: ${editingItem.item_name}` : 'Register In-Hand Reagent'}
+                </h3>
+              </div>
               <button
+                data-no-drag="true"
                 onClick={() => setIsAddEditModalOpen(false)}
                 className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
               >
@@ -2254,6 +2377,29 @@ export default function LabStockOfficerDashboard() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Batch / Lot Number</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. LOT-C311-2026A"
+                    value={itemForm.lot_number || ''}
+                    onChange={(e) => setItemForm({ ...itemForm, lot_number: e.target.value })}
+                    className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#1B669E] focus:border-[#1B669E] font-mono text-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Expiry Date</label>
+                  <input
+                    type="date"
+                    value={itemForm.expiry_date || ''}
+                    onChange={(e) => setItemForm({ ...itemForm, expiry_date: e.target.value })}
+                    className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#1B669E] focus:border-[#1B669E] font-mono text-slate-800"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">Quantity in Hand *</label>
                   <input
                     type="number"
@@ -2298,19 +2444,34 @@ export default function LabStockOfficerDashboard() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── MODAL: Quick Stock Adjustment ── */}
-      {isAdjustModalOpen && adjustingItem && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-md overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/60">
-              <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+      {isAdjustModalOpen && adjustingItem && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-slate-900/30 backdrop-blur-[2px] flex items-start justify-center pt-8 sm:pt-16 p-4 overflow-y-auto">
+          <div
+            style={{
+              transform: `translate(${modalPos.x}px, ${modalPos.y}px)`,
+              transition: isDraggingModal ? 'none' : 'transform 0.05s ease-out'
+            }}
+            className="bg-white rounded-xl border border-slate-300 shadow-2xl w-full max-w-md overflow-hidden select-none sm:select-auto"
+          >
+            <div
+              onMouseDown={handleModalHeaderMouseDown}
+              className="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50/90 cursor-grab active:cursor-grabbing select-none"
+              title="Click and drag anywhere on this header to move the window across your screen"
+            >
+              <div className="flex items-center gap-2">
+                <GripHorizontal size={16} className="text-slate-400" />
                 <Package className="text-[#1B669E]" size={16} />
-                Adjust Stock: {adjustingItem.item_name}
-              </h3>
+                <h3 className="font-bold text-sm text-slate-900">
+                  Adjust Stock: {adjustingItem.item_name}
+                </h3>
+              </div>
               <button
+                data-no-drag="true"
                 onClick={() => setIsAdjustModalOpen(false)}
                 className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
               >
@@ -2400,19 +2561,34 @@ export default function LabStockOfficerDashboard() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── MODAL: Add Storage Unit ── */}
-      {isStorageModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-md overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/60">
-              <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+      {isStorageModalOpen && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-slate-900/30 backdrop-blur-[2px] flex items-start justify-center pt-8 sm:pt-16 p-4 overflow-y-auto">
+          <div
+            style={{
+              transform: `translate(${modalPos.x}px, ${modalPos.y}px)`,
+              transition: isDraggingModal ? 'none' : 'transform 0.05s ease-out'
+            }}
+            className="bg-white rounded-xl border border-slate-300 shadow-2xl w-full max-w-md overflow-hidden select-none sm:select-auto"
+          >
+            <div
+              onMouseDown={handleModalHeaderMouseDown}
+              className="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50/90 cursor-grab active:cursor-grabbing select-none"
+              title="Click and drag anywhere on this header to move the window across your screen"
+            >
+              <div className="flex items-center gap-2">
+                <GripHorizontal size={16} className="text-slate-400" />
                 <Refrigerator className="text-[#1B669E]" size={16} />
-                Register Storage Unit
-              </h3>
+                <h3 className="font-bold text-sm text-slate-900">
+                  Register Storage Unit
+                </h3>
+              </div>
               <button
+                data-no-drag="true"
                 onClick={() => setIsStorageModalOpen(false)}
                 className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
               >
@@ -2490,12 +2666,13 @@ export default function LabStockOfficerDashboard() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── MODAL: New Lab Requisition ── */}
-      {isReqModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-start justify-center p-2 sm:p-4 overflow-y-auto">
+      {isReqModalOpen && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-[2px] flex items-start justify-center p-2 sm:p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[96vh] my-1 sm:my-2 animate-in fade-in zoom-in-95 duration-150">
             {/* Pinned Header */}
             <div className="bg-gradient-to-r from-[#1B669E] via-[#145382] to-[#0f3e62] px-6 py-3.5 text-white flex items-center justify-between shadow-sm flex-shrink-0">
@@ -2530,7 +2707,7 @@ export default function LabStockOfficerDashboard() {
 
             {/* Form Body - Scrollable Middle with Fixed Bottom Actions */}
             <form onSubmit={handleSubmitRequisition} className="flex flex-col flex-1 min-h-0 overflow-hidden text-slate-800">
-              
+
               {/* Scrollable Container for Inputs */}
               <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1">
                 {/* Channel / Stock Source Selector */}
@@ -2542,15 +2719,13 @@ export default function LabStockOfficerDashboard() {
                     {/* Central Store Card */}
                     <div
                       onClick={() => setReqForm({ ...reqForm, stock_source: 'general_stock' })}
-                      className={`cursor-pointer rounded-xl border p-3.5 transition-all duration-150 flex items-start gap-3.5 ${
-                        reqForm.stock_source === 'general_stock'
-                          ? 'border-[#1B669E] bg-sky-50/70 ring-2 ring-[#1B669E]/30 shadow-xs'
-                          : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'
-                      }`}
+                      className={`cursor-pointer rounded-xl border p-3.5 transition-all duration-150 flex items-start gap-3.5 ${reqForm.stock_source === 'general_stock'
+                        ? 'border-[#1B669E] bg-sky-50/70 ring-2 ring-[#1B669E]/30 shadow-xs'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'
+                        }`}
                     >
-                      <div className={`p-2.5 rounded-lg flex-shrink-0 ${
-                        reqForm.stock_source === 'general_stock' ? 'bg-[#1B669E] text-white shadow-xs' : 'bg-slate-100 text-slate-500'
-                      }`}>
+                      <div className={`p-2.5 rounded-lg flex-shrink-0 ${reqForm.stock_source === 'general_stock' ? 'bg-[#1B669E] text-white shadow-xs' : 'bg-slate-100 text-slate-500'
+                        }`}>
                         <Building2 size={18} />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -2579,15 +2754,13 @@ export default function LabStockOfficerDashboard() {
                     {/* Lab In-Hand Buffer Card */}
                     <div
                       onClick={() => setReqForm({ ...reqForm, stock_source: 'lab_stock' })}
-                      className={`cursor-pointer rounded-xl border p-3.5 transition-all duration-150 flex items-start gap-3.5 ${
-                        reqForm.stock_source === 'lab_stock'
-                          ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-600/30 shadow-xs'
-                          : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'
-                      }`}
+                      className={`cursor-pointer rounded-xl border p-3.5 transition-all duration-150 flex items-start gap-3.5 ${reqForm.stock_source === 'lab_stock'
+                        ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-600/30 shadow-xs'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'
+                        }`}
                     >
-                      <div className={`p-2.5 rounded-lg flex-shrink-0 ${
-                        reqForm.stock_source === 'lab_stock' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-100 text-slate-500'
-                      }`}>
+                      <div className={`p-2.5 rounded-lg flex-shrink-0 ${reqForm.stock_source === 'lab_stock' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-100 text-slate-500'
+                        }`}>
                         <Package size={18} />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -2652,11 +2825,10 @@ export default function LabStockOfficerDashboard() {
                           key={p.val}
                           type="button"
                           onClick={() => setReqForm({ ...reqForm, urgency: p.val })}
-                          className={`px-1.5 py-1.5 text-center rounded-lg border text-xs transition-all ${
-                            reqForm.urgency === p.val
-                              ? p.active
-                              : `bg-white text-slate-600 border-slate-200 ${p.color}`
-                          }`}
+                          className={`px-1.5 py-1.5 text-center rounded-lg border text-xs transition-all ${reqForm.urgency === p.val
+                            ? p.active
+                            : `bg-white text-slate-600 border-slate-200 ${p.color}`
+                            }`}
                         >
                           <div className="font-semibold text-[11px] leading-tight">{p.label}</div>
                           <div className="text-[9px] opacity-75">{p.desc}</div>
@@ -2681,7 +2853,7 @@ export default function LabStockOfficerDashboard() {
                     placeholder="State justification (e.g. routine bench replenishment, analyzer volume surge, impending buffer stockout)..."
                     className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B669E]/30 focus:border-[#1B669E] text-slate-800 placeholder-slate-400 shadow-2xs"
                   />
-                  
+
                   {/* 1-Click Justification Presets */}
                   <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                     <span className="text-[10px] font-semibold text-slate-500 flex items-center gap-1">
@@ -2771,11 +2943,10 @@ export default function LabStockOfficerDashboard() {
 
                             {/* Live Balance Indicator Badge */}
                             {reqForm.stock_source === 'general_stock' && matchedGen && (
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                                (Number(matchedGenQty) || 0) > 0
-                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                                  : 'bg-rose-50 text-rose-700 border-rose-300'
-                              }`}>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${(Number(matchedGenQty) || 0) > 0
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                : 'bg-rose-50 text-rose-700 border-rose-300'
+                                }`}>
                                 Central Store Balance: {matchedGenQty} {matchedGen.unit_of_measure || 'pcs'}
                                 {(Number(matchedGenQty) || 0) <= 0 ? ' (Stockout)' : ''}
                               </span>
@@ -2927,11 +3098,10 @@ export default function LabStockOfficerDashboard() {
 
                     <div className="flex items-center gap-1.5">
                       <span className="text-slate-500 font-medium">Target Channel:</span>
-                      <span className={`font-bold px-2 py-0.5 rounded border text-[11px] ${
-                        reqForm.stock_source === 'general_stock'
-                          ? 'bg-blue-50 text-[#1B669E] border-blue-200'
-                          : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                      }`}>
+                      <span className={`font-bold px-2 py-0.5 rounded border text-[11px] ${reqForm.stock_source === 'general_stock'
+                        ? 'bg-blue-50 text-[#1B669E] border-blue-200'
+                        : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                        }`}>
                         {reqForm.stock_source === 'general_stock'
                           ? 'General Stock Manager (Central Store)'
                           : 'Laboratory In-Hand Buffer (Internal)'}
@@ -2982,7 +3152,8 @@ export default function LabStockOfficerDashboard() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>
