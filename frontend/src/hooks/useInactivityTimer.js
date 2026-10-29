@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 
-const INACTIVITY_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
+const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 const WARNING_BEFORE_MS = 30 * 1000;          // warn 30s before logout
 
 const ACTIVITY_EVENTS = [
