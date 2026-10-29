@@ -42,7 +42,9 @@ import {
   Sparkles,
   Monitor,
   Move,
-  GripHorizontal
+  GripHorizontal,
+  Pencil,
+  Palette
 } from 'lucide-react';
 import {
   getViewerBundle,
@@ -77,6 +79,32 @@ const WL_PRESETS = [
   { id: 'invert', label: 'Invert / Negative', brightness: 100, contrast: 110, invert: true },
   { id: 'angio', label: 'Angio / Vascular', brightness: 120, contrast: 240, invert: false },
 ];
+
+const PEN_COLORS = [
+  { color: '#ef4444', label: 'Red (Fracture / Focus)' },
+  { color: '#f97316', label: 'Orange (Lesion / Region)' },
+  { color: '#eab308', label: 'Yellow (Calcification)' },
+  { color: '#10b981', label: 'Emerald (Normal Reference)' },
+  { color: '#06b6d4', label: 'Cyan (Vascular / Fluid)' },
+  { color: '#a855f7', label: 'Purple (Soft Tissue)' },
+  { color: '#ffffff', label: 'White (High Contrast)' },
+];
+
+const PEN_WIDTHS = [
+  { value: 1.5, label: 'Fine (1.5px)' },
+  { value: 2.5, label: 'Medium (2.5px)' },
+  { value: 4.0, label: 'Bold (4.0px)' },
+];
+
+const pointsToSvgPath = (points) => {
+  if (!points || points.length === 0) return '';
+  if (points.length === 1) {
+    return `M ${points[0].x} ${points[0].y} L ${points[0].x + 0.1} ${points[0].y + 0.1}`;
+  }
+  return points.reduce((acc, pt, idx) => {
+    return idx === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`;
+  }, '');
+};
 
 export default function DiagnosticViewerModal({
   studyId = null,
@@ -248,13 +276,20 @@ export default function DiagnosticViewerModal({
   const [colorFilter, setColorFilter] = useState('none'); // 'none' | 'sepia' | 'heat' | 'cool'
   const [showWlPanel, setShowWlPanel] = useState(false);
 
-  // Active Tool: 'pan' | 'caliper' | 'rect' | 'circle' | 'angle' | 'arrow'
+  // Active Tool: 'pan' | 'caliper' | 'rect' | 'circle' | 'angle' | 'arrow' | 'pen'
   const [activeTool, setActiveTool] = useState('pan');
   const [activePoints, setActivePoints] = useState([]);
   const [measurements, setMeasurements] = useState([]);
   const [showAnnotations, setShowAnnotations] = useState(true);
   const [showHUD, setShowHUD] = useState(true);
   const [showCrosshair, setShowCrosshair] = useState(false);
+
+  // Freehand Drawing / Pen Tool State
+  const [penColor, setPenColor] = useState('#ef4444'); // Default vibrant red (like PACS wrist annotation)
+  const [penWidth, setPenWidth] = useState(2.5);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [currentStroke, setCurrentStroke] = useState([]);
+  const svgRef = useRef(null);
 
   // Cine Loop Player
   const [isPlayingCine, setIsPlayingCine] = useState(false);
@@ -604,14 +639,43 @@ export default function DiagnosticViewerModal({
     });
   };
 
-  // Mouse pan controls
+  // Precise SVG Local Coordinates Helper
+  const getSVGCoordinates = useCallback((e) => {
+    if (!svgRef.current) return null;
+    const svg = svgRef.current;
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return null;
+    const local = pt.matrixTransform(ctm.inverse());
+    return { x: Math.round(local.x), y: Math.round(local.y) };
+  }, []);
+
+  // Mouse pan & Freehand Pen Drawing controls
   const handleMouseDown = (e) => {
+    if (activeTool === 'pen') {
+      const coords = getSVGCoordinates(e);
+      if (coords) {
+        setIsDrawing(true);
+        setCurrentStroke([coords]);
+      }
+      return;
+    }
     if (activeTool !== 'pan') return;
     setIsPanning(true);
     setStartPan({ x: e.clientX - pan.x, y: e.clientY - pan.y });
   };
 
   const handleMouseMove = (e) => {
+    if (activeTool === 'pen') {
+      if (!isDrawing) return;
+      const coords = getSVGCoordinates(e);
+      if (coords) {
+        setCurrentStroke((prev) => [...prev, coords]);
+      }
+      return;
+    }
     if (isPanning && activeTool === 'pan') {
       const nextX = e.clientX - startPan.x;
       const nextY = e.clientY - startPan.y;
@@ -620,16 +684,62 @@ export default function DiagnosticViewerModal({
     }
   };
 
-  const handleMouseUp = () => setIsPanning(false);
+  const handleMouseUp = () => {
+    if (activeTool === 'pen') {
+      if (isDrawing && currentStroke.length > 1) {
+        setMeasurements((prev) => [
+          ...prev,
+          {
+            id: Date.now(),
+            type: 'pen',
+            color: penColor,
+            strokeWidth: penWidth,
+            points: currentStroke,
+            sliceIndex: selectedSliceIndex,
+          },
+        ]);
+        toast.success('Freehand annotation saved', { id: 'pen-saved', duration: 1500 });
+      }
+      setIsDrawing(false);
+      setCurrentStroke([]);
+      return;
+    }
+    setIsPanning(false);
+  };
+
+  const handleMouseLeave = () => {
+    if (isPanning) setIsPanning(false);
+    if (activeTool === 'pen' && isDrawing) {
+      if (currentStroke.length > 1) {
+        setMeasurements((prev) => [
+          ...prev,
+          {
+            id: Date.now(),
+            type: 'pen',
+            color: penColor,
+            strokeWidth: penWidth,
+            points: currentStroke,
+            sliceIndex: selectedSliceIndex,
+          },
+        ]);
+      }
+      setIsDrawing(false);
+      setCurrentStroke([]);
+    }
+  };
 
   // Multi-Tool Click Handler (Caliper, Rectangle, Circle, Angle, Arrow)
   const handleCanvasClick = (e) => {
-    if (activeTool === 'pan') return;
+    if (activeTool === 'pan' || activeTool === 'pen') return;
 
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = Math.round(e.clientX - rect.left);
-    const y = Math.round(e.clientY - rect.top);
-    const pt = { x, y };
+    let pt = getSVGCoordinates(e);
+    if (!pt) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      pt = {
+        x: Math.round(e.clientX - rect.left),
+        y: Math.round(e.clientY - rect.top),
+      };
+    }
 
     if (activeTool === 'caliper') {
       // 2 points line
@@ -846,6 +956,10 @@ export default function DiagnosticViewerModal({
         case 'C':
           setActiveTool('caliper');
           break;
+        case 'd':
+        case 'D':
+          setActiveTool('pen');
+          break;
         case 'h':
         case 'H':
           setShowHUD((h) => !h);
@@ -887,6 +1001,33 @@ export default function DiagnosticViewerModal({
         ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) ${invert ? 'invert(100%)' : ''}`;
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         ctx.filter = 'none';
+
+        // Draw Freehand Annotations onto Snapshot Canvas
+        const currentSliceMeasurements = measurements.filter((m) => m.sliceIndex === selectedSliceIndex || m.sliceIndex === undefined);
+        const svgEl = svgRef.current;
+        const svgWidth = svgEl?.clientWidth || img.naturalWidth || 1200;
+        const svgHeight = svgEl?.clientHeight || img.naturalHeight || 900;
+        const scaleX = canvas.width / svgWidth;
+        const scaleY = canvas.height / svgHeight;
+
+        ctx.save();
+        currentSliceMeasurements.forEach((m) => {
+          if (m.type === 'pen' && m.points?.length > 1) {
+            ctx.beginPath();
+            ctx.strokeStyle = m.color || '#ef4444';
+            ctx.lineWidth = (m.strokeWidth || 2.5) * scaleX;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            m.points.forEach((p, idx) => {
+              const px = p.x * scaleX;
+              const py = p.y * scaleY;
+              if (idx === 0) ctx.moveTo(px, py);
+              else ctx.lineTo(px, py);
+            });
+            ctx.stroke();
+          }
+        });
+        ctx.restore();
 
         // Add Watermark Header
         ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
@@ -1243,7 +1384,63 @@ export default function DiagnosticViewerModal({
             >
               <CornerDownRight size={13} /> Marker
             </button>
+
+            <button
+              onClick={() => { setActiveTool('pen'); setActivePoints([]); }}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                activeTool === 'pen' ? 'bg-rose-500 text-white font-bold shadow-sm' : 'text-slate-400 hover:text-white'
+              }`}
+              title="Freehand Pen / Scribble Annotation (Click & drag to draw on anatomy — Press D)"
+            >
+              <Pencil size={13} />
+              <span>Draw (D)</span>
+              <span
+                className="w-2.5 h-2.5 rounded-full border border-white/60 shadow-sm"
+                style={{ backgroundColor: penColor }}
+              />
+            </button>
           </div>
+
+          {/* Pen Color & Width Toolbar (Visible when Pen tool is active) */}
+          {activeTool === 'pen' && (
+            <div className="flex items-center gap-2 bg-slate-950 px-2.5 py-1 rounded-lg border border-rose-500/50 shadow-sm">
+              <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
+                <Palette size={12} className="text-rose-400" /> Palette:
+              </span>
+              <div className="flex items-center gap-1.5">
+                {PEN_COLORS.map((c) => (
+                  <button
+                    key={c.color}
+                    onClick={() => setPenColor(c.color)}
+                    className={`w-4 h-4 rounded-full transition-all ${
+                      penColor === c.color
+                        ? 'scale-125 ring-2 ring-white ring-offset-1 ring-offset-slate-950 shadow-md'
+                        : 'opacity-70 hover:opacity-100 hover:scale-110'
+                    }`}
+                    style={{ backgroundColor: c.color }}
+                    title={c.label}
+                  />
+                ))}
+              </div>
+              <div className="h-3.5 w-px bg-slate-800 mx-1" />
+              <span className="text-[11px] text-slate-400 font-medium">Width:</span>
+              <div className="flex items-center gap-1">
+                {PEN_WIDTHS.map((pw) => (
+                  <button
+                    key={pw.value}
+                    onClick={() => setPenWidth(pw.value)}
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-semibold transition-colors ${
+                      penWidth === pw.value
+                        ? 'bg-rose-500 text-white'
+                        : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    {pw.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Measurements Actions: Undo, Clear, Hide */}
           {measurements.length > 0 && (
@@ -1483,6 +1680,7 @@ export default function DiagnosticViewerModal({
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseLeave}
             onClick={handleCanvasClick}
           >
             {(loading || dicomLoading) ? (
@@ -1526,13 +1724,28 @@ export default function DiagnosticViewerModal({
                   {/* Annotations & Measurements Overlay */}
                   {showAnnotations && (
                     <svg
+                      ref={svgRef}
                       className="absolute inset-0 w-full h-full pointer-events-none"
                       style={{ overflow: 'visible' }}
                     >
                       {measurements
                         .filter((m) => m.sliceIndex === selectedSliceIndex || m.sliceIndex === undefined)
                         .map((m) => {
-                          if (m.type === 'caliper') {
+                          if (m.type === 'pen') {
+                            const pathD = pointsToSvgPath(m.points);
+                            return (
+                              <g key={m.id}>
+                                <path
+                                  d={pathD}
+                                  fill="none"
+                                  stroke={m.color || '#ef4444'}
+                                  strokeWidth={m.strokeWidth || 2.5}
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </g>
+                            );
+                          } else if (m.type === 'caliper') {
                             return (
                               <g key={m.id}>
                                 <line
@@ -1703,7 +1916,20 @@ export default function DiagnosticViewerModal({
                           return null;
                         })}
 
-                      {/* Active in-progress points */}
+                      {/* Active in-progress freehand pen stroke */}
+                      {isDrawing && currentStroke.length > 1 && (
+                        <path
+                          d={pointsToSvgPath(currentStroke)}
+                          fill="none"
+                          stroke={penColor}
+                          strokeWidth={penWidth}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="opacity-95"
+                        />
+                      )}
+
+                      {/* Active in-progress measurement points */}
                       {activePoints.map((pt, i) => (
                         <circle
                           key={i}
@@ -1733,21 +1959,143 @@ export default function DiagnosticViewerModal({
             {/* Diagnostic HUD Info Overlays (Radiology Standard Corners) */}
             {showHUD && (
               <>
-                <div className="absolute top-3 left-3 pointer-events-none text-[11px] font-mono text-cyan-300/90 bg-slate-950/70 p-2.5 rounded-lg backdrop-blur-sm border border-slate-800/60 shadow-lg">
+                {/* Top-Left: Patient & Exam Details */}
+                <div className="absolute top-3 left-3 pointer-events-none text-[11px] font-mono text-cyan-300/90 bg-slate-950/75 p-2.5 rounded-lg backdrop-blur-sm border border-slate-800/80 shadow-lg">
                   <div className="font-bold text-white tracking-wide">{study.patient_name || 'PATIENT RECORD'}</div>
                   <div>PID: <span className="text-white font-bold">{study.patient_id || '—'}</span></div>
                   <div>MOD: {modality} | {study.body_part || study.exam_region || 'General'}</div>
                   <div className="text-[10px] text-slate-400">DATE: {study.study_date ? new Date(study.study_date).toLocaleDateString() : '—'}</div>
                 </div>
 
-                <div className="absolute top-3 right-3 pointer-events-none text-[11px] font-mono text-cyan-300/90 bg-slate-950/70 p-2.5 rounded-lg backdrop-blur-sm border border-slate-800/60 text-right shadow-lg">
+                {/* Top-Right: Facility & Image Status */}
+                <div className="absolute top-3 right-16 pointer-events-none text-[11px] font-mono text-cyan-300/90 bg-slate-950/75 p-2.5 rounded-lg backdrop-blur-sm border border-slate-800/80 text-right shadow-lg">
                   <div className="text-[#60A5FA] font-bold">LEGACY CLINICS KIGALI</div>
                   <div>FRAME: {selectedSliceIndex + 1} / {slices.length || 1}</div>
                   <div>ZOOM: {Math.round(zoom * 100)}%</div>
-                  <div>W/L: {activePreset.toUpperCase()} (B:{brightness} C:{contrast})</div>
+                  <div>W/L: {activePreset.toUpperCase()}</div>
+                </div>
+
+                {/* Bottom-Left: Standard PACS Window Width / Window Level */}
+                <div className="absolute bottom-3 left-3 pointer-events-none text-[11px] font-mono bg-slate-950/75 p-2 rounded-lg backdrop-blur-sm border border-slate-800/80 shadow-lg">
+                  <div className="text-sky-400 font-bold">WW: {Math.round(contrast * 40.81)}</div>
+                  <div className="text-sky-400 font-bold">WL: {Math.round(brightness * 20.48)}</div>
+                </div>
+
+                {/* Bottom-Right: Series & Image Index Standard Indicator */}
+                <div className="absolute bottom-3 right-16 pointer-events-none text-[11px] font-mono text-right bg-slate-950/75 p-2 rounded-lg backdrop-blur-sm border border-slate-800/80 shadow-lg">
+                  <div className="text-slate-300 font-bold">SE: 1</div>
+                  <div className="text-slate-300 font-bold">IM: {selectedSliceIndex + 1}/{slices.length || 1}</div>
                 </div>
               </>
             )}
+
+            {/* Floating PACS Quick-Action Toolbar (Right Side Dock) */}
+            <div className="absolute top-14 right-3 z-30 flex flex-col items-center bg-slate-900/95 backdrop-blur-md border border-sky-500/30 rounded-xl p-1.5 shadow-2xl gap-1.5 text-slate-300">
+              {/* Layers / Annotations Toggle */}
+              <button
+                onClick={() => setShowAnnotations((prev) => !prev)}
+                className={`p-2 rounded-lg transition-colors ${
+                  showAnnotations ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40' : 'hover:bg-slate-800 text-slate-400'
+                }`}
+                title={showAnnotations ? 'Hide Annotation Layers' : 'Show Annotation Layers'}
+              >
+                <Layers size={16} />
+              </button>
+
+              {/* Pan / Navigate Tool */}
+              <button
+                onClick={() => { setActiveTool('pan'); setActivePoints([]); }}
+                className={`p-2 rounded-lg transition-colors ${
+                  activeTool === 'pan' ? 'bg-[#1C69A0] text-white shadow-md' : 'hover:bg-slate-800 text-slate-400 hover:text-white'
+                }`}
+                title="Pan Navigation Tool (P)"
+              >
+                <Move size={16} />
+              </button>
+
+              {/* Zoom In */}
+              <button
+                onClick={() => handleZoom(0.2)}
+                className="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                title="Zoom In"
+              >
+                <ZoomIn size={16} />
+              </button>
+
+              {/* Zoom Out */}
+              <button
+                onClick={() => handleZoom(-0.2)}
+                className="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                title="Zoom Out"
+              >
+                <ZoomOut size={16} />
+              </button>
+
+              {/* Caliper Measurement */}
+              <button
+                onClick={() => { setActiveTool('caliper'); setActivePoints([]); }}
+                className={`p-2 rounded-lg transition-colors ${
+                  activeTool === 'caliper' ? 'bg-amber-500 text-slate-950 font-bold' : 'hover:bg-slate-800 text-slate-400 hover:text-white'
+                }`}
+                title="Caliper Line Measurement (C)"
+              >
+                <Ruler size={16} />
+              </button>
+
+              <div className="w-5 h-px bg-slate-800 my-0.5" />
+
+              {/* Freehand Pen Tool (With Active Color Dot indicator as seen in reference image) */}
+              <div className="relative flex flex-col items-center">
+                <button
+                  onClick={() => {
+                    setActiveTool((t) => (t === 'pen' ? 'pan' : 'pen'));
+                    setActivePoints([]);
+                  }}
+                  className={`relative p-2 rounded-lg transition-all ${
+                    activeTool === 'pen'
+                      ? 'bg-rose-500/30 text-rose-300 border border-rose-500/60 shadow-lg ring-1 ring-rose-400/50'
+                      : 'hover:bg-slate-800 text-slate-400 hover:text-white'
+                  }`}
+                  title="Freehand Pen / Scribble Annotation (D)"
+                >
+                  <Pencil size={16} />
+                </button>
+
+                {/* Color Dot Indicator (Click to cycle colors directly from dock) */}
+                <button
+                  onClick={() => {
+                    const currentIndex = PEN_COLORS.findIndex((c) => c.color === penColor);
+                    const nextColor = PEN_COLORS[(currentIndex + 1) % PEN_COLORS.length].color;
+                    setPenColor(nextColor);
+                    if (activeTool !== 'pen') setActiveTool('pen');
+                  }}
+                  className="mt-1 w-3.5 h-3.5 rounded-full ring-2 ring-slate-900 border border-white/60 hover:scale-125 transition-transform shadow-md"
+                  style={{ backgroundColor: penColor }}
+                  title="Active Drawing Color (Click to cycle colors)"
+                />
+              </div>
+
+              <div className="w-5 h-px bg-slate-800 my-0.5" />
+
+              {/* Undo Last Annotation */}
+              <button
+                onClick={() => setMeasurements((prev) => prev.slice(0, -1))}
+                disabled={measurements.length === 0}
+                className="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-amber-300 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                title="Undo Last Mark"
+              >
+                <Undo2 size={16} />
+              </button>
+
+              {/* Reset Transforms */}
+              <button
+                onClick={resetTransforms}
+                className="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                title="Reset View (100% Zoom & Centered)"
+              >
+                <RefreshCw size={15} />
+              </button>
+            </div>
 
             {/* Center Crosshair Overlay */}
             {showCrosshair && (
