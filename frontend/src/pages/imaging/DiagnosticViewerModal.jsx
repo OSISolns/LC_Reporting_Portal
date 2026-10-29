@@ -44,7 +44,8 @@ import {
   Move,
   GripHorizontal,
   Pencil,
-  Palette
+  Palette,
+  Target
 } from 'lucide-react';
 import {
   getViewerBundle,
@@ -105,6 +106,17 @@ const pointsToSvgPath = (points) => {
     return idx === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`;
   }, '');
 };
+
+const CALIBRATION_PRESETS = [
+  { id: 'auto', label: 'DICOM Header (Automatic)', mmPerPixel: null, desc: 'Uses hardware pixel spacing embedded in DICOM tag (0028,0030)' },
+  { id: 'dr_standard', label: 'Standard Digital Radiography (0.143 mm/px)', mmPerPixel: 0.143, desc: 'Standard 14"×17" flat panel detector (3000×3000 matrix)' },
+  { id: 'dr_highres', label: 'High-Res Digital X-Ray (0.100 mm/px)', mmPerPixel: 0.100, desc: 'High-definition digital detector (100 µm pixel pitch)' },
+  { id: 'mammo', label: 'Mammography (0.085 mm/px)', mmPerPixel: 0.085, desc: 'Ultra high-definition full-field digital mammography (85 µm)' },
+  { id: 'dental', label: 'Dental OPG / CBCT (0.125 mm/px)', mmPerPixel: 0.125, desc: 'Standard panoramic & cephalogram sensor (125 µm)' },
+  { id: 'ct_standard', label: 'CT Scan 512 Matrix (0.650 mm/px)', mmPerPixel: 0.650, desc: 'Standard axial CT slice (330 mm reconstructed FOV)' },
+  { id: 'mri_standard', label: 'MRI Standard (0.850 mm/px)', mmPerPixel: 0.850, desc: 'Standard 256 matrix diagnostic MRI series (220 mm FOV)' },
+  { id: 'ultrasound', label: 'Ultrasound Standard (0.200 mm/px)', mmPerPixel: 0.200, desc: 'Superficial linear vascular/musculoskeletal transducer' },
+];
 
 export default function DiagnosticViewerModal({
   studyId = null,
@@ -301,6 +313,13 @@ export default function DiagnosticViewerModal({
   const [renderedDicomMap, setRenderedDicomMap] = useState({});
   const [dicomLoading, setDicomLoading] = useState(false);
   const [dicomError, setDicomError] = useState(null);
+
+  // Physical Calibration & Spatial Metrics State
+  const [dicomMetadataMap, setDicomMetadataMap] = useState({});
+  const [customCalibrationMap, setCustomCalibrationMap] = useState({});
+  const [showCalibrationModal, setShowCalibrationModal] = useState(false);
+  const [calKnownMmInput, setCalKnownMmInput] = useState('50');
+  const [calTargetMeasurement, setCalTargetMeasurement] = useState(null);
 
   const containerRef = useRef(null);
   const imageElementRef = useRef(null);
@@ -522,6 +541,12 @@ export default function DiagnosticViewerModal({
           ...prev,
           [currentSlice.id]: result.dataUrl,
         }));
+        if (result.metadata) {
+          setDicomMetadataMap((prev) => ({
+            ...prev,
+            [currentSlice.id]: result.metadata,
+          }));
+        }
       } catch (err) {
         if (!cancelled) {
           console.error('DICOM render error:', err);
@@ -652,6 +677,135 @@ export default function DiagnosticViewerModal({
     return { x: Math.round(local.x), y: Math.round(local.y) };
   }, []);
 
+  // Physical Spatial Calibration Factors for Current Slice
+  const getCalibrationFactors = useCallback(() => {
+    const img = imageElementRef.current;
+    // Ratio from displayed SVG coordinates to intrinsic native image pixels
+    const nativeScaleX = (img && img.clientWidth > 0 && img.naturalWidth > 0)
+      ? (img.naturalWidth / img.clientWidth)
+      : 1;
+    const nativeScaleY = (img && img.clientHeight > 0 && img.naturalHeight > 0)
+      ? (img.naturalHeight / img.clientHeight)
+      : 1;
+
+    const sliceId = currentSlice?.id;
+
+    // 1. User manual calibration for this slice
+    if (sliceId && customCalibrationMap[sliceId]) {
+      const cal = customCalibrationMap[sliceId];
+      return {
+        source: 'custom',
+        label: cal.label || `Manual (${cal.mmPerPixel.toFixed(3)} mm/px)`,
+        colSpacing: cal.mmPerPixel,
+        rowSpacing: cal.mmPerPixel,
+        nativeScaleX,
+        nativeScaleY,
+        isCalibrated: true,
+      };
+    }
+
+    // 2. Extracted DICOM header pixel spacing from scanner hardware
+    const meta = sliceId ? dicomMetadataMap[sliceId] : null;
+    if (meta && meta.colSpacing && meta.rowSpacing) {
+      return {
+        source: 'dicom',
+        label: `DICOM Calibrated (${meta.colSpacing.toFixed(3)} mm/px)`,
+        colSpacing: meta.colSpacing,
+        rowSpacing: meta.rowSpacing,
+        nativeScaleX,
+        nativeScaleY,
+        isCalibrated: true,
+      };
+    }
+
+    // 3. Modality-specific detector calibration default
+    const mod = (currentSlice?.modality || modality || '').toUpperCase();
+    let defaultMm = 0.143;
+    let label = 'DR Flat Panel (0.143 mm/px)';
+
+    if (mod.includes('MAMMO')) {
+      defaultMm = 0.085;
+      label = 'Mammography (0.085 mm/px)';
+    } else if (mod.includes('CT')) {
+      defaultMm = 0.65;
+      label = 'CT Standard (0.650 mm/px)';
+    } else if (mod.includes('MR')) {
+      defaultMm = 0.85;
+      label = 'MRI Standard (0.850 mm/px)';
+    } else if (mod.includes('OPG') || mod.includes('CBCT') || mod.includes('CEPH')) {
+      defaultMm = 0.125;
+      label = 'Dental OPG/CBCT (0.125 mm/px)';
+    } else if (mod.includes('US') || mod.includes('ULTRA')) {
+      defaultMm = 0.20;
+      label = 'Ultrasound (0.200 mm/px)';
+    }
+
+    return {
+      source: 'preset',
+      label,
+      colSpacing: defaultMm,
+      rowSpacing: defaultMm,
+      nativeScaleX,
+      nativeScaleY,
+      isCalibrated: false,
+    };
+  }, [currentSlice?.id, currentSlice?.modality, modality, customCalibrationMap, dicomMetadataMap]);
+
+  const applyCalibration = (newMmPerPixel, newLabel = 'Custom Calibrated') => {
+    if (!newMmPerPixel || isNaN(newMmPerPixel) || newMmPerPixel <= 0) {
+      toast.error('Invalid calibration scale value.');
+      return;
+    }
+    const sliceId = currentSlice?.id;
+    if (!sliceId) return;
+
+    setCustomCalibrationMap((prev) => ({
+      ...prev,
+      [sliceId]: {
+        mmPerPixel: newMmPerPixel,
+        label: newLabel,
+      },
+    }));
+
+    // Recalculate existing measurements for this slice
+    const img = imageElementRef.current;
+    const nativeScaleX = (img && img.clientWidth > 0 && img.naturalWidth > 0)
+      ? (img.naturalWidth / img.clientWidth)
+      : 1;
+    const nativeScaleY = (img && img.clientHeight > 0 && img.naturalHeight > 0)
+      ? (img.naturalHeight / img.clientHeight)
+      : 1;
+
+    setMeasurements((prev) =>
+      prev.map((m) => {
+        if (m.sliceIndex !== selectedSliceIndex && m.sliceIndex !== undefined) return m;
+        if (m.type === 'caliper') {
+          const nativeDx = (m.p2.x - m.p1.x) * nativeScaleX;
+          const nativeDy = (m.p2.y - m.p1.y) * nativeScaleY;
+          const nativeDistPx = Math.sqrt(nativeDx * nativeDx + nativeDy * nativeDy);
+          const distMm = (nativeDistPx * newMmPerPixel).toFixed(1);
+          return { ...m, distMm, distPx: Math.round(nativeDistPx), calLabel: newLabel };
+        } else if (m.type === 'rect') {
+          const nativeW = Math.abs(m.p2.x - m.p1.x) * nativeScaleX;
+          const nativeH = Math.abs(m.p2.y - m.p1.y) * nativeScaleY;
+          const widthMm = (nativeW * newMmPerPixel).toFixed(1);
+          const heightMm = (nativeH * newMmPerPixel).toFixed(1);
+          const areaMm2 = (nativeW * newMmPerPixel * nativeH * newMmPerPixel).toFixed(1);
+          return { ...m, widthMm, heightMm, areaMm2 };
+        } else if (m.type === 'circle') {
+          const nativeRadius = m.radiusPx * nativeScaleX;
+          const radiusMm = (nativeRadius * newMmPerPixel).toFixed(1);
+          const areaMm2 = (Math.PI * Math.pow(nativeRadius * newMmPerPixel, 2)).toFixed(1);
+          return { ...m, radiusMm, areaMm2 };
+        }
+        return m;
+      })
+    );
+
+    setShowCalibrationModal(false);
+    toast.success(`Calibrated: 1 px = ${newMmPerPixel.toFixed(4)} mm (${newLabel})`);
+  };
+
   // Mouse pan & Freehand Pen Drawing controls
   const handleMouseDown = (e) => {
     if (activeTool === 'pen') {
@@ -748,8 +902,11 @@ export default function DiagnosticViewerModal({
       } else {
         const p1 = activePoints[0];
         const p2 = pt;
-        const distPx = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
-        const distMm = (distPx * 0.264).toFixed(1);
+        const { colSpacing, rowSpacing, nativeScaleX, nativeScaleY, label: calLabel } = getCalibrationFactors();
+        const nativeDx = (p2.x - p1.x) * nativeScaleX;
+        const nativeDy = (p2.y - p1.y) * nativeScaleY;
+        const nativeDistPx = Math.sqrt(nativeDx * nativeDx + nativeDy * nativeDy);
+        const distMm = Math.sqrt(Math.pow(nativeDx * colSpacing, 2) + Math.pow(nativeDy * rowSpacing, 2)).toFixed(1);
 
         setMeasurements((prev) => [
           ...prev,
@@ -758,13 +915,14 @@ export default function DiagnosticViewerModal({
             type: 'caliper',
             p1,
             p2,
-            distPx: Math.round(distPx),
+            distPx: Math.round(nativeDistPx),
             distMm,
+            calLabel,
             sliceIndex: selectedSliceIndex,
           },
         ]);
         setActivePoints([]);
-        toast.success(`Distance: ${distMm} mm (${Math.round(distPx)} px)`);
+        toast.success(`Distance: ${distMm} mm [${calLabel}]`);
       }
     } else if (activeTool === 'rect') {
       // 2 points bounding box
@@ -773,11 +931,12 @@ export default function DiagnosticViewerModal({
       } else {
         const p1 = activePoints[0];
         const p2 = pt;
-        const widthPx = Math.abs(p2.x - p1.x);
-        const heightPx = Math.abs(p2.y - p1.y);
-        const widthMm = (widthPx * 0.264).toFixed(1);
-        const heightMm = (heightPx * 0.264).toFixed(1);
-        const areaMm2 = (widthPx * heightPx * 0.264 * 0.264).toFixed(1);
+        const { colSpacing, rowSpacing, nativeScaleX, nativeScaleY } = getCalibrationFactors();
+        const nativeW = Math.abs(p2.x - p1.x) * nativeScaleX;
+        const nativeH = Math.abs(p2.y - p1.y) * nativeScaleY;
+        const widthMm = (nativeW * colSpacing).toFixed(1);
+        const heightMm = (nativeH * rowSpacing).toFixed(1);
+        const areaMm2 = (nativeW * colSpacing * nativeH * rowSpacing).toFixed(1);
 
         setMeasurements((prev) => [
           ...prev,
@@ -802,8 +961,11 @@ export default function DiagnosticViewerModal({
       } else {
         const center = activePoints[0];
         const radiusPx = Math.sqrt(Math.pow(pt.x - center.x, 2) + Math.pow(pt.y - center.y, 2));
-        const radiusMm = (radiusPx * 0.264).toFixed(1);
-        const areaMm2 = (Math.PI * Math.pow(radiusPx * 0.264, 2)).toFixed(1);
+        const { colSpacing, rowSpacing, nativeScaleX, nativeScaleY } = getCalibrationFactors();
+        const nativeRadiusX = radiusPx * nativeScaleX;
+        const nativeRadiusY = radiusPx * nativeScaleY;
+        const radiusMm = (nativeRadiusX * colSpacing).toFixed(1);
+        const areaMm2 = (Math.PI * (nativeRadiusX * colSpacing) * (nativeRadiusY * rowSpacing)).toFixed(1);
 
         setMeasurements((prev) => [
           ...prev,
@@ -1346,6 +1508,19 @@ export default function DiagnosticViewerModal({
             </button>
 
             <button
+              onClick={() => {
+                setCalTargetMeasurement(null);
+                setCalKnownMmInput('50');
+                setShowCalibrationModal(true);
+              }}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-cyan-300 hover:text-white hover:bg-cyan-950/70 border border-cyan-500/30 transition-colors"
+              title="Calibrate Physical Scale (e.g., 50mm ruler or radio-opaque marker)"
+            >
+              <Target size={13} className="text-cyan-400" />
+              <span>Calibrate</span>
+            </button>
+
+            <button
               onClick={() => { setActiveTool('rect'); setActivePoints([]); }}
               className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
                 activeTool === 'rect' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
@@ -1759,27 +1934,40 @@ export default function DiagnosticViewerModal({
                                 />
                                 <circle cx={m.p1.x} cy={m.p1.y} r="4" fill="#f59e0b" />
                                 <circle cx={m.p2.x} cy={m.p2.y} r="4" fill="#f59e0b" />
-                                <rect
-                                  x={(m.p1.x + m.p2.x) / 2 - 28}
-                                  y={(m.p1.y + m.p2.y) / 2 - 12}
-                                  width="56"
-                                  height="18"
-                                  rx="3"
-                                  fill="#0f172a"
-                                  stroke="#f59e0b"
-                                  strokeWidth="1"
-                                />
-                                <text
-                                  x={(m.p1.x + m.p2.x) / 2}
-                                  y={(m.p1.y + m.p2.y) / 2 + 1}
-                                  fill="#fef3c7"
-                                  fontSize="10"
-                                  fontWeight="bold"
-                                  textAnchor="middle"
-                                  dominantBaseline="middle"
+                                <g
+                                  onClick={(ev) => {
+                                    ev.stopPropagation();
+                                    setCalTargetMeasurement(m);
+                                    setCalKnownMmInput(m.distMm || '50');
+                                    setShowCalibrationModal(true);
+                                  }}
+                                  className="pointer-events-auto cursor-pointer group"
+                                  title="Click to calibrate physical scale using this line"
                                 >
-                                  {m.distMm} mm
-                                </text>
+                                  <rect
+                                    x={(m.p1.x + m.p2.x) / 2 - 34}
+                                    y={(m.p1.y + m.p2.y) / 2 - 12}
+                                    width="68"
+                                    height="18"
+                                    rx="3"
+                                    fill="#0f172a"
+                                    stroke="#f59e0b"
+                                    strokeWidth="1"
+                                    className="group-hover:stroke-cyan-400 group-hover:fill-slate-900 transition-colors"
+                                  />
+                                  <text
+                                    x={(m.p1.x + m.p2.x) / 2}
+                                    y={(m.p1.y + m.p2.y) / 2 + 1}
+                                    fill="#fef3c7"
+                                    fontSize="10"
+                                    fontWeight="bold"
+                                    textAnchor="middle"
+                                    dominantBaseline="middle"
+                                    className="group-hover:fill-cyan-300"
+                                  >
+                                    {m.distMm} mm
+                                  </text>
+                                </g>
                               </g>
                             );
                           } else if (m.type === 'rect') {
@@ -1975,10 +2163,15 @@ export default function DiagnosticViewerModal({
                   <div>W/L: {activePreset.toUpperCase()}</div>
                 </div>
 
-                {/* Bottom-Left: Standard PACS Window Width / Window Level */}
+                {/* Bottom-Left: Standard PACS Window Width / Window Level & Spatial Calibration */}
                 <div className="absolute bottom-3 left-3 pointer-events-none text-[11px] font-mono bg-slate-950/75 p-2 rounded-lg backdrop-blur-sm border border-slate-800/80 shadow-lg">
                   <div className="text-sky-400 font-bold">WW: {Math.round(contrast * 40.81)}</div>
                   <div className="text-sky-400 font-bold">WL: {Math.round(brightness * 20.48)}</div>
+                  <div className="text-emerald-400 text-[10px] mt-0.5 flex items-center gap-1 font-semibold">
+                    <Target size={11} className="text-emerald-400" />
+                    <span>CAL: {getCalibrationFactors().colSpacing.toFixed(3)} mm/px</span>
+                    <span className="text-slate-400">({getCalibrationFactors().source === 'dicom' ? 'DICOM' : getCalibrationFactors().source === 'custom' ? 'Manual' : 'Preset'})</span>
+                  </div>
                 </div>
 
                 {/* Bottom-Right: Series & Image Index Standard Indicator */}
@@ -2040,6 +2233,19 @@ export default function DiagnosticViewerModal({
                 title="Caliper Line Measurement (C)"
               >
                 <Ruler size={16} />
+              </button>
+
+              {/* Calibration Dialog Button */}
+              <button
+                onClick={() => {
+                  setCalTargetMeasurement(null);
+                  setCalKnownMmInput('50');
+                  setShowCalibrationModal(true);
+                }}
+                className="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-cyan-300 transition-colors"
+                title="Calibrate Physical Scale (Target / Ruler)"
+              >
+                <Target size={16} />
               </button>
 
               <div className="w-5 h-px bg-slate-800 my-0.5" />
@@ -2381,6 +2587,179 @@ export default function DiagnosticViewerModal({
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="group-hover:scale-125 transition-transform">
               <path d="M10 2L2 10M10 6L6 10M10 10H10.01" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
             </svg>
+          </div>
+        )}
+
+        {/* ── Caliper Scale Calibration Modal ─────────────────────────────── */}
+        {showCalibrationModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fadeIn">
+            <div className="bg-slate-900 border border-sky-500/40 rounded-2xl p-6 max-w-md w-full shadow-2xl text-slate-200">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div className="flex items-center gap-2 text-cyan-400 font-bold text-base">
+                  <Target size={20} />
+                  <span>Caliper Scale Calibration</span>
+                </div>
+                <button
+                  onClick={() => setShowCalibrationModal(false)}
+                  className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="mt-4 space-y-4 text-xs">
+                {/* Current Status */}
+                <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex items-center justify-between">
+                  <div>
+                    <div className="text-slate-400 font-medium">Active Pixel Spacing:</div>
+                    <div className="text-sm font-mono font-bold text-emerald-400 mt-0.5">
+                      {getCalibrationFactors().colSpacing.toFixed(4)} mm / native px
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[10px] text-slate-500">Source:</div>
+                    <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-sky-950 text-sky-300 border border-sky-500/30">
+                      {getCalibrationFactors().label}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Calibration from Drawn Line */}
+                {calTargetMeasurement ? (
+                  <div className="p-3.5 bg-cyan-950/30 rounded-xl border border-cyan-500/30">
+                    <div className="font-semibold text-cyan-300 mb-1">
+                      Calibrate from Selected Caliper Line:
+                    </div>
+                    <div className="text-slate-400 text-[11px] mb-3">
+                      Line Length: <strong className="text-white">{calTargetMeasurement.distPx}</strong> native pixels
+                    </div>
+                    <label className="block text-slate-300 font-medium mb-1.5">
+                      Enter known physical length of this line (e.g. calibration marker, ball, or ruler):
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0.1"
+                        value={calKnownMmInput}
+                        onChange={(e) => setCalKnownMmInput(e.target.value)}
+                        placeholder="e.g. 50"
+                        className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-cyan-500"
+                      />
+                      <span className="font-semibold text-slate-400">mm</span>
+                      <button
+                        onClick={() => {
+                          const mm = parseFloat(calKnownMmInput);
+                          if (!mm || mm <= 0) {
+                            toast.error('Please enter a valid length in mm');
+                            return;
+                          }
+                          const newScale = mm / calTargetMeasurement.distPx;
+                          applyCalibration(newScale, `Calibrated from ${mm}mm marker`);
+                        }}
+                        className="px-3.5 py-1.5 rounded-lg bg-[#1C69A0] hover:bg-[#16527D] text-white font-semibold text-xs transition-colors shadow-sm"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-slate-950/50 rounded-xl border border-slate-800/80 text-[11px] text-slate-400">
+                    💡 <strong>Tip:</strong> Draw a caliper line across a known anatomical benchmark, 25mm coin, or 50mm radio-opaque ruler, then click the measurement pill on the canvas to calibrate directly.
+                  </div>
+                )}
+
+                {/* Quick Modality & Detector Presets */}
+                <div>
+                  <div className="font-semibold text-slate-300 mb-2">Radiology Detector Presets:</div>
+                  <div className="grid grid-cols-1 gap-1.5 max-h-48 overflow-y-auto pr-1">
+                    {CALIBRATION_PRESETS.map((preset) => {
+                      const isAutoDicom = preset.id === 'auto';
+                      const dicomMeta = currentSlice ? dicomMetadataMap[currentSlice.id] : null;
+                      const canAuto = isAutoDicom && dicomMeta && dicomMeta.colSpacing;
+
+                      return (
+                        <button
+                          key={preset.id}
+                          onClick={() => {
+                            if (isAutoDicom) {
+                              if (canAuto) {
+                                setCustomCalibrationMap((prev) => {
+                                  const next = { ...prev };
+                                  delete next[currentSlice?.id];
+                                  return next;
+                                });
+                                setShowCalibrationModal(false);
+                                toast.success('Restored automatic DICOM hardware calibration');
+                              } else {
+                                toast.error('No embedded DICOM pixel spacing tag found in this frame');
+                              }
+                            } else {
+                              applyCalibration(preset.mmPerPixel, preset.label);
+                            }
+                          }}
+                          disabled={isAutoDicom && !canAuto}
+                          className={`w-full text-left p-2.5 rounded-xl border transition-all flex items-center justify-between ${
+                            isAutoDicom && !canAuto
+                              ? 'opacity-40 border-slate-800 bg-slate-950/30 cursor-not-allowed'
+                              : 'border-slate-800 hover:border-sky-500/50 bg-slate-950 hover:bg-slate-800/80'
+                          }`}
+                        >
+                          <div>
+                            <div className="font-semibold text-slate-200">{preset.label}</div>
+                            <div className="text-[10px] text-slate-400">{preset.desc}</div>
+                          </div>
+                          {preset.mmPerPixel && (
+                            <div className="font-mono text-cyan-400 text-xs font-bold shrink-0 ml-2">
+                              {preset.mmPerPixel} mm/px
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Direct Manual Entry */}
+                <div className="pt-2 border-t border-slate-800">
+                  <div className="font-semibold text-slate-300 mb-1.5">Direct Scale Value:</div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      step="0.001"
+                      min="0.001"
+                      placeholder="mm per pixel (e.g. 0.143)"
+                      id="manualScaleInput"
+                      defaultValue={getCalibrationFactors().colSpacing.toFixed(4)}
+                      className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+                    />
+                    <button
+                      onClick={() => {
+                        const el = document.getElementById('manualScaleInput');
+                        const val = parseFloat(el?.value);
+                        if (val && val > 0) {
+                          applyCalibration(val, `Manual (${val.toFixed(4)} mm/px)`);
+                        } else {
+                          toast.error('Enter a valid positive number');
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs border border-slate-700 transition-colors"
+                    >
+                      Set Custom
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5 pt-3 border-t border-slate-800 flex justify-end">
+                <button
+                  onClick={() => setShowCalibrationModal(false)}
+                  className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-medium transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

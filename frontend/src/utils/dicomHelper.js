@@ -68,6 +68,25 @@ export async function renderDicomToDataUrl(input) {
   let windowCenter = windowCenterRaw ? parseFloat(windowCenterRaw.split('\\')[0]) : null;
   let windowWidth = windowWidthRaw ? parseFloat(windowWidthRaw.split('\\')[0]) : null;
 
+  // Physical Pixel Spacing & Calibration
+  // (0028,0030) Pixel Spacing = [row spacing, column spacing] in mm
+  // (0018,1164) Imager Pixel Spacing = [row spacing, column spacing] in mm
+  const pixelSpacingRaw = dataSet.string('x00280030') || dataSet.string('x00181164');
+  let rowSpacing = null;
+  let colSpacing = null;
+  if (pixelSpacingRaw) {
+    const parts = pixelSpacingRaw.split('\\').map((p) => parseFloat(p.trim()));
+    if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1]) && parts[0] > 0 && parts[1] > 0) {
+      rowSpacing = parts[0];
+      colSpacing = parts[1];
+    } else if (parts.length === 1 && !isNaN(parts[0]) && parts[0] > 0) {
+      rowSpacing = parts[0];
+      colSpacing = parts[0];
+    }
+  }
+
+  const sliceThickness = parseFloat(dataSet.string('x00180050') || '0') || null;
+
   const metadata = {
     patientName: dataSet.string('x00100010') || 'Unknown',
     patientId: dataSet.string('x00100020') || '',
@@ -83,6 +102,10 @@ export async function renderDicomToDataUrl(input) {
     photometricInterpretation,
     windowCenter,
     windowWidth,
+    rowSpacing,
+    colSpacing,
+    pixelSpacing: (rowSpacing && colSpacing) ? { row: rowSpacing, col: colSpacing } : null,
+    sliceThickness,
   };
 
   const pixelDataElement = dataSet.elements.x7fe00010;
