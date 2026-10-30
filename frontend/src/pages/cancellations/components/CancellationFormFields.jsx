@@ -180,7 +180,7 @@ const CancellationFormFields = ({ formData, handleChange, setFormData, handleSub
               providers={providers}
               onProviderSelect={handleProviderSelect}
               required
-              placeholder="Search by name, title, or specialization..."
+              placeholder="Select Attending Provider"
               inputStyle={inputStyle}
             />
           </div>
