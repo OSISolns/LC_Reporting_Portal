@@ -1875,6 +1875,11 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
       // Ensure lab_orders table is ready (no mock orders seeded)
       await client.execute("SELECT COUNT(*) as cnt FROM lab_orders").catch(() => { });
 
+      // Ensure user_id column exists on providers table
+      try {
+        await client.execute('ALTER TABLE providers ADD COLUMN user_id INTEGER');
+      } catch (e) { }
+
       const { rows: finalDepts } = await client.execute("SELECT * FROM departments");
       console.log('Final departments in DB:', finalDepts.map(d => `${d.name} (${d.id})`));
 

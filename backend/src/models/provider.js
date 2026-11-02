@@ -46,8 +46,34 @@ class Provider {
 
     sql += ` ORDER BY p.is_active DESC, p.name ASC`;
 
-    const { rows } = await db.query(sql, params);
-    return rows;
+    try {
+      const { rows } = await db.query(sql, params);
+      return rows;
+    } catch (queryErr) {
+      console.warn('⚠️ Provider.getAll full join failed, falling back to base providers query:', queryErr.message);
+      let fallbackSql = `
+        SELECT p.id, p.name, p.title, p.specialization_id, p.specialization, p.is_active,
+               s.name as specialization_name,
+               coalesce(s.name, p.specialization, 'General') as department_name
+        FROM providers p
+        LEFT JOIN specializations s ON p.specialization_id = s.id
+        WHERE 1=1
+      `;
+      const fallbackParams = [];
+      if (activeOnly) fallbackSql += ` AND p.is_active = 1`;
+      if (specializationId) {
+        fallbackSql += ` AND (p.specialization_id = ? OR p.specialization = (SELECT name FROM specializations WHERE id = ?))`;
+        fallbackParams.push(specializationId, specializationId);
+      }
+      if (search && search.trim()) {
+        const term = `%${search.trim().toLowerCase()}%`;
+        fallbackSql += ` AND (LOWER(p.name) LIKE ? OR LOWER(coalesce(p.title, '')) LIKE ? OR LOWER(coalesce(s.name, p.specialization, '')) LIKE ?)`;
+        fallbackParams.push(term, term, term);
+      }
+      fallbackSql += ` ORDER BY p.is_active DESC, p.name ASC`;
+      const { rows } = await db.query(fallbackSql, fallbackParams);
+      return rows;
+    }
   }
 
   /**

@@ -27,28 +27,29 @@ const ProviderAutocomplete = ({
   const dropdownRef = useRef(null);
   const searchInputRef = useRef(null);
 
+  const fetchProvidersFromApi = () => {
+    setLoading(true);
+    getProviders({ activeOnly: true })
+      .then((res) => {
+        const list = Array.isArray(res.data?.data)
+          ? res.data.data
+          : (Array.isArray(res.data) ? res.data : []);
+        setInternalProviders(list);
+      })
+      .catch((err) => {
+        console.error('[ProviderAutocomplete] Failed to fetch active providers:', err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  };
+
   // Sync internal providers with parent prop or auto-fetch if empty
   useEffect(() => {
     if (initialProviders && initialProviders.length > 0) {
       setInternalProviders(initialProviders);
     } else {
-      let isMounted = true;
-      setLoading(true);
-      getProviders({ activeOnly: true })
-        .then((res) => {
-          if (!isMounted) return;
-          const list = Array.isArray(res.data?.data)
-            ? res.data.data
-            : (Array.isArray(res.data) ? res.data : []);
-          setInternalProviders(list);
-        })
-        .catch((err) => {
-          console.error('[ProviderAutocomplete] Failed to fetch active providers:', err);
-        })
-        .finally(() => {
-          if (isMounted) setLoading(false);
-        });
-      return () => { isMounted = false; };
+      fetchProvidersFromApi();
     }
   }, [initialProviders]);
 
@@ -354,8 +355,30 @@ const ProviderAutocomplete = ({
                 Loading providers...
               </div>
             ) : totalCount === 0 ? (
-              <div style={{ padding: '16px', color: '#64748b', fontSize: '0.85rem', textAlign: 'center' }}>
-                No providers match "{searchQuery}".
+              <div style={{ padding: '20px 16px', color: '#64748b', fontSize: '0.85rem', textAlign: 'center' }}>
+                <div>{searchQuery ? `No providers match "${searchQuery}".` : 'No providers currently available.'}</div>
+                {internalProviders.length === 0 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fetchProvidersFromApi();
+                    }}
+                    style={{
+                      marginTop: '10px',
+                      padding: '5px 12px',
+                      backgroundColor: '#f1f5f9',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '6px',
+                      color: 'var(--primary)',
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Retry loading providers
+                  </button>
+                )}
               </div>
             ) : (
               <>

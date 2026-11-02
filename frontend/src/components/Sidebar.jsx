@@ -34,7 +34,7 @@ const ALL_ROLES = [
 ];
 
 const ALL_LAB_ROLES = [
-  'admin', 'deputy_coo', 'chairman',
+  'admin', 'chairman',
   'lab_hod', 'lab_manager', 'quality_manager', 'qm',
   'lab_safety_officer', 'lab_stock_officer',
   'head_biochemistry', 'head_microbiology', 'head_hematology', 'head_histopathology',
@@ -75,23 +75,23 @@ const Sidebar = ({ onClose }) => {
     {
       title: 'CLINICAL HUBS',
       items: [
-        { configKey: 'nursing_hub', name: 'Nursing Hub', icon: <Stethoscope size={18} />, path: '/nursing-hub', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'rn_midwife', 'admin', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'deputy_coo'] },
-        { configKey: 'anc_register', name: 'ANC Register', icon: <Heart size={18} />, path: '/nursing-hub/anc-register', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'rn_midwife', 'admin', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'deputy_coo', 'coo', 'chairman'] },
-        { configKey: 'clinical_sheets_nav', name: 'Clinical Sheets', icon: <FileText size={18} />, path: '/clinical-sheets', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'rn_midwife', 'admin', 'doctor', 'consultant', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'medical_director', 'clinical_director', 'deputy_coo'] },
-        { configKey: 'doctor_hub', name: 'Doctor Hub', icon: <Stethoscope size={18} />, path: '/doctor-hub', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['doctor', 'consultant', 'admin', 'medical_director', 'clinical_director', 'deputy_coo'] },
+        { configKey: 'nursing_hub', name: 'Nursing Hub', icon: <Stethoscope size={18} />, path: '/nursing-hub', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'rn_midwife', 'admin', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse'] },
+        { configKey: 'anc_register', name: 'ANC Register', icon: <Heart size={18} />, path: '/nursing-hub/anc-register', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'rn_midwife', 'admin', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'chairman'] },
+        { configKey: 'clinical_sheets_nav', name: 'Clinical Sheets', icon: <FileText size={18} />, path: '/clinical-sheets', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['nurse', 'rn_midwife', 'admin', 'doctor', 'consultant', 'chef-nurse', 'deputy_chef_nurse', 'deputy-chef-nurse', 'deputy_chief_nurse', 'medical_director', 'clinical_director'] },
+        { configKey: 'doctor_hub', name: 'Doctor Hub', icon: <Stethoscope size={18} />, path: '/doctor-hub', requiredPerm: { mod: 'clinical_observation', act: 'view' }, allowedRoles: ['doctor', 'consultant', 'admin', 'medical_director', 'clinical_director'] },
         { configKey: 'lab_hub', name: 'Laboratory Hub', icon: <FlaskConical size={18} />, path: '/lab', requiredPerm: null, allowedRoles: ALL_LAB_ROLES },
-        { configKey: 'lab_stock_hub', name: 'Lab Stock & Reagents', icon: <Package size={18} />, path: '/lab-stock', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'general_manager', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm', 'lab_stock_officer'] },
+        { configKey: 'lab_stock_hub', name: 'Lab Stock & Reagents', icon: <Package size={18} />, path: '/lab-stock', requiredPerm: null, allowedRoles: ['admin', 'general_manager', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm', 'lab_stock_officer'] },
         { configKey: 'lab_requisitions_hub', name: 'Lab Unit Requisitions', icon: <ClipboardList size={18} />, path: '/lab-requisitions', requiredPerm: null, allowedRoles: [...ALL_LAB_ROLES, 'stock-manager', 'stock_manager', 'general_manager'] },
-        { configKey: 'lab_team_lead_hub', name: 'Lab Team Lead Hub', icon: <Microscope size={18} />, path: '/lab-team-lead', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'general_manager', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm', 'lab_team_lead', 'lab_lead', 'head_biochemistry', 'head_microbiology', 'head_hematology', 'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology', 'lab_safety_officer', 'lab_stock_officer', 'lab_micro_specialist'] },
-        { configKey: 'lab_manager_hub', name: 'Lab Manager Hub', icon: <BarChart3 size={18} />, path: '/lab-manager', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'general_manager', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm'] },
+        { configKey: 'lab_team_lead_hub', name: 'Lab Team Lead Hub', icon: <Microscope size={18} />, path: '/lab-team-lead', requiredPerm: null, allowedRoles: ['admin', 'general_manager', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm', 'lab_team_lead', 'lab_lead', 'head_biochemistry', 'head_microbiology', 'head_hematology', 'head_histopathology', 'head_poct', 'head_phlebotomy', 'head_molecular_biology', 'lab_safety_officer', 'lab_stock_officer', 'lab_micro_specialist'] },
+        { configKey: 'lab_manager_hub', name: 'Lab Manager Hub', icon: <BarChart3 size={18} />, path: '/lab-manager', requiredPerm: null, allowedRoles: ['admin', 'general_manager', 'chairman', 'lab_hod', 'lab_manager', 'quality_manager', 'qm'] },
         { configKey: 'lab_archive', name: 'Document Archive', icon: <Archive size={18} />, path: '/lab/archive', requiredPerm: null, allowedRoles: ALL_LAB_ROLES },
         { configKey: 'ncr_hub', name: 'Non-Conformance (NCR)', icon: <AlertOctagon size={18} />, path: '/ncr', requiredPerm: null, allowedRoles: ALL_LAB_ROLES },
-        { configKey: 'imaging', name: 'Imaging Hub', icon: <ScanLine size={18} />, path: '/imaging', requiredPerm: { mod: 'imaging', act: 'view' }, allowedRoles: ['imaging_tech', 'imaging_manager', 'sono', 'radiologist', 'imaging', 'admin', 'deputy_coo', 'coo', 'chairman'] },
-        { configKey: 'pacs_archives', name: 'PACS and Archives', icon: <Archive size={18} />, path: '/pacs-archives', requiredPerm: null, allowedRoles: ['imaging_tech', 'imaging_manager', 'sono', 'radiologist', 'imaging', 'admin', 'deputy_coo', 'coo', 'chairman', 'doctor', 'consultant', 'dentist', 'dental_hod', 'medical_director', 'clinical_director'] },
-        { configKey: 'shared_imaging', name: 'Imaging Data', icon: <FileSearch size={18} />, path: '/shared-imaging', requiredPerm: null, allowedRoles: ['doctor', 'consultant', 'physiotherapist', 'physio', 'dentist', 'dental_hod', 'medical_director', 'clinical_director', 'admin', 'deputy_coo', 'coo', 'chairman'] },
-        { configKey: 'dental_hub', name: 'Dental Hub', icon: <Heart size={18} />, path: '/dental', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager', 'chairman'] },
-        { configKey: 'physio_hub', name: 'Physio Workspace', icon: <Dumbbell size={18} />, path: '/physio', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'physiotherapist', 'physio'] },
-        { configKey: 'physio_manager', name: 'Physio Manager Hub', icon: <BarChart3 size={18} />, path: '/physio/manager-dashboard', requiredPerm: null, allowedRoles: ['admin', 'deputy_coo', 'physio_manager', 'chairman'] },
+        { configKey: 'imaging', name: 'Imaging Hub', icon: <ScanLine size={18} />, path: '/imaging', requiredPerm: { mod: 'imaging', act: 'view' }, allowedRoles: ['imaging_tech', 'imaging_manager', 'sono', 'radiologist', 'imaging', 'admin', 'chairman'] },
+        { configKey: 'pacs_archives', name: 'PACS and Archives', icon: <Archive size={18} />, path: '/pacs-archives', requiredPerm: null, allowedRoles: ['imaging_tech', 'imaging_manager', 'sono', 'radiologist', 'imaging', 'admin', 'chairman', 'doctor', 'consultant', 'dentist', 'dental_hod', 'medical_director', 'clinical_director'] },
+        { configKey: 'shared_imaging', name: 'Imaging Data', icon: <FileSearch size={18} />, path: '/shared-imaging', requiredPerm: null, allowedRoles: ['doctor', 'consultant', 'physiotherapist', 'physio', 'dentist', 'dental_hod', 'medical_director', 'clinical_director', 'admin', 'chairman'] },
+        { configKey: 'dental_hub', name: 'Dental Hub', icon: <Heart size={18} />, path: '/dental', requiredPerm: null, allowedRoles: ['admin', 'dental', 'dentist', 'dental_tech', 'dental_hod', 'dental_lab_manager', 'chairman'] },
+        { configKey: 'physio_hub', name: 'Physio Workspace', icon: <Dumbbell size={18} />, path: '/physio', requiredPerm: null, allowedRoles: ['admin', 'physiotherapist', 'physio'] },
+        { configKey: 'physio_manager', name: 'Physio Manager Hub', icon: <BarChart3 size={18} />, path: '/physio/manager-dashboard', requiredPerm: null, allowedRoles: ['admin', 'physio_manager', 'chairman'] },
       ]
     },
     {
@@ -147,6 +147,12 @@ const Sidebar = ({ onClose }) => {
 
   // Helper to check item permission / config visibility
   const isItemVisible = (item) => {
+    // Neither COO nor Deputy COO should see any clinical hub items
+    if (['coo', 'deputy_coo'].includes(user?.role)) {
+      const isClinicalItem = menuSections.find(s => s.title === 'CLINICAL HUBS')?.items.some(i => i.configKey === item.configKey);
+      if (isClinicalItem) return false;
+    }
+
     // Providers (Doctors, Physio, Dentists, Medical/Clinical Directors) only use Imaging Data, never full Imaging Hub
     const isProvider = ['doctor', 'consultant', 'physiotherapist', 'physio', 'dentist', 'dental_hod', 'medical_director', 'clinical_director'].includes(user?.role);
     if (item.configKey === 'imaging' && isProvider) return false;
@@ -273,6 +279,7 @@ const Sidebar = ({ onClose }) => {
         {/* ── Sectional Navigation ── */}
         <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           {menuSections.map((section, idx) => {
+            if (['coo', 'deputy_coo'].includes(user?.role) && section.title === 'CLINICAL HUBS') return null;
             const visibleItems = section.items.filter(isItemVisible);
             if (visibleItems.length === 0) return null;
 
