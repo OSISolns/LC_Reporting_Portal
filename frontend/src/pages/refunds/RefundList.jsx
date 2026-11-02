@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Plus, Search, FileText, Trash2, Eye, Download, CheckCircle, Edit2 } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Eye, Download, CheckCircle, Edit2, FileSpreadsheet } from 'lucide-react';
 import StatusBadge from '../../components/StatusBadge';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Modal from '../../components/Modal';
 import RefundFormFields from './components/RefundFormFields';
 import RefundDetailsView from './components/RefundDetailsView';
 import { useFormAutoSave } from '../../hooks/useFormAutoSave';
+import { exportRefundsExcelReport } from './utils/refundExcelExport';
 import {
   getRefunds,
   getRefundById,
@@ -39,7 +40,8 @@ const RefundList = () => {
   const [currentPage,     setCurrentPage]    = useState(1);
   const itemsPerPage = 50;
   const [loading,         setLoading]        = useState(true);
-  const [filters,         setFilters]        = useState({ patientName: '', pid: '', status: '' });
+  const [filters,         setFilters]        = useState({ patientName: '', pid: '', status: '', startDate: '', endDate: '' });
+  const [exportingExcel,  setExportingExcel] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal,   setShowViewModal]   = useState(false);
   const [activeRequest,   setActiveRequest]   = useState(null);
@@ -305,31 +307,88 @@ const RefundList = () => {
   };
 
   const canCreate = hasPermission('refunds', 'create');
+  const canExportExcel = ['sales_manager', 'principal_cashier', 'admin', 'coo', 'deputy_coo', 'chairman'].includes(user?.role);
+
+  const handleExportExcel = async () => {
+    setExportingExcel(true);
+    try {
+      const res = await getRefunds({ ...filters, limit: 5000 });
+      const records = (Array.isArray(res.data?.data) && res.data.data.length > 0)
+        ? res.data.data
+        : requests;
+
+      if (!records || records.length === 0) {
+        alert('No refund requests found matching the current filters to export.');
+        return;
+      }
+
+      await exportRefundsExcelReport({
+        data: records,
+        filters,
+        user
+      });
+    } catch (err) {
+      console.error('Failed to export refund report to Excel:', err);
+      alert('Failed to generate Excel report. Please check your connection or try again.');
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
+  const totalRefundedSum = requests.reduce((acc, r) => acc + (Number(r.amount_to_be_refunded) || 0), 0);
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--primary-dark)', marginBottom: '0.25rem' }}>Refund Requests</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>Workflow for patient payment refunds.</p>
         </div>
-        {canCreate && (
-          <button onClick={handleOpenCreate}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: '#003b44', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 600, boxShadow: '0 4px 6px -1px rgba(0,59,68,0.2)', cursor: 'pointer' }}>
-            <Plus size={18} /> New Refund Request
-          </button>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          {canExportExcel && (
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              disabled={exportingExcel || loading}
+              title="Extract report in Excel (.xlsx) with initiator, reviewer, approver audit trails and totals"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '0.75rem 1.25rem',
+                backgroundColor: '#047857',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '10px',
+                fontWeight: 600,
+                boxShadow: '0 4px 6px -1px rgba(4, 120, 87, 0.25)',
+                cursor: exportingExcel ? 'wait' : 'pointer',
+                transition: 'all 0.2s',
+                opacity: exportingExcel ? 0.75 : 1
+              }}
+            >
+              <FileSpreadsheet size={18} />
+              <span>{exportingExcel ? 'Extracting Excel...' : 'Extract Excel Report'}</span>
+            </button>
+          )}
+          {canCreate && (
+            <button onClick={handleOpenCreate}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1.25rem', backgroundColor: '#003b44', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 600, boxShadow: '0 4px 6px -1px rgba(0,59,68,0.2)', cursor: 'pointer' }}>
+              <Plus size={18} /> New Refund Request
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="glass card-shadow" style={{ padding: '1.25rem', marginBottom: '2rem', display: 'flex', gap: '1.25rem', flexWrap: 'wrap', alignItems: 'center', backgroundColor: '#ffffff' }}>
-        <div style={{ position: 'relative', flex: 2, minWidth: '300px' }}>
+      <div className="glass card-shadow" style={{ padding: '1.25rem', marginBottom: '1.5rem', display: 'flex', gap: '1.25rem', flexWrap: 'wrap', alignItems: 'center', backgroundColor: '#ffffff' }}>
+        <div style={{ position: 'relative', flex: 2, minWidth: '260px' }}>
           <Search size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
           <input type="text" placeholder="Search by Patient Name or PID..."
             value={filters.patientName}
             onChange={(e) => setFilters({ ...filters, patientName: e.target.value })}
             style={{ width: '100%', padding: '12px 14px 12px 46px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.95rem' }} />
         </div>
-        <div style={{ flex: 1, minWidth: '180px' }}>
+        <div style={{ flex: 1, minWidth: '170px' }}>
           <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}
             style={{ width: '100%', padding: '12px 14px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '10px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.95rem', cursor: 'pointer' }}>
             <option value="">Status: All Requests</option>
@@ -340,11 +399,55 @@ const RefundList = () => {
             <option value="rejected">❌ Rejected</option>
           </select>
         </div>
-        <button onClick={() => setFilters({ patientName: '', pid: '', status: '' })}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>From:</span>
+          <input
+            type="date"
+            value={filters.startDate || ''}
+            onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
+            style={{ padding: '9px 10px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem' }}
+          />
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>To:</span>
+          <input
+            type="date"
+            value={filters.endDate || ''}
+            onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
+            style={{ padding: '9px 10px', backgroundColor: '#f8fafc', border: '1.5px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem' }}
+          />
+        </div>
+        <button onClick={() => setFilters({ patientName: '', pid: '', status: '', startDate: '', endDate: '' })}
           style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer', padding: '0 10px' }}>
           Reset Filters
         </button>
       </div>
+
+      {requests.length > 0 && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '10px',
+          padding: '0.85rem 1.25rem',
+          marginBottom: '1.5rem',
+          backgroundColor: '#f0fdf4',
+          border: '1px solid #bbf7d0',
+          borderRadius: '10px',
+          color: '#166534',
+          fontSize: '0.9rem',
+          fontWeight: 600
+        }}>
+          <div>
+            Found <strong>{requests.length}</strong> refund request{requests.length === 1 ? '' : 's'}
+            {filters.status && ` • ${filters.status.toUpperCase()}`}
+            {filters.startDate && ` • From: ${filters.startDate}`}
+            {filters.endDate && ` • To: ${filters.endDate}`}
+          </div>
+          <div style={{ fontSize: '0.95rem', color: '#14532d' }}>
+            Total Refund Value: <strong>RWF {totalRefundedSum.toLocaleString()}</strong>
+          </div>
+        </div>
+      )}
 
       <div className="glass card-shadow" style={{ overflow: 'hidden', backgroundColor: '#ffffff' }}>
         {loading ? <LoadingSpinner /> : requests.length === 0 ? (
@@ -357,7 +460,7 @@ const RefundList = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--bg-color)', backgroundColor: '#f8fafc' }}>
-                {['ID', 'Patient Details', 'PID Number', 'Refund Amount', 'Submission Date', 'Supporting Doc', 'Current Status', 
+                {['ID', 'Patient Details', 'Provider', 'PID Number', 'Refund Amount', 'Submission Date', 'Supporting Doc', 'Current Status', 
                   ...(['sales_manager', 'coo', 'deputy_coo', 'admin', 'principal_cashier'].includes(user.role) ? ['Rating Status'] : []),
                   'Actions'].map((h, i) => (
                   <th key={h} style={{ padding: '1.25rem 1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: (h === 'Actions') ? 'right' : 'left' }}>
@@ -375,18 +478,23 @@ const RefundList = () => {
                   <td style={{ padding: '1.25rem 1.5rem', fontWeight: 700, color: 'var(--text-secondary)' }}>#{r.id}</td>
                   <td style={{ padding: '1.25rem 1.5rem' }}>
                     <div style={{ fontWeight: 600, color: 'var(--primary-dark)', fontSize: '0.95rem' }}>{r.patient_full_name}</div>
-                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '4px' }}>
-                      {r.service_name && (
+                    {r.service_name && (
+                      <div style={{ marginTop: '4px' }}>
                         <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '2px 8px', borderRadius: '4px', backgroundColor: '#e0f2fe', color: '#0369a1' }}>
                           {r.service_name}
                         </span>
-                      )}
-                      {r.provider_name && (
-                        <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '2px 8px', borderRadius: '4px', backgroundColor: '#f0fdf4', color: '#15803d' }}>
-                          🩺 {r.provider_name}
-                        </span>
-                      )}
-                    </div>
+                      </div>
+                    )}
+                  </td>
+                  <td style={{ padding: '1.25rem 1.5rem' }}>
+                    {r.provider_name ? (
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.84rem', fontWeight: 600, color: '#15803d', backgroundColor: '#f0fdf4', padding: '3px 8px', borderRadius: '6px', border: '1px solid #bbf7d0' }}>
+                        <span>🩺</span>
+                        <span>{r.provider_name}</span>
+                      </div>
+                    ) : (
+                      <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>—</span>
+                    )}
                   </td>
                   <td style={{ padding: '1.25rem 1.5rem', color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: '0.9rem' }}>{r.pid_number}</td>
                   <td style={{ padding: '1.25rem 1.5rem', fontWeight: 700, color: 'var(--primary-dark)' }}>RWF {Number(r.amount_to_be_refunded).toLocaleString()}</td>

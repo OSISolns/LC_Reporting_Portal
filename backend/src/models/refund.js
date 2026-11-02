@@ -195,6 +195,7 @@ class Refund {
              u1.full_name AS creator_name,
              u2.full_name AS verifier_name,
              u3.full_name AS approver_name,
+             u4.full_name AS rejector_name,
              u5.full_name AS billed_by_name,
              r1.name AS creator_role,
              r5.name AS billed_by_role,
@@ -204,6 +205,7 @@ class Refund {
       LEFT JOIN roles r1 ON u1.role_id    = r1.id
       LEFT JOIN users u2 ON r.verified_by = u2.id
       LEFT JOIN users u3 ON r.approved_by = u3.id
+      LEFT JOIN users u4 ON r.rejected_by = u4.id
       LEFT JOIN users u5 ON r.billed_by   = u5.id
       LEFT JOIN roles r5 ON u5.role_id    = r5.id
       LEFT JOIN staff_performance_ratings spr ON spr.request_type = 'refund' AND spr.request_id = r.id
@@ -265,7 +267,17 @@ class Refund {
       }
     }
 
-    query += ` ORDER BY r.created_at DESC LIMIT 100`;
+    if (filters.startDate) {
+      params.push(filters.startDate);
+      query += ` AND r.created_at >= $${params.length}`;
+    }
+    if (filters.endDate) {
+      params.push(`${filters.endDate}T23:59:59.999Z`);
+      query += ` AND r.created_at <= $${params.length}`;
+    }
+
+    const maxLimit = filters.limit ? Math.min(parseInt(filters.limit, 10), 10000) : 1000;
+    query += ` ORDER BY r.created_at DESC LIMIT ${maxLimit}`;
     const { rows } = await db.query(query, params);
     return rows;
   }
