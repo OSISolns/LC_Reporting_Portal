@@ -307,7 +307,7 @@ const RefundList = () => {
   };
 
   const canCreate = hasPermission('refunds', 'create');
-  const canExportExcel = ['sales_manager', 'principal_cashier', 'admin', 'coo', 'deputy_coo', 'chairman'].includes(user?.role);
+  const canExportExcel = ['sales_manager', 'principal_cashier'].includes(user?.role);
 
   const handleExportExcel = async () => {
     setExportingExcel(true);
