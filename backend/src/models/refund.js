@@ -192,6 +192,7 @@ class Refund {
   static async getAll(filters = {}) {
     let query = `
       SELECT r.*,
+             COALESCE(r.provider_name, prov.name) AS provider_name,
              u1.full_name AS creator_name,
              u2.full_name AS verifier_name,
              u3.full_name AS approver_name,
@@ -201,6 +202,7 @@ class Refund {
              r5.name AS billed_by_role,
              CASE WHEN spr.id IS NOT NULL THEN true ELSE false END as is_rated
       FROM refund_requests r
+      LEFT JOIN providers prov ON r.provider_id = prov.id
       LEFT JOIN users u1 ON r.created_by  = u1.id
       LEFT JOIN roles r1 ON u1.role_id    = r1.id
       LEFT JOIN users u2 ON r.verified_by = u2.id
@@ -284,6 +286,7 @@ class Refund {
 
   static async findById(id) {
     let query = `SELECT r.*,
+              COALESCE(r.provider_name, prov.name) AS provider_name,
               u1.full_name AS creator_name,
               u2.full_name AS verifier_name,
               u3.full_name AS approver_name,
@@ -292,6 +295,7 @@ class Refund {
               u6.full_name AS supporting_document_uploader_name,
               CASE WHEN spr.id IS NOT NULL THEN true ELSE false END as is_rated
        FROM refund_requests r
+       LEFT JOIN providers prov ON r.provider_id = prov.id
        LEFT JOIN users u1 ON r.created_by  = u1.id
        LEFT JOIN users u2 ON r.verified_by = u2.id
        LEFT JOIN users u3 ON r.approved_by = u3.id
